@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+// backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
+const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || '').replace(/\/$/, '');
 // Browser previews are served through an origin-rewriting proxy. Keep preview
 // requests same-origin; native apps always use the configured backend URL.
 export const BACKEND = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : configuredBackend;

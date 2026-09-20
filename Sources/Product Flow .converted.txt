@@ -1,0 +1,1587 @@
+Yes. The correct strategy is build the complete architecture foundation in V1, but activate only the V1 capabilities.
+That means we do not build a V1 codebase that later has to be redesigned for Service, Inventory OS, or larger hub networks. We build the underlying contracts, domains, schemas, events, permissions, configuration and extension points now, while only exposing the required V1 surfaces.
+The most important distinction is:
+ARCHITECTURE IS BUILT ALL AT ONCE. FEATURES ARE ACTIVATED BY VERSION.
+PROVIYAA GLOBAL
+ARCHITECTURE-FIRST DEVELOPMENT ROADMAP
+Strategy
+Build the complete ecosystem architecture now.
+Deploy only the V1 capability set first.
+Then activate additional capabilities in V2 without restructuring the foundation.
+
+1. FINAL VERSION STRATEGY
+V1 — LIVE FOUNDATION
+Control & Platform
+	•	PROVIIYAA MASTER CONTROL-
+	•	Identity
+	•	Organization
+	•	RBAC
+	•	Subscription
+	•	Entitlements
+	•	Feature Store
+	•	Configuration
+	•	Audit
+	•	Notifications
+	•	Developer foundation
+	•	Analytics foundation
+Core
+	•	COMMERCE OS
+	•	Catalogue
+	•	Products
+	•	Customers
+	•	Orders
+	•	Payments-
+	•	Pricing
+	•	Commision management 
+	•	Promotions
+	•	Settlement foundation
+Merchant Applications
+	•	VINII STORE
+	•	VINII RESTAURANT
+Intelligence
+	•	INTELLIGENCE OS architecture
+	•	AI platform
+	•	Price Intelligence
+	•	Sales Intelligence
+	•	Customer Intelligence
+	•	basic operational intelligence
+Fulfilment
+	•	FULFILMENT ENGINE
+	•	merchant fulfilment
+	•	order routing
+	•	fulfilment planning
+Delivery
+	•	Store-managed / independent rider delivery
+	•	Rider app
+	•	Dispatch
+	•	Routing
+	•	Tracking
+	•	Proof of delivery
+Customer
+	•	ONECITY CUSTOMER
+Hub
+The Hub architectural layer exists in V1, but the full centralized Unified Hub operating capability is activated later.
+The V1 architecture must already support:
+Store
+Warehouse
+Hub
+Multi-location
+Future Unified Hub
+
+2. V2 — EXPANSION
+Activate:
+VINII SERVICE
+Full service vertical:
+	•	services
+	•	appointments
+	•	staff
+	•	availability
+	•	packages
+	•	memberships
+	•	service POS
+	•	service CRM
+	•	service pricing intelligence
+INVENTORY OS
+Complete:
+	•	advanced inventory
+	•	receiving
+	•	GRN
+	•	warehouse
+	•	transfers
+	•	stock audit
+	•	stock intelligence
+	•	purchase intelligence
+	•	liquidation
+	•	inventory positioning
+VINII UNIFIED HUBS
+Activate:
+	•	centralized hubs
+	•	merchant hub participation
+	•	hub inventory
+	•	hub receiving
+	•	putaway
+	•	picking
+	•	packing
+	•	dispatch
+	•	hub transfers
+	•	hub returns
+	•	hub capacity
+Advanced Fulfilment
+	•	hub fulfilment
+	•	mixed fulfilment
+	•	multi-source fulfilment
+	•	combined merchant delivery
+	•	merchant rider sharing
+	•	hub rider network
+
+3. V3 — NETWORK INTELLIGENCE
+Future capabilities:
+	•	multi-hub optimization
+	•	inventory positioning AI
+	•	cross-merchant bundles
+	•	advanced combined delivery
+	•	predictive capacity
+	•	dynamic delivery pricing
+	•	network demand forecasting
+	•	autonomous fulfilment optimization
+
+4. THE MOST IMPORTANT DEVELOPMENT RULE
+Do not use this model:
+V1
+Store
+Restaurant
+Delivery
+        ↓
+V2
+rewrite architecture
+        ↓
+Service
+Inventory
+Hub
+Use:
+COMPLETE ARCHITECTURE
+        ↓
+FEATURE FLAGS
+        ↓
+V1 ACTIVATION
+        ↓
+V2 ACTIVATION
+        ↓
+V3 ACTIVATION
+
+5. TARGET ARCHITECTURE FROM DAY ONE
+                        PROVIYAA MASTER
+                                │
+         ┌──────────────────────┼──────────────────────┐
+         │                      │                      │
+   CONTROL PLANE           COMMERCE OS          INTELLIGENCE OS
+         │                      │                      │
+         │             ┌────────┼────────┐             │
+         │             │        │        │             │
+         │           STORE  RESTAURANT SERVICE          │
+         │             │        │        │             │
+         │             └────────┼────────┘             │
+         │                      │                      │
+         │                 INVENTORY OS                 │
+         │                      │                      │
+         │          ┌───────────┼───────────┐          │
+         │          │           │           │          │
+         │        STORE      WAREHOUSE      HUB         │
+         │                                  │          │
+         │                            UNIFIED HUB      │
+         │                                  │          │
+         └──────────────────────────────────┼──────────┘
+                                            │
+                                      FULFILMENT ENGINE
+                                            │
+                             ┌──────────────┼──────────────┐
+                             │              │              │
+                         MERCHANT        HUB RIDER     COMBINED
+                           RIDER                        DELIVERY
+                             │              │              │
+                             └──────────────┼──────────────┘
+                                            │
+                                         ONECITY
+                                            │
+                                         CUSTOMER
+V1 simply activates a subset of this architecture.
+
+6. VERSION CONTROL MODEL
+Every capability needs:
+FEATURE
+FEATURE VERSION
+ENTITLEMENT
+CONFIGURATION
+ROLLOUT STATE
+Example:
+SERVICE
+Feature ID: FEATURE-SERVICE
+Architecture: READY
+Version: V1
+Status: DISABLED
+Then V2:
+SERVICE
+Feature ID: FEATURE-SERVICE
+Architecture: READY
+Version: V2
+Status: ENABLED
+No database redesign should be required.
+
+7. DEVELOPMENT PROGRAM
+The development should happen in 12 major engineering phases.
+
+PHASE 0 — ARCHITECTURE FREEZE
+Objective
+Freeze the canonical architecture before feature development accelerates.
+Deliverables
+	•	ecosystem architecture
+	•	domain boundaries
+	•	application boundaries
+	•	ownership rules
+	•	tenancy model
+	•	ID conventions
+	•	event conventions
+	•	API conventions
+	•	database conventions
+	•	permission model
+	•	versioning model
+Freeze:
+PAGE-ID
+ROUTE-ID
+COMPONENT-ID
+API-ID
+EVENT-ID
+TABLE-ID
+PERMISSION-ID
+QA-ID
+ANALYTICS-ID
+AUDIT-ID
+AI-ID
+Gate
+No major domain should be introduced without registry entry.
+
+PHASE 1 — PLATFORM FOUNDATION
+Objective
+Build the technical foundation shared by everything.
+Build
+	•	API gateway
+	•	authentication
+	•	sessions
+	•	user identity
+	•	organizations
+	•	memberships
+	•	RBAC
+	•	access policies
+	•	tenant isolation
+	•	configuration service
+	•	feature flags
+	•	event bus
+	•	audit service
+	•	notification service
+	•	document/media service
+	•	search foundation
+	•	observability
+	•	error handling
+	•	idempotency
+	•	API versioning
+
+PHASE 2 — MASTER CONTROL
+Build:
+Master Dashboard
+Organizations
+Organization 360
+Users
+Roles
+Permissions
+Plans
+Packs
+Add-ons
+Subscriptions
+Entitlements
+Feature Store
+Configuration
+UI/UX Studio foundation
+Workflow Studio foundation
+Rule Engine foundation
+Automation foundation
+Audit
+Support foundation
+Release management
+
+PHASE 3 — COMMERCE OS
+This is the core transactional engine.
+Build:
+Catalogue
+	•	categories
+	•	manufacturers
+	•	brands
+	•	products
+	•	variants
+	•	SKUs
+	•	attributes
+Customer
+	•	customer profile
+	•	addresses
+	•	preferences
+Order
+	•	order
+	•	order lines
+	•	order status
+	•	reservation
+Payment
+	•	payment
+	•	refund
+	•	transaction
+Settlement
+	•	merchant settlement
+	•	platform fee
+	•	delivery fee
+Pricing
+	•	price books
+	•	price versions
+	•	price rules
+Promotion
+	•	campaigns
+	•	discounts
+	•	coupons
+	•	bundles
+
+PHASE 4 — VINII STORE
+Build V1 Store.
+V1 Store Navigation
+SELL
+RECEIVE
+STOCK
+PURCHASE
+REPORTS
+V1
+	•	Store Dashboard
+	•	POS
+	•	Products
+	•	Item Master
+	•	Receiving
+	•	Receiving Batch
+	•	GRN Desk
+	•	Barcode
+	•	Shelf Labels
+	•	Inventory foundation
+	•	Purchase
+	•	Suppliers
+	•	Reports
+	•	Customers
+	•	Promotions
+	•	Price Intelligence
+Important
+Advanced Inventory OS is architecturally present but can remain feature-gated.
+
+PHASE 5 — VINII RESTAURANT
+Build V1 Restaurant.
+Navigation
+SELL
+ORDERS
+MENU
+INVENTORY
+PURCHASE
+REPORTS
+Build
+	•	Restaurant Dashboard
+	•	POS
+	•	Tables
+	•	KOT
+	•	Kitchen
+	•	Menu
+	•	Menu Item
+	•	Recipes
+	•	Ingredients
+	•	Inventory foundation
+	•	Purchase
+	•	Suppliers
+	•	Wastage
+	•	Reservations
+	•	Orders
+	•	Customers
+	•	Promotions
+	•	Price Intelligence
+	•	Reports
+Again:
+Restaurant inventory uses the common Inventory architecture.
+Do not create a separate restaurant inventory engine.
+
+PHASE 6 — INTELLIGENCE OS
+The architecture should exist in V1.
+Build the intelligence platform foundation:
+DATA
+ ↓
+EVENTS
+ ↓
+FEATURES
+ ↓
+AI / RULES
+ ↓
+INSIGHT
+ ↓
+RECOMMENDATION
+ ↓
+APPROVAL
+ ↓
+ACTION
+ ↓
+MEASUREMENT
+V1 active intelligence
+Price Intelligence
+Store + Restaurant.
+Sales Intelligence
+Basic:
+	•	sales trends
+	•	anomalies
+	•	top products
+	•	top dishes
+Customer Intelligence
+Basic:
+	•	repeat customers
+	•	high-value customers
+	•	inactive customers
+AI foundation
+	•	agents
+	•	models
+	•	prompts
+	•	tools
+	•	recommendations
+	•	confidence
+	•	approval
+	•	AI history
+
+PHASE 7 — FULFILMENT ENGINE
+Build the fulfilment engine in V1.
+This is critical.
+It must not be coupled directly to OneCity or only to Store.
+Architecture:
+ORDER
+ ↓
+ORDER ROUTER
+ ↓
+INVENTORY AVAILABILITY
+ ↓
+FULFILMENT SOURCES
+ ↓
+FULFILMENT PLAN
+V1 sources:
+STORE
+RESTAURANT
+Future sources:
+WAREHOUSE
+UNIFIED HUB
+MULTIPLE SOURCES
+Therefore the source abstraction must exist from day one.
+
+PHASE 8 — V1 RIDER DELIVERY
+Build:
+Rider
+	•	registration
+	•	profile
+	•	availability
+	•	online/offline
+	•	current job
+	•	pickup
+	•	navigation
+	•	delivery
+	•	proof
+	•	exceptions
+	•	earnings
+Dispatch
+	•	job creation
+	•	rider assignment
+	•	reassignment
+	•	route
+	•	ETA
+	•	tracking
+V1 model
+STORE
+ ↓
+STORE MANAGED RIDER
+ ↓
+CUSTOMER
+and:
+RESTAURANT
+ ↓
+RESTAURANT MANAGED RIDER
+ ↓
+CUSTOMER
+The rider domain must nevertheless support future:
+VINII RIDER
+HUB RIDER
+SHARED RIDER
+COMBINED DELIVERY
+
+PHASE 9 — ONECITY CUSTOMER
+Build the customer experience.
+Core pages
+Home
+Search
+Categories
+Merchant Directory
+Merchant Profile
+Product Detail
+Restaurant Menu
+Cart
+Checkout
+Orders
+Tracking
+Offers
+Loyalty
+Reviews
+Notifications
+Profile
+Support
+
+10. V1 CUSTOMER ORDER ARCHITECTURE
+Customer:
+SEARCH
+ ↓
+SELECT
+ ↓
+CART
+ ↓
+CHECKOUT
+ ↓
+PAY
+ ↓
+ORDER
+ ↓
+FULFILMENT ENGINE
+ ↓
+MERCHANT
+ ↓
+MERCHANT RIDER
+ ↓
+CUSTOMER
+
+11. V1 MULTI-MERCHANT FOUNDATION
+Even if advanced combined delivery is not activated in V1, the data model should support:
+CUSTOMER
+ ↓
+CART
+ ↓
+ORDER GROUP
+ ↓
+ORDER A
+ORDER B
+ORDER C
+ ↓
+FULFILMENT GROUP
+ ↓
+DELIVERY GROUP
+This prevents a V2 redesign.
+V1 may simply create:
+Delivery Group A
+Delivery Group B
+while V2 can create:
+One Combined Delivery Group
+
+12. PHASE 10 — V1 INTEGRATION
+Connect everything.
+MASTER
+ ↓
+ORGANIZATION
+ ↓
+COMMERCE OS
+ ↓
+STORE
+RESTAURANT
+ ↓
+ORDER
+ ↓
+FULFILMENT
+ ↓
+RIDER
+ ↓
+ONECITY
+Test complete end-to-end flows.
+
+13. V1 END-TO-END STORE FLOW
+Merchant Signup
+ ↓
+Organization
+ ↓
+Location
+ ↓
+Catalogue
+ ↓
+Product
+ ↓
+Price
+ ↓
+Inventory
+ ↓
+POS
+ ↓
+Customer
+ ↓
+Order
+ ↓
+Fulfilment
+ ↓
+Store Rider
+ ↓
+Delivery
+ ↓
+Payment
+ ↓
+Settlement
+ ↓
+Analytics
+ ↓
+AI
+ ↓
+Audit
+
+14. V1 END-TO-END RESTAURANT FLOW
+Restaurant Signup
+ ↓
+Organization
+ ↓
+Location
+ ↓
+Menu
+ ↓
+Recipe
+ ↓
+Ingredient
+ ↓
+Price
+ ↓
+Order
+ ↓
+KOT
+ ↓
+Kitchen
+ ↓
+Ready
+ ↓
+Fulfilment
+ ↓
+Restaurant Rider
+ ↓
+Delivery
+ ↓
+Settlement
+ ↓
+Analytics
+ ↓
+AI
+
+15. V1 END-TO-END CUSTOMER FLOW
+REGISTER
+ ↓
+ADDRESS
+ ↓
+SEARCH
+ ↓
+MERCHANT
+ ↓
+PRODUCT / DISH
+ ↓
+CART
+ ↓
+CHECKOUT
+ ↓
+PAYMENT
+ ↓
+ORDER
+ ↓
+TRACK
+ ↓
+DELIVERY
+ ↓
+PROOF
+ ↓
+REVIEW
+ ↓
+LOYALTY
+
+16. V1 MASTER OPERATING MODEL
+The first production ecosystem should therefore be:
+PROVIIYAA MASTER
+       │
+       ├── Commerce OS
+       │      ├── Store
+       │      └── Restaurant
+       │
+       ├── Intelligence OS
+       │      ├── Price
+       │      ├── Sales
+       │      └── Customer
+       │
+       ├── Fulfilment Engine
+       │
+       ├── Merchant Delivery
+       │
+       └── OneCity
+
+17. V1 ARCHITECTURE-ONLY LAYERS
+These are built into the foundation but not necessarily fully exposed.
+Inventory OS
+Architecture:
+Inventory
+Warehouse
+Stock Movement
+Lot
+Batch
+Reservation
+Transfer
+Audit
+V1 uses the foundation.
+V2 activates full Inventory OS.
+
+VINII Service
+Architecture:
+Service
+Service Category
+Staff
+Skill
+Availability
+Appointment
+Booking
+Package
+Membership
+V1:
+DISABLED
+V2:
+ENABLED
+
+Unified Hub
+Architecture:
+Hub
+Hub Zone
+Hub Merchant
+Hub Inventory
+Hub Storage
+Hub Receiving
+Hub Picking
+Hub Packing
+Hub Dispatch
+Hub Capacity
+V1:
+ARCHITECTURE READY
+V2:
+OPERATIONALLY ACTIVE
+
+18. PHASE 11 — V2 INVENTORY OS
+After V1 is stable:
+Activate
+	•	advanced receiving
+	•	mobile receiving
+	•	GRN
+	•	invoice matching
+	•	barcode automation
+	•	shelf labels
+	•	stock audit
+	•	stock days
+	•	no-sale engine
+	•	liquidation engine
+	•	purchase intelligence
+	•	warehouse
+	•	transfers
+	•	inventory forecasting
+	•	inventory positioning
+
+19. V2 VINII SERVICE
+Activate:
+SERVICE CATALOGUE
+ ↓
+PRICE
+ ↓
+BOOK
+ ↓
+STAFF
+ ↓
+PROVIDE
+ ↓
+PAY
+ ↓
+REVIEW
+ ↓
+RETAIN
+OneCity then supports:
+PRODUCT
++
+RESTAURANT
++
+SERVICE
+without changing the customer platform.
+
+20. V2 UNIFIED HUB ACTIVATION
+Step 1
+Create a Hub.
+Step 2
+Define zone.
+Step 3
+Onboard merchants.
+Step 4
+Define inventory participation.
+Step 5
+Move inventory.
+Step 6
+Receive stock.
+Step 7
+Putaway.
+Step 8
+Activate hub inventory.
+Step 9
+Enable hub fulfilment.
+Step 10
+Enable hub delivery.
+
+21. V2 HUB ORDER FLOW
+CUSTOMER
+ ↓
+ORDER
+ ↓
+FULFILMENT ENGINE
+ ↓
+CHECK:
+STORE?
+WAREHOUSE?
+HUB?
+ ↓
+HUB SELECTED
+ ↓
+RESERVE
+ ↓
+PICK
+ ↓
+PACK
+ ↓
+DISPATCH
+ ↓
+RIDER
+ ↓
+CUSTOMER
+
+22. V2 COMBINED DELIVERY
+After the basic hub flow is stable:
+ORDER A
+ORDER B
+ORDER C
+ ↓
+COMBINATION ENGINE
+ ↓
+COMPATIBILITY
+ ↓
+ROUTE
+ ↓
+RIDER
+ ↓
+MULTI-PICKUP
+ ↓
+CUSTOMER
+
+23. V2 MERCHANT RIDER SHARING
+A Store rider can become eligible for:
+Store A
++
+Restaurant B
+provided:
+	•	policy allows
+	•	route compatible
+	•	rider authorized
+	•	package compatible
+	•	SLA protected.
+The same applies to restaurant-managed riders.
+
+24. V2 INVENTORY POSITIONING
+AI begins deciding:
+WHAT
+ ↓
+HOW MUCH
+ ↓
+WHERE
+ ↓
+WHEN
+Example:
+High demand in Zone A
+        ↓
+Move inventory from Store/Warehouse
+        ↓
+VINII Hub A
+        ↓
+Faster fulfilment
+        ↓
+Lower delivery time
+
+25. V3 NETWORK
+Eventually:
+HUB A
+ │
+ HUB B
+ │
+ HUB C
+ │
+ HUB D
+becomes a distributed inventory network.
+AI decides:
+	•	hub-to-hub transfers
+	•	inventory placement
+	•	capacity
+	•	demand
+	•	delivery
+	•	rider allocation.
+
+26. DEVELOPMENT WORKSTREAMS
+Do not build this as one giant sequential team.
+Use parallel workstreams.
+Workstream A — Platform
+	•	Auth
+	•	tenancy
+	•	RBAC
+	•	configuration
+	•	feature flags
+	•	audit
+	•	events
+Workstream B — Commerce
+	•	catalogue
+	•	customers
+	•	orders
+	•	payments
+	•	pricing
+	•	promotions
+Workstream C — Store
+	•	POS
+	•	receiving
+	•	products
+	•	inventory
+	•	purchase
+Workstream D — Restaurant
+	•	POS
+	•	menu
+	•	KOT
+	•	kitchen
+	•	restaurant inventory
+Workstream E — Intelligence
+	•	AI
+	•	price intelligence
+	•	analytics
+	•	recommendations
+Workstream F — Fulfilment
+	•	order routing
+	•	fulfilment plan
+	•	dispatch
+Workstream G — Delivery
+	•	rider
+	•	routing
+	•	tracking
+	•	proof
+Workstream H — Customer
+	•	OneCity
+	•	search
+	•	cart
+	•	checkout
+	•	tracking
+Workstream I — Architecture Future Layer
+Build foundations for:
+	•	Service
+	•	Inventory OS
+	•	Unified Hub
+	•	Combined Delivery
+without exposing them prematurely.
+
+27. ENGINEERING DEPENDENCY ORDER
+The dependency chain should be:
+1. Identity
+       ↓
+2. Organization
+       ↓
+3. RBAC
+       ↓
+4. Configuration
+       ↓
+5. Feature Store
+       ↓
+6. Commerce OS
+       ↓
+7. Catalogue
+       ↓
+8. Customers
+       ↓
+9. Orders
+       ↓
+10. Payments
+       ↓
+11. Store
+       ↓
+12. Restaurant
+       ↓
+13. Fulfilment
+       ↓
+14. Rider
+       ↓
+15. OneCity
+       ↓
+16. Intelligence
+       ↓
+17. V1 Integration
+       ↓
+18. V1 QA
+       ↓
+19. Production
+In parallel, establish:
+Inventory architecture
+Service architecture
+Hub architecture
+Combined delivery architecture
+
+28. DATABASE DEVELOPMENT STRATEGY
+Create the complete domain schema foundation early.
+Do not wait until V2.
+For example:
+products
+product_variants
+skus
+
+inventory_balances
+inventory_locations
+stock_movements
+stock_reservations
+
+services
+service_categories
+staff
+appointments
+bookings
+
+hubs
+hub_merchants
+hub_inventory
+hub_storage_locations
+
+fulfilment_plans
+delivery_groups
+delivery_group_orders
+delivery_jobs
+delivery_stops
+V1 can leave future entities inactive.
+This is much safer than redesigning relationships later.
+
+29. API DEVELOPMENT STRATEGY
+Every API receives an API-ID.
+Example:
+API-ORDER-001
+POST /orders
+
+API-FULFIL-001
+POST /fulfilment/plans
+
+API-HUB-001
+POST /hubs
+
+API-SERVICE-001
+POST /services
+V1:
+ORDER APIs → ACTIVE
+FULFILMENT APIs → ACTIVE
+HUB APIs → FOUNDATION / LIMITED
+SERVICE APIs → FOUNDATION / DISABLED
+
+30. EVENT DEVELOPMENT STRATEGY
+The event model must be complete early.
+Example:
+order.created
+order.reserved
+order.fulfilment_planned
+
+inventory.reserved
+inventory.released
+
+delivery.created
+delivery.assigned
+delivery.completed
+
+hub.inventory_received
+hub.order_picked
+
+service.booking_created
+V1 may not produce all future events, but the event contracts should already be versioned.
+
+31. FEATURE FLAG MODEL
+Example:
+FEATURE_STORE = ON
+FEATURE_RESTAURANT = ON
+FEATURE_SERVICE = OFF
+FEATURE_INVENTORY_ADVANCED = OFF
+FEATURE_HUB = OFF
+FEATURE_COMBINED_DELIVERY = OFF
+Later:
+FEATURE_SERVICE = ON
+FEATURE_INVENTORY_ADVANCED = ON
+FEATURE_HUB = ON
+FEATURE_COMBINED_DELIVERY = ON
+This is how V1 evolves into V2 without architectural reconstruction.
+
+32. V1 DEFINITION OF DONE
+V1 cannot be considered complete merely because screens work.
+It must satisfy:
+Platform
+	•	authentication
+	•	authorization
+	•	tenant isolation
+	•	configuration
+	•	feature flags
+	•	audit
+	•	observability
+Commerce
+	•	catalogue
+	•	customer
+	•	order
+	•	payment
+	•	settlement
+Store
+	•	POS
+	•	products
+	•	receiving foundation
+	•	inventory foundation
+	•	purchase
+Restaurant
+	•	POS
+	•	menu
+	•	KOT
+	•	kitchen
+	•	order
+Fulfilment
+	•	fulfilment plan
+	•	source selection
+	•	order status
+Delivery
+	•	rider
+	•	dispatch
+	•	tracking
+	•	proof
+Customer
+	•	discovery
+	•	cart
+	•	checkout
+	•	order
+	•	tracking
+Intelligence
+	•	price intelligence
+	•	basic AI
+	•	analytics
+
+33. V1 END-TO-END ACCEPTANCE TEST
+A production test should be able to execute:
+MERCHANT CREATION
+ ↓
+STORE CREATION
+ ↓
+PRODUCT CREATION
+ ↓
+PRICE
+ ↓
+CUSTOMER
+ ↓
+ORDER
+ ↓
+PAYMENT
+ ↓
+INVENTORY RESERVATION
+ ↓
+FULFILMENT PLAN
+ ↓
+STORE RIDER
+ ↓
+PICKUP
+ ↓
+DELIVERY
+ ↓
+PROOF
+ ↓
+SETTLEMENT
+ ↓
+ANALYTICS
+ ↓
+AUDIT
+And:
+RESTAURANT
+ ↓
+MENU
+ ↓
+CUSTOMER
+ ↓
+ORDER
+ ↓
+KOT
+ ↓
+KITCHEN
+ ↓
+READY
+ ↓
+RESTAURANT RIDER
+ ↓
+DELIVERY
+
+34. V1 → V2 MIGRATION PRINCIPLE
+There should be no destructive migration from V1 to V2.
+V2 should primarily involve:
+ENABLE FEATURE
++
+ENABLE ROUTES
++
+ENABLE PERMISSIONS
++
+ENABLE WORKFLOWS
++
+ENABLE UI
++
+ENABLE APIs
++
+ENABLE EVENTS
+rather than:
+REBUILD DATABASE
+REBUILD ORDER SYSTEM
+REBUILD INVENTORY
+REBUILD CUSTOMER APP
+
+35. VERSION ROADMAP
+V1.0 — FOUNDATION
+MASTER
++
+COMMERCE OS
++
+STORE
++
+RESTAURANT
++
+INTELLIGENCE FOUNDATION
++
+FULFILMENT
++
+MERCHANT RIDER DELIVERY
++
+ONECITY
+
+V1.1 — STABILIZATION
+Focus:
+	•	performance
+	•	security
+	•	monitoring
+	•	POS reliability
+	•	delivery reliability
+	•	customer experience
+	•	analytics
+	•	bug fixing
+	•	operational tooling
+
+V1.2 — INTELLIGENCE IMPROVEMENT
+Enhance:
+	•	price intelligence
+	•	sales intelligence
+	•	customer intelligence
+	•	recommendations
+	•	anomaly detection
+
+V2.0 — NETWORK EXPANSION
+V1
++
+SERVICE
++
+INVENTORY OS
++
+UNIFIED HUB
++
+HUB FULFILMENT
++
+ADVANCED DELIVERY
+
+V2.1 — COMBINED COMMERCE
+MULTI-MERCHANT CART
++
+CROSS-MERCHANT BUNDLES
++
+COMBINED DELIVERY
++
+MERCHANT RIDER SHARING
+
+V2.2 — NETWORK INTELLIGENCE
+INVENTORY POSITIONING
++
+HUB CAPACITY AI
++
+DELIVERY OPTIMIZATION
++
+NETWORK DEMAND
+
+V3 — GLOBAL NETWORK
+MULTI-COUNTRY
++
+MULTI-CURRENCY
++
+MULTI-TAX
++
+MULTI-HUB
++
+NETWORK AI
++
+GLOBAL PARTNERS
+
+36. TEAM / SQUAD STRUCTURE
+A practical organization would use:
+Squad 1
+Platform / Master
+Squad 2
+Commerce OS
+Squad 3
+VINII Store
+Squad 4
+VINII Restaurant
+Squad 5
+Fulfilment + Delivery
+Squad 6
+OneCity
+Squad 7
+AI / Intelligence
+Squad 8
+Infrastructure / DevOps / Security
+Squad 9
+QA / Automation
+Squad 10
+Future Architecture
+The Future Architecture squad builds the dormant foundations for:
+	•	Service
+	•	Inventory OS
+	•	Unified Hub
+	•	combined delivery.
+
+37. WHAT MUST NOT BE DEFERRED
+Even though the features activate later, these foundations should exist in V1:
+Service
+	•	service schema
+	•	service API namespace
+	•	booking event namespace
+	•	permissions
+	•	feature flag
+	•	route registry
+Inventory OS
+	•	inventory ownership
+	•	location model
+	•	stock movement model
+	•	reservation model
+	•	lot/batch model
+	•	warehouse model
+Unified Hub
+	•	hub entity
+	•	hub location
+	•	hub merchant relationship
+	•	hub inventory ownership
+	•	storage location
+	•	fulfilment source abstraction
+Combined Delivery
+	•	delivery group
+	•	delivery group orders
+	•	multi-stop route
+	•	rider capacity
+	•	compatibility scoring
+	•	fulfilment grouping
+
+38. WHAT SHOULD NOT BE EXPOSED IN V1
+Do not clutter V1 users with dormant features.
+For V1 merchant UI:
+STORE
+SELL
+RECEIVE
+STOCK
+PURCHASE
+REPORTS
+Restaurant:
+RESTAURANT
+SELL
+ORDERS
+MENU
+INVENTORY
+PURCHASE
+REPORTS
+Service menus should remain hidden.
+Hub management should remain Master/controlled.
+Advanced inventory controls should remain hidden until ready.
+Combined delivery should remain disabled until operationally validated.
+
+39. ARCHITECTURE VS PRODUCT VISIBILITY
+This is the governing rule:
+Capability
+Architecture V1
+User-visible V1
+Full V2
+Master
+✓
+✓
+✓
+Commerce OS
+✓
+✓
+✓
+Store
+✓
+✓
+✓
+Restaurant
+✓
+✓
+✓
+Service
+✓
+No
+✓
+Intelligence OS
+✓
+✓
+✓
+Inventory OS
+✓
+Foundation
+✓
+Fulfilment
+✓
+✓
+✓
+Store/Restaurant Rider
+✓
+✓
+✓
+Unified Hub
+✓
+No
+✓
+Combined Delivery
+✓
+No/limited
+✓
+OneCity
+✓
+✓
+✓
+Globalization
+✓
+Initial market
+Expanded
+AI
+✓
+✓
+✓
+
+40. FINAL DEVELOPMENT PRINCIPLE
+The company should think of this as:
+BUILD ONCE — ACTIVATE PROGRESSIVELY.
+Not:
+BUILD V1 — REBUILD V2.
+The architecture should therefore be designed for the ultimate state:
+PROVIIYAA MASTER
+        ↓
+COMMERCE OS
+        ↓
+STORE / RESTAURANT / SERVICE
+        ↓
+INVENTORY OS
+        ↓
+STORE / WAREHOUSE / UNIFIED HUB
+        ↓
+FULFILMENT ENGINE
+        ↓
+MERCHANT / HUB / COMBINED DELIVERY
+        ↓
+ONECITY
+        ↓
+CUSTOMER
+        ↓
+INTELLIGENCE OS
+        ↓
+AI OPTIMIZATION
+while V1 activates:
+MASTER
++
+COMMERCE OS
++
+STORE
++
+RESTAURANT
++
+INTELLIGENCE FOUNDATION
++
+FULFILMENT ENGINE
++
+STORE/RESTAURANT MANAGED RIDERS
++
+ONECITY
+and V2 activates:
+SERVICE
++
+FULL INVENTORY OS
++
+UNIFIED HUBS
++
+HUB FULFILMENT
++
+COMBINED DELIVERY
++
+MERCHANT RIDER SHARING
+
+41. FINAL ROADMAP IN ONE VIEW
+                   COMPLETE ARCHITECTURE
+                           │
+                           ▼
+                 ┌───────────────────┐
+                 │ PHASE 0           │
+                 │ ARCHITECTURE FREEZE│
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ PHASE 1           │
+                 │ PLATFORM FOUNDATION│
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ PHASE 2           │
+                 │ MASTER CONTROL     │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ PHASE 3           │
+                 │ COMMERCE OS        │
+                 └─────────┬─────────┘
+                           ▼
+              ┌────────────┴────────────┐
+              ▼                         ▼
+       VINII STORE              VINII RESTAURANT
+              └────────────┬────────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ INTELLIGENCE OS    │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ FULFILMENT ENGINE  │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ RIDER / DELIVERY   │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ ONECITY CUSTOMER   │
+                 └─────────┬─────────┘
+                           ▼
+                    V1 PRODUCTION
+                           │
+                 ──────────┼──────────
+                           │
+                           ▼
+                 ┌───────────────────┐
+                 │ V2 INVENTORY OS    │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ VINII SERVICE      │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ UNIFIED HUBS       │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ COMBINED DELIVERY  │
+                 └─────────┬─────────┘
+                           ▼
+                 ┌───────────────────┐
+                 │ NETWORK AI         │
+                 └─────────┬─────────┘
+                           ▼
+                    GLOBAL NETWORK
+42. FINAL DECISION
+The recommended product strategy is therefore:
+BUILD IN V1
+PROVIIYAA MASTER CONTROL COMMERCE OS VINII STORE VINII RESTAURANT INTELLIGENCE OS FOUNDATION FULFILMENT ENGINE STORE/RESTAURANT MANAGED RIDER DELIVERY ONECITY CUSTOMER
+ARCHITECT IN V1, ACTIVATE IN V2
+VINII SERVICE FULL INVENTORY OS VINII UNIFIED HUB NETWORK HUB FULFILMENT COMBINED DELIVERY MERCHANT RIDER SHARING ADVANCED INVENTORY POSITIONING
+FUTURE
+MULTI-HUB NETWORK CROSS-MERCHANT COMMERCE NETWORK AI GLOBAL DISTRIBUTED COMMERCE
+The critical engineering decision is that V1's database, APIs, events, permissions, fulfilment abstractions and UI configuration system must already know that Service, Inventory OS and Unified Hubs exist—even though V1 users do not see or operate those capabilities.
+That is what makes V2 an activation/expansion, rather than a rewrite.
+Recommended next step: convert this roadmap directly into the execution layer: Phase 0 → Phase 1 → Phase 2 engineering tickets, with dependencies, database migrations, API IDs, event IDs, page IDs, Figma screens, frontend/backend tasks, QA gates and a V1 release checklist.
+

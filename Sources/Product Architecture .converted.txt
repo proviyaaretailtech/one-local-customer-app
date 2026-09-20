@@ -1,0 +1,3247 @@
+Absolutely. The final architecture should merge everything we have established so far into one canonical ecosystem, rather than treating Store, Restaurant, Service, Marketplace, Delivery and Unified Hubs as separate products.
+The key correction is this:
+Proviyaa is the operating system. VINII is the commerce/merchant/fulfilment product family. OneCity is the consumer marketplace. Unified Hubs are the physical network layer. AI is the intelligence layer. Master is the governance/control layer.
+Below is the consolidated final blueprint, including the gaps that need to be closed before this becomes a true build-ready ecosystem.
+PROVIIYAA GLOBAL
+FINAL COMPLETE ECOSYSTEM ANALYSIS
+Master Ecosystem Architecture
+Commerce OS + Inventory OS + Fulfilment OS + Intelligence OS + Control Plane
+
+1. EXECUTIVE DEFINITION
+Proviyaa Global is a configurable, multi-tenant, multi-country commerce operating system that connects:
+	•	merchants
+	•	stores
+	•	restaurants
+	•	service businesses
+	•	warehouses
+	•	VINII Unified Hubs
+	•	riders
+	•	customers
+	•	partners
+	•	sales teams
+	•	support teams
+	•	developers
+	•	administrators
+	•	AI agents
+into one connected operating network.
+It must not be designed as a collection of disconnected applications.
+The correct model is:
+                        PROVIIYAA MASTER
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+        CONTROL PLANE     COMMERCE OS      INTELLIGENCE OS
+              │                │                │
+              │        ┌───────┼────────┐       │
+              │        │       │        │       │
+              │      STORE RESTAURANT SERVICE   │
+              │        │       │        │       │
+              │        └───────┼────────┘       │
+              │                │                │
+              │          INVENTORY OS            │
+              │                │                │
+              │       ┌────────┼────────┐        │
+              │       │        │        │        │
+              │     STORE   WAREHOUSE  HUB       │
+              │                         │        │
+              │                  VINII UNIFIED   │
+              │                       HUB        │
+              │                         │        │
+              └─────────────────────────┼────────┘
+                                        │
+                                  FULFILMENT OS
+                                        │
+                         ┌──────────────┼──────────────┐
+                         │              │              │
+                    MERCHANT RIDER   HUB RIDER   COMBINED DELIVERY
+                         │              │              │
+                         └──────────────┼──────────────┘
+                                        │
+                                   ONECITY
+                                        │
+                                    CUSTOMER
+
+2. THE CORE PRINCIPLE
+Every layer has one job.
+Layer
+Responsibility
+Master Control Plane
+Govern the entire ecosystem
+Identity
+Know who the user is
+Organization
+Know which business/location they belong to
+Commerce OS
+Know what was sold/booked
+Catalogue
+Know what is being offered
+Inventory OS
+Know where stock exists
+Pricing OS
+Know what it should cost
+Order OS
+Know what the customer ordered
+Fulfilment OS
+Decide where/how an order is fulfilled
+Hub Network
+Position inventory close to demand
+Delivery OS
+Move orders efficiently
+Marketplace
+Connect customers to merchants
+CRM
+Understand customers
+Growth
+Acquire merchants/partners
+Commission
+Calculate commercial attribution
+AI
+Recommend and optimize
+Automation
+Execute approved rules
+Analytics
+Measure
+Audit
+Prove what happened
+Support
+Resolve problems
+Developer Platform
+Extend the ecosystem
+
+3. THE FIVE MASTER TRUTHS
+Truth 1 — One Commerce Truth
+Store, Restaurant and Service cannot maintain separate order/payment/customer databases.
+They use the shared Commerce OS.
+
+Truth 2 — One Inventory Truth
+Inventory can physically exist in:
+	•	store
+	•	warehouse
+	•	Unified Hub
+	•	transit
+	•	quarantine
+	•	customer reservation
+but all inventory is represented in one inventory system.
+
+Truth 3 — Ownership Is Separate From Location
+Example:
+Inventory Owner:
+Merchant A
+
+Physical Custodian:
+VINII Hub 01
+
+Physical Location:
+Hub 01 / Aisle 4 / Bin 17
+VINII holding inventory does not automatically mean VINII owns it.
+
+Truth 4 — One Customer Experience
+A customer may order from multiple merchants.
+The customer should not have to understand:
+	•	which backend fulfilled the order
+	•	which hub supplied it
+	•	which rider carried it
+	•	how merchants settle money
+The system handles that complexity.
+
+Truth 5 — AI Does Not Become the Source of Truth
+AI recommends.
+Rules validate.
+Permissions control.
+Humans approve where required.
+Commerce OS records.
+Audit proves.
+Automation executes only within policy.
+
+4. COMPLETE ACTOR MODEL
+Platform Actors
+Platform Super Admin
+Full ecosystem control.
+Platform Operations
+Runs marketplace, fulfilment and hub operations.
+Platform Finance
+Settlements, payments, commissions.
+Platform Support
+Tickets, incidents and SLA.
+Platform Growth
+Merchant/partner acquisition.
+Platform Developer
+API/integration management.
+
+5. MERCHANT ACTORS
+Owner
+Full organization control.
+Manager
+Operational control.
+Cashier
+POS only.
+Receiving Staff
+Receiving and physical quantity capture.
+GRN Operator
+Invoice matching and GRN approval.
+Inventory Manager
+Stock/audit/transfers.
+Purchase Manager
+Supplier/purchase.
+Pricing Manager
+Prices/promotions.
+Restaurant Manager
+Restaurant operations.
+Kitchen Staff
+KOT/kitchen.
+Service Staff
+Appointments/services.
+
+6. NETWORK ACTORS
+Hub Manager
+Runs Unified Hub.
+Hub Operator
+Receive, putaway, pick, pack.
+Fulfilment Manager
+Controls order allocation and delivery grouping.
+VINII Rider
+Platform rider.
+Merchant Rider
+Merchant-controlled rider.
+Restaurant Rider
+Restaurant-controlled rider.
+Customer
+Discovers, orders, books, pays and tracks.
+Partner
+Refers/acquires merchants.
+
+7. MASTER USER JOURNEY
+DISCOVER
+   ↓
+SIGN UP
+   ↓
+CREATE ORGANIZATION
+   ↓
+SELECT BUSINESS TYPE
+   ↓
+SELECT MARKET
+   ↓
+CONFIGURE BUSINESS
+   ↓
+SUBSCRIBE
+   ↓
+CREATE LOCATION
+   ↓
+CREATE USERS
+   ↓
+CONFIGURE CATALOGUE
+   ↓
+PURCHASE / RECEIVE
+   ↓
+INVENTORY
+   ↓
+PRICE
+   ↓
+SELL
+   ↓
+FULFIL
+   ↓
+DELIVER
+   ↓
+SETTLE
+   ↓
+ANALYZE
+   ↓
+AI OPTIMIZES
+
+8. MASTER CONTROL PLANE
+PAGE-MST-001 — Master Dashboard
+User
+Platform Admin
+Functions
+	•	monitor organizations
+	•	monitor transactions
+	•	monitor marketplace
+	•	monitor hubs
+	•	monitor deliveries
+	•	monitor AI
+	•	monitor incidents
+	•	monitor revenue
+Actions
+	•	open organization
+	•	suspend organization
+	•	inspect issue
+	•	approve configuration
+	•	inspect network
+	•	drill into KPI
+
+PAGE-MST-002 — Organizations
+Functions
+	•	create
+	•	search
+	•	filter
+	•	suspend
+	•	activate
+	•	archive
+Actions
+Create:
+Organization
+→ Business Type
+→ Country
+→ Brand
+→ Location
+→ Subscription
+→ Admin
+
+PAGE-MST-003 — Organization 360
+Features
+	•	organization
+	•	users
+	•	locations
+	•	brands
+	•	subscription
+	•	catalogue
+	•	inventory
+	•	orders
+	•	fulfilment
+	•	payments
+	•	AI
+	•	integrations
+	•	audit
+Actions
+	•	inspect
+	•	configure
+	•	support
+	•	suspend
+	•	impersonate with controlled audit
+
+PAGE-MST-004 — Users
+Functions:
+	•	invite
+	•	activate
+	•	deactivate
+	•	role assignment
+	•	access review
+
+PAGE-MST-005 — Roles
+Functions:
+	•	create
+	•	clone
+	•	edit
+	•	assign permissions
+	•	scope by location
+	•	scope by hub
+
+PAGE-MST-006 — Permissions
+Controls:
+	•	catalogue
+	•	receiving
+	•	GRN
+	•	inventory
+	•	purchasing
+	•	pricing
+	•	POS
+	•	delivery
+	•	hub
+	•	finance
+	•	AI
+	•	automation
+
+9. COMMERCIAL CONTROL
+PAGE-MST-010 — Plans
+Features:
+	•	pricing
+	•	limits
+	•	features
+	•	markets
+	•	verticals
+Actions:
+	•	create
+	•	version
+	•	publish
+	•	retire
+
+PAGE-MST-011 — Packs
+Examples:
+	•	Store Pack
+	•	Restaurant Pack
+	•	Service Pack
+	•	Delivery Pack
+	•	AI Pack
+	•	Hub Pack
+
+PAGE-MST-012 — Add-ons
+Examples:
+	•	additional location
+	•	additional user
+	•	AI
+	•	advanced analytics
+	•	hub storage
+	•	delivery
+	•	integrations
+
+PAGE-MST-013 — Subscriptions
+Functions:
+	•	subscribe
+	•	upgrade
+	•	downgrade
+	•	renew
+	•	pause
+	•	cancel
+
+PAGE-MST-014 — Entitlements
+Determines:
+Plan
++
+Pack
++
+Add-on
++
+Market
++
+Business Type
++
+Role
+=
+Actual Feature Access
+
+10. FEATURE / CONFIGURATION PLATFORM
+PAGE-MST-020 — Feature Store
+Functions:
+	•	feature definition
+	•	versioning
+	•	dependencies
+	•	pricing
+	•	market availability
+	•	vertical availability
+
+PAGE-MST-021 — Global Configuration
+Controls:
+	•	country
+	•	currency
+	•	tax
+	•	timezone
+	•	language
+	•	measurement
+	•	payment
+	•	invoice
+	•	delivery
+	•	pricing
+	•	compliance
+
+PAGE-MST-022 — UI/UX Studio
+Allows Master to control:
+	•	navigation
+	•	page visibility
+	•	fields
+	•	labels
+	•	components
+	•	layouts
+	•	branding
+	•	role-specific UI
+
+PAGE-MST-023 — Workflow Studio
+Functions:
+	•	trigger
+	•	condition
+	•	approval
+	•	action
+	•	escalation
+	•	SLA
+
+PAGE-MST-024 — Rule Engine
+Controls:
+	•	pricing
+	•	stock
+	•	tax
+	•	order
+	•	fulfilment
+	•	delivery
+	•	hub
+	•	promotion
+
+PAGE-MST-025 — Automation
+Functions:
+EVENT
+ ↓
+CONDITION
+ ↓
+RULE
+ ↓
+ACTION
+ ↓
+RESULT
+ ↓
+AUDIT
+
+11. AI CONTROL PLANE
+PAGE-MST-030 — AI Control Centre
+Functions:
+	•	AI agents
+	•	models
+	•	prompts
+	•	tools
+	•	knowledge sources
+	•	confidence thresholds
+	•	approval policies
+
+PAGE-MST-031 — AI Recommendations
+Functions:
+	•	review
+	•	accept
+	•	reject
+	•	modify
+	•	automate
+
+PAGE-MST-032 — AI Action History
+Records:
+	•	input
+	•	recommendation
+	•	confidence
+	•	user decision
+	•	execution
+	•	outcome
+
+12. COMMERCE OS
+PAGE-COM-001 — Catalogue
+Functions:
+	•	global product
+	•	market variant
+	•	merchant SKU
+	•	location SKU
+	•	service
+	•	menu item
+
+PAGE-COM-002 — Categories
+Functions:
+	•	category tree
+	•	subcategory
+	•	tax mapping
+	•	attributes
+	•	market configuration
+
+PAGE-COM-003 — Manufacturers
+Functions:
+	•	manufacturer
+	•	products
+	•	brands
+	•	compliance
+
+PAGE-COM-004 — Brands
+Functions:
+	•	brands
+	•	catalogue
+	•	locations
+	•	merchants
+
+PAGE-COM-005 — Attributes
+Dynamic metadata system.
+Examples:
+Apparel
+Color, size, fabric.
+Electronics
+RAM, storage, model.
+Grocery
+Weight, pack type, flavour, expiry.
+Cosmetics
+Shade, skin type.
+Furniture
+Dimensions, material.
+
+PAGE-COM-006 — Products
+Functions:
+	•	create
+	•	edit
+	•	publish
+	•	archive
+	•	barcode
+	•	variant
+	•	price
+	•	tax
+
+PAGE-COM-007 — Product 360
+Shows:
+	•	catalogue
+	•	inventory
+	•	prices
+	•	suppliers
+	•	sales
+	•	promotions
+	•	competitors
+	•	AI
+	•	audit
+
+PAGE-COM-008 — Customers
+Functions:
+	•	profile
+	•	orders
+	•	bookings
+	•	loyalty
+	•	reviews
+	•	preferences
+
+PAGE-COM-009 — Orders
+Functions:
+	•	create
+	•	reserve
+	•	fulfil
+	•	split
+	•	merge
+	•	cancel
+	•	refund
+	•	combine
+
+PAGE-COM-010 — Payments
+Functions:
+	•	authorize
+	•	capture
+	•	refund
+	•	reconcile
+
+PAGE-COM-011 — Settlements
+Functions:
+	•	merchant settlement
+	•	platform fee
+	•	delivery fee
+	•	hub fee
+	•	commission
+	•	rider payout
+
+13. VINII STORE
+Navigation
+SELL
+RECEIVE
+STOCK
+PURCHASE
+REPORTS
+Advanced:
+PRICE INTELLIGENCE
+AI INSIGHTS
+ALERTS
+SETTINGS
+
+PAGE-STR-001 — Store Dashboard
+Shows
+	•	sales
+	•	stock
+	•	receiving
+	•	purchase
+	•	slow stock
+	•	price opportunities
+	•	promotions
+	•	AI recommendations
+Action
+SEE → DECIDE → ACT
+
+PAGE-STR-002 — POS
+Features
+	•	barcode scan
+	•	search
+	•	cart
+	•	customer
+	•	discount
+	•	tax
+	•	payment
+	•	receipt
+	•	return
+	•	exchange
+	•	offline
+Flow
+SCAN
+→ ADD
+→ VERIFY
+→ PAY
+→ RECEIPT
+→ STOCK UPDATE
+
+PAGE-STR-003 — Products
+Functions:
+	•	search
+	•	filter
+	•	edit
+	•	price
+	•	stock
+	•	barcode
+
+PAGE-STR-004 — Item Master
+Fields:
+	•	SKU
+	•	Product
+	•	EAN/UPC/GTIN
+	•	internal barcode
+	•	manufacturer
+	•	brand
+	•	category
+	•	subcategory
+	•	pack type
+	•	variant
+	•	weight
+	•	volume
+	•	UOM
+	•	MRP
+	•	selling price
+	•	purchase price
+	•	tax
+	•	HSN
+	•	supplier
+	•	shelf
+	•	warehouse
+	•	lot
+	•	batch
+	•	expiry
+	•	reorder rules
+	•	images
+	•	custom attributes
+
+14. MOBILE RECEIVING
+PAGE-STR-005 — Receiving
+Employee flow
+SCAN
+ ↓
+KNOWN?
+ ├── YES → AUTO IDENTIFY
+ │
+ └── NO
+      ↓
+   UNKNOWN EAN
+      OR
+   NO BARCODE
+      ↓
+PHOTO
+ ↓
+QUANTITY
+ ↓
+SAVE
+ ↓
+NEXT
+The receiving employee should not need to understand:
+	•	GST
+	•	HSN
+	•	purchase accounting
+	•	complex product classification.
+
+15. RECEIVING BATCH
+PAGE-STR-006
+Functions:
+	•	supplier
+	•	invoice
+	•	invoice photos/PDF
+	•	received by
+	•	physical SKU count
+	•	total quantity
+	•	sequence
+
+16. GRN DESK
+PAGE-STR-007
+SUPPLIER INVOICE
++
+PHYSICAL RECEIVING
+ ↓
+MATCH
+ ↓
+AUTO MATCH
+ ↓
+EXCEPTIONS ONLY
+ ↓
+APPROVE GRN
+Exceptions:
+	•	quantity
+	•	rate
+	•	GST
+	•	HSN
+	•	discount
+	•	taxable amount
+	•	invoice total
+	•	unknown SKU
+
+17. GRN EXCEPTIONS
+PAGE-STR-008
+Functions:
+	•	review
+	•	correct
+	•	request approval
+	•	create SKU
+	•	reject
+	•	document reason
+
+18. BARCODE CENTRE
+PAGE-STR-009
+Functions:
+	•	generate
+	•	print
+	•	bulk print
+	•	reprint
+	•	filter
+	•	print queue
+Barcode types:
+	•	EAN
+	•	UPC
+	•	GTIN
+	•	internal
+	•	QR
+	•	Data Matrix
+	•	weighing-scale
+	•	batch
+	•	serial
+
+19. SHELF LABELS
+PAGE-STR-011
+Sizes:
+	•	half visiting card
+	•	A7
+	•	A6
+	•	A5
+	•	A4
+	•	custom
+Templates:
+	•	Standard
+	•	MRP + Selling Price
+	•	Savings
+	•	Promotion
+	•	Clearance
+	•	New Product
+	•	Combo
+	•	Buy X Get Y
+	•	Expiry Clearance
+	•	Premium
+	•	Minimal
+	•	Large Price
+
+20. INVENTORY
+PAGE-STR-012
+Shows:
+	•	available
+	•	reserved
+	•	damaged
+	•	quarantine
+	•	in transit
+	•	stock value
+	•	ageing
+	•	stock days
+
+21. STOCK AUDIT
+PAGE-STR-013
+Triggers:
+	•	negative stock
+	•	high variance
+	•	high-value SKU
+	•	fast mover
+	•	repeated adjustments
+	•	no-sale item
+Flow:
+AUDIT
+→ SCAN
+→ COUNT
+→ COMPARE
+→ VARIANCE
+→ APPROVE
+→ ADJUST
+
+22. INVENTORY INTELLIGENCE
+PAGE-STR-014 — No-Sale
+Answers:
+What has not sold? Why? What should I do?
+
+PAGE-STR-015 — Stock Days
+Formula:
+Current Stock
+÷
+Average Daily Sales
+Velocity windows:
+	•	7
+	•	15
+	•	30
+	•	60
+	•	90 days
+
+PAGE-STR-016 — Liquidation
+AI identifies:
+	•	dead stock
+	•	slow stock
+	•	ageing
+	•	expiry risk
+Then recommends:
+PRICE CHANGE
+→ PROMOTION
+→ SHELF MOVE
+→ LABEL
+→ MONITOR
+
+23. PURCHASE
+PAGE-STR-017
+Functions:
+	•	supplier
+	•	PO
+	•	quantity
+	•	rate
+	•	approval
+	•	receiving
+
+24. PURCHASE INTELLIGENCE
+PAGE-STR-018
+AI recommendations:
+	•	BUY
+	•	BUY LESS
+	•	BUY MORE
+	•	STOP BUYING
+	•	TRANSFER
+	•	LIQUIDATE
+The system must distinguish slow sales caused by:
+	•	no availability
+	•	new launch
+	•	seasonality
+	•	bad pricing
+	•	poor shelf position
+	•	low demand.
+
+25. VINII RESTAURANT
+Navigation
+SELL
+ORDERS
+MENU
+INVENTORY
+PURCHASE
+REPORTS
+
+PAGE-RES-001 — Dashboard
+Shows:
+	•	revenue
+	•	orders
+	•	tables
+	•	kitchen
+	•	inventory
+	•	food cost
+	•	wastage
+	•	margin
+	•	AI insights
+
+PAGE-RES-002 — POS
+Functions:
+	•	table
+	•	order
+	•	customer
+	•	KOT
+	•	payment
+	•	discount
+
+PAGE-RES-003 — Tables
+Functions:
+	•	floor plan
+	•	status
+	•	merge
+	•	split
+	•	transfer
+
+PAGE-RES-004 — KOT
+Functions:
+	•	create
+	•	edit
+	•	priority
+	•	cancel
+	•	status
+
+PAGE-RES-005 — Kitchen
+States:
+NEW
+→ ACCEPTED
+→ PREPARING
+→ READY
+→ PICKED UP
+→ COMPLETED
+
+PAGE-RES-006 — Menu
+Functions:
+	•	categories
+	•	items
+	•	variants
+	•	modifiers
+	•	availability
+	•	prices
+
+PAGE-RES-007 — Menu Item
+Shows:
+	•	recipe
+	•	ingredients
+	•	cost
+	•	price
+	•	margin
+	•	preparation time
+
+PAGE-RES-008 — Recipes
+Functions:
+	•	ingredients
+	•	quantities
+	•	yield
+	•	cost
+
+PAGE-RES-009 — Ingredients
+Functions:
+	•	stock
+	•	batch
+	•	expiry
+	•	supplier
+	•	UOM
+
+PAGE-RES-010 — Inventory
+Functions:
+	•	consumption
+	•	wastage
+	•	stock
+	•	transfer
+	•	reorder
+
+PAGE-RES-011 — Purchase
+Functions:
+	•	supplier
+	•	PO
+	•	receiving
+	•	invoice
+	•	approval
+
+PAGE-RES-012 — Wastage
+Functions:
+	•	record
+	•	reason
+	•	quantity
+	•	cost
+	•	approval
+	•	AI anomaly detection
+
+PAGE-RES-013 — Reservations
+Functions:
+	•	booking
+	•	table assignment
+	•	confirmation
+	•	cancellation
+
+PAGE-RES-014 — Orders
+Sources:
+	•	dine-in
+	•	takeaway
+	•	online
+	•	marketplace
+	•	delivery
+	•	combined orders
+
+PAGE-RES-016 — Price Intelligence
+Compares:
+	•	cuisine
+	•	dish
+	•	portion
+	•	location
+	•	channel
+	•	rating
+	•	promotion
+	•	fees
+
+26. VINII SERVICE
+Navigation
+BOOKINGS
+SELL
+SERVICES
+CUSTOMERS
+OPERATIONS
+REPORTS
+
+PAGE-SRV-001 — Dashboard
+Shows:
+	•	bookings
+	•	revenue
+	•	utilization
+	•	staff
+	•	services
+	•	retention
+
+PAGE-SRV-002 — POS
+Functions:
+	•	service sale
+	•	customer
+	•	payment
+	•	invoice
+
+PAGE-SRV-003 — Services
+Fields:
+	•	service
+	•	duration
+	•	price
+	•	skill
+	•	staff
+	•	materials
+
+PAGE-SRV-004 — Staff
+Functions:
+	•	skills
+	•	schedule
+	•	availability
+	•	commission
+
+PAGE-SRV-005 — Calendar
+Functions:
+	•	day/week/month
+	•	resources
+	•	conflicts
+
+PAGE-SRV-006 — Availability
+Functions:
+	•	slots
+	•	capacity
+	•	blackout periods
+
+PAGE-SRV-007 — Appointments
+Functions:
+	•	create
+	•	reschedule
+	•	cancel
+	•	assign
+
+PAGE-SRV-008 — Bookings
+Lifecycle:
+REQUEST
+→ CONFIRMED
+→ CHECKED-IN
+→ IN SERVICE
+→ COMPLETED
+→ PAID
+→ REVIEWED
+
+PAGE-SRV-009 — Packages
+Functions:
+	•	bundle
+	•	pricing
+	•	expiry
+	•	redemption
+
+PAGE-SRV-010 — Membership
+Functions:
+	•	create
+	•	benefits
+	•	renew
+	•	usage
+
+PAGE-SRV-012 — Price Intelligence
+Compares:
+	•	provider
+	•	duration
+	•	location
+	•	skill
+	•	rating
+	•	material inclusion
+
+27. VINII UNIFIED HUB NETWORK
+This is now a core strategic domain.
+Purpose
+Position inventory closer to customers and create a shared local fulfilment infrastructure.
+
+28. HUB PAGE GROUP
+PAGE-HUB-001 — Hub Dashboard
+Shows:
+	•	inventory
+	•	orders
+	•	picking
+	•	packing
+	•	dispatch
+	•	capacity
+	•	riders
+	•	SLA
+	•	utilization
+
+PAGE-HUB-002 — Hub Setup
+Functions:
+	•	create hub
+	•	address
+	•	zone
+	•	capacity
+	•	operating hours
+	•	storage type
+	•	temperature zones
+
+PAGE-HUB-003 — Hub Zone
+Functions:
+	•	polygon/radius
+	•	delivery SLA
+	•	merchants
+	•	pricing
+	•	priority
+
+PAGE-HUB-004 — Merchant Participation
+Merchant selects:
+	•	inventory
+	•	SKUs
+	•	quantities
+	•	fulfilment policy
+	•	SLA
+Master controls:
+	•	hub capacity
+	•	operating policy
+	•	fees
+	•	eligibility.
+
+29. HUB INVENTORY
+PAGE-HUB-005
+Shows:
+Merchant
+SKU
+Owner
+Location
+Batch
+Lot
+Expiry
+Available
+Reserved
+Damaged
+Quarantine
+
+30. HUB RECEIVING
+PAGE-HUB-006
+Flow:
+ASN
+→ RECEIVE
+→ SCAN
+→ COUNT
+→ VERIFY
+→ GRN
+→ PUTAWAY
+
+31. HUB PUTAWAY
+PAGE-HUB-007
+Functions:
+	•	recommended location
+	•	scan location
+	•	scan product
+	•	confirm quantity
+	•	optimize storage
+
+32. HUB ORDERS
+PAGE-HUB-008
+States:
+RECEIVED
+→ RESERVED
+→ PICKING
+→ PICKED
+→ PACKING
+→ PACKED
+→ DISPATCHED
+
+33. HUB PICK QUEUE
+PAGE-HUB-009
+Supports:
+	•	single order
+	•	wave picking
+	•	batch picking
+	•	zone picking
+	•	route picking
+
+34. HUB PICKING
+PAGE-HUB-010
+Flow:
+OPEN TASK
+→ NAVIGATE TO BIN
+→ SCAN
+→ VERIFY
+→ PICK
+→ CONFIRM
+
+35. HUB PACKING
+PAGE-HUB-011
+Functions:
+	•	verify
+	•	package
+	•	weight
+	•	dimensions
+	•	temperature requirement
+	•	shipping label
+
+36. HUB DISPATCH
+PAGE-HUB-012
+Functions:
+	•	rider selection
+	•	vehicle
+	•	route
+	•	handoff
+	•	dispatch
+
+37. COMBINED DELIVERY
+PAGE-HUB-013
+This becomes one of the most important pages in the entire ecosystem.
+System searches for:
+ORDER A
+ORDER B
+ORDER C
+Then evaluates:
+	•	distance
+	•	route
+	•	readiness
+	•	SLA
+	•	package
+	•	temperature
+	•	vehicle
+	•	rider capacity
+	•	merchant rules
+	•	customer promise
+Then:
+COMBINE
+or
+SEPARATE
+
+38. MERCHANT-RIDER COMBINATION
+Example:
+STORE A
+   │
+   ├── Store order
+   │
+   └── Merchant Rider
+             │
+             ├── Restaurant B pickup
+             │
+             └── Customer
+The system must permit this only if:
+	•	merchant policy allows it
+	•	rider is authorized
+	•	package compatibility passes
+	•	route is compatible
+	•	SLA is protected.
+
+39. HUB RIDER POOL
+PAGE-HUB-014
+Rider types:
+	•	VINII rider
+	•	store rider
+	•	restaurant rider
+	•	contracted rider
+Shows:
+	•	status
+	•	location
+	•	capacity
+	•	current route
+	•	vehicle
+	•	earnings.
+
+40. HUB TRANSFERS
+PAGE-HUB-015
+Supports:
+STORE → HUB
+HUB → STORE
+HUB → HUB
+WAREHOUSE → HUB
+HUB → WAREHOUSE
+
+41. HUB RETURNS
+PAGE-HUB-016
+Flow:
+RETURN
+→ RECEIVE
+→ INSPECT
+→ RESTOCK
+OR
+→ QUARANTINE
+OR
+→ DISPOSE
+
+42. HUB CAPACITY
+PAGE-HUB-017
+Measures:
+	•	storage
+	•	picking
+	•	packing
+	•	dispatch
+	•	riders
+	•	throughput
+
+43. HUB ANALYTICS
+PAGE-HUB-018
+KPIs:
+	•	utilization
+	•	orders/hour
+	•	pick accuracy
+	•	pack accuracy
+	•	inventory accuracy
+	•	cost/order
+	•	SLA
+	•	merchant participation
+	•	delivery time.
+
+44. HUB AI
+PAGE-HUB-019
+AI recommends:
+	•	what to stock
+	•	how much
+	•	which hub
+	•	which merchant
+	•	where to place stock
+	•	when to replenish
+	•	when capacity will run out.
+
+45. ONELATUR / ONECITY
+The current One Latur model should be designed as the first implementation of a generic OneCity Marketplace.
+
+PAGE-MKT-001 — Home
+Features:
+	•	stores
+	•	restaurants
+	•	services
+	•	offers
+	•	nearby
+	•	fast delivery
+
+PAGE-MKT-002 — Search
+Functions:
+	•	keyword
+	•	semantic search
+	•	category
+	•	merchant
+	•	product
+	•	service
+
+PAGE-MKT-003 — Categories
+Functions:
+	•	browse
+	•	filters
+	•	personalization
+
+PAGE-MKT-004 — Merchant Directory
+Shows:
+	•	stores
+	•	restaurants
+	•	service providers
+
+PAGE-MKT-005 — Merchant Profile
+Shows:
+	•	catalogue
+	•	prices
+	•	reviews
+	•	offers
+	•	delivery
+	•	availability.
+
+PAGE-MKT-006 — Product/Service Detail
+Functions:
+	•	variants
+	•	quantity
+	•	price
+	•	availability
+	•	ETA
+	•	add to cart
+	•	booking.
+
+46. MULTI-MERCHANT CART
+PAGE-MKT-007
+The cart can contain:
+STORE A
++
+RESTAURANT B
++
+STORE C
+The system automatically determines:
+	•	order groups
+	•	fulfilment groups
+	•	delivery groups
+	•	payment allocation
+	•	merchant settlement.
+
+47. CHECKOUT
+PAGE-MKT-008
+Functions:
+	•	address
+	•	payment
+	•	coupon
+	•	delivery option
+	•	ETA
+	•	fees
+	•	combined delivery
+	•	split delivery.
+Customer should see:
+One checkout.
+
+48. ORDER TRACKING
+PAGE-MKT-010
+Customer sees:
+ORDER
+ ↓
+MERCHANT
+ ↓
+HUB
+ ↓
+RIDER
+ ↓
+CUSTOMER
+without exposing unnecessary internal complexity.
+
+49. CROSS-MERCHANT BUNDLES
+The marketplace supports:
+	•	store + restaurant
+	•	store + service
+	•	restaurant + service
+	•	multiple stores
+Functions:
+	•	bundle
+	•	shared promotion
+	•	discount allocation
+	•	merchant attribution
+	•	fulfilment compatibility
+	•	settlement.
+
+50. ONELATUR OPERATIONS
+PAGE-OPS-001 — Operations Dashboard
+Shows:
+	•	active orders
+	•	riders
+	•	hubs
+	•	SLA
+	•	delayed orders
+	•	combined deliveries.
+
+PAGE-OPS-002 — Live Map
+Shows:
+	•	merchants
+	•	hubs
+	•	riders
+	•	orders
+	•	routes.
+
+PAGE-OPS-003 — Delivery Jobs
+Functions:
+	•	assign
+	•	reassign
+	•	combine
+	•	split
+	•	cancel.
+
+PAGE-OPS-004 — Dispatch
+Functions:
+	•	rider matching
+	•	route
+	•	dispatch.
+
+PAGE-OPS-005 — Combined Delivery Control
+Functions:
+	•	approve
+	•	split
+	•	reroute
+	•	reassign
+	•	recalculate ETA.
+
+PAGE-OPS-006 — Riders
+Functions:
+	•	availability
+	•	performance
+	•	earnings
+	•	zones.
+
+PAGE-OPS-007 — Zones
+Functions:
+	•	define
+	•	merchants
+	•	hubs
+	•	SLA
+	•	fee.
+
+PAGE-OPS-008 — Routing
+Functions:
+	•	optimize
+	•	multi-stop
+	•	ETA.
+
+PAGE-OPS-009 — Delivery Pricing
+Controls:
+	•	base fee
+	•	distance
+	•	zone
+	•	surge
+	•	hub
+	•	merchant.
+
+PAGE-OPS-010 — Exceptions
+Handles:
+	•	merchant delay
+	•	rider unavailable
+	•	stock mismatch
+	•	customer unavailable
+	•	wrong address
+	•	damaged package
+	•	cancellation.
+
+51. VINII RIDER
+PAGE-RID-001 — Rider Home
+Shows:
+	•	online status
+	•	active job
+	•	earnings.
+
+PAGE-RID-002 — Current Job
+Functions:
+	•	pickup
+	•	navigation
+	•	proof
+	•	delivery.
+
+PAGE-RID-003 — Combined Job
+Example:
+STOP 1
+Store A
+
+STOP 2
+Restaurant B
+
+STOP 3
+Customer
+
+PAGE-RID-004 — Pickup
+Functions:
+	•	scan
+	•	verify
+	•	collect
+	•	exception.
+
+PAGE-RID-005 — Delivery
+Functions:
+	•	OTP
+	•	signature
+	•	photo
+	•	proof
+	•	complete.
+
+PAGE-RID-006 — Exceptions
+Functions:
+	•	report issue
+	•	contact operations
+	•	hold
+	•	return.
+
+PAGE-RID-007 — Earnings
+Shows:
+	•	base
+	•	distance
+	•	incentives
+	•	combined delivery bonus
+	•	adjustments.
+
+52. GROWTH SYSTEM
+PAGE-GRW-001 — Dashboard
+Shows:
+	•	leads
+	•	conversion
+	•	merchant acquisition
+	•	partner performance
+	•	revenue.
+
+PAGE-GRW-002 — Leads
+Functions:
+	•	create
+	•	import
+	•	assign
+	•	qualify
+	•	convert.
+
+PAGE-GRW-003 — Lead 360
+Shows:
+	•	organization
+	•	contacts
+	•	activities
+	•	opportunities.
+
+PAGE-GRW-004 — Opportunities
+Functions:
+	•	pipeline
+	•	stage
+	•	probability
+	•	value.
+
+PAGE-GRW-005 — Partners
+Functions:
+	•	onboarding
+	•	referral
+	•	performance.
+
+PAGE-GRW-006 — Referrals
+Functions:
+	•	attribution
+	•	tracking
+	•	commission.
+
+53. COMMISSION SYSTEM
+PAGE-COMM-001 — Dashboard
+Shows:
+	•	earned
+	•	pending
+	•	approved
+	•	paid
+	•	disputed.
+
+PAGE-COMM-002 — Commission Rules
+Rules can depend on:
+	•	merchant
+	•	plan
+	•	product
+	•	subscription
+	•	delivery
+	•	partner
+	•	campaign.
+
+PAGE-COMM-003 — Commission Ledger
+Immutable commercial record.
+
+PAGE-COMM-004 — Approvals
+Functions:
+	•	approve
+	•	reject
+	•	hold.
+
+PAGE-COMM-005 — Payouts
+Functions:
+	•	calculate
+	•	approve
+	•	pay
+	•	reconcile.
+
+54. ORGANIZATION PORTAL
+PAGE-ORG-001 — Dashboard
+Shows:
+	•	sales
+	•	inventory
+	•	locations
+	•	staff
+	•	subscription
+	•	AI
+	•	fulfilment.
+
+PAGE-ORG-002 — Organization
+Functions:
+	•	profile
+	•	tax
+	•	business settings.
+
+PAGE-ORG-003 — Brands
+Functions:
+	•	brands
+	•	catalogue
+	•	locations.
+
+PAGE-ORG-004 — Locations
+Types:
+	•	store
+	•	restaurant
+	•	service
+	•	warehouse
+	•	hub relationship.
+
+PAGE-ORG-005 — Employees
+Functions:
+	•	invite
+	•	role
+	•	permission
+	•	deactivate.
+
+PAGE-ORG-006 — Subscription
+Functions:
+	•	plan
+	•	usage
+	•	billing.
+
+PAGE-ORG-007 — Integrations
+Examples:
+	•	payment
+	•	accounting
+	•	marketplace
+	•	hardware
+	•	delivery.
+
+PAGE-ORG-008 — Devices
+Functions:
+	•	POS
+	•	scanner
+	•	printer
+	•	scale
+	•	mobile device.
+
+55. DEVELOPER PLATFORM
+PAGE-DEV-001 — Dashboard
+Shows:
+	•	API usage
+	•	applications
+	•	errors
+	•	webhooks.
+
+PAGE-DEV-002 — Applications
+Functions:
+	•	create
+	•	OAuth
+	•	credentials
+	•	scopes.
+
+PAGE-DEV-003 — API Keys
+Functions:
+	•	create
+	•	rotate
+	•	revoke.
+
+PAGE-DEV-004 — Webhooks
+Functions:
+	•	subscribe
+	•	test
+	•	retry
+	•	inspect.
+
+PAGE-DEV-005 — API Logs
+Shows:
+	•	request
+	•	response
+	•	latency
+	•	error
+	•	trace ID.
+
+PAGE-DEV-006 — Sandbox
+Test:
+	•	catalogue
+	•	orders
+	•	payments
+	•	inventory
+	•	fulfilment
+	•	delivery
+	•	hubs.
+
+56. SUPPORT
+PAGE-SUP-001 — Dashboard
+
+PAGE-SUP-002 — Tickets
+Functions:
+	•	create
+	•	assign
+	•	escalate
+	•	resolve.
+
+PAGE-SUP-003 — Ticket 360
+Shows:
+	•	customer
+	•	organization
+	•	order
+	•	payment
+	•	delivery
+	•	audit.
+
+PAGE-SUP-004 — Incidents
+Functions:
+	•	detect
+	•	classify
+	•	assign
+	•	resolve.
+
+PAGE-SUP-005 — SLA
+Functions:
+	•	monitor
+	•	escalate
+	•	report.
+
+PAGE-SUP-006 — Escalations
+Functions:
+	•	escalation tree
+	•	owner
+	•	severity.
+
+PAGE-SUP-007 — Knowledge Base
+Functions:
+	•	articles
+	•	guides
+	•	troubleshooting.
+
+57. PRICE INTELLIGENCE OS
+Shared by Store, Restaurant and Service.
+Inputs
+	•	competitor prices
+	•	merchant price
+	•	cost
+	•	margin
+	•	demand
+	•	rating
+	•	location
+	•	promotions
+	•	channel
+	•	capacity.
+Outputs
+Recommended Price Range
+Competitive Score
+Margin Score
+Demand Score
+Price Confidence
+Recommendation Confidence
+
+58. PRICE DATA PROVENANCE
+Every competitor price must contain source type:
+OBSERVED
+ESTIMATED
+IMPORTED
+MERCHANT ENTERED
+AI INFERRED
+Estimated/inferred values must never appear as verified observations.
+
+59. PRICE ACTION FLOW
+OBSERVE
+ ↓
+NORMALIZE
+ ↓
+COMPARE
+ ↓
+AI RECOMMENDATION
+ ↓
+MERCHANT APPROVAL
+ ↓
+PRICE CHANGE
+ ↓
+POS
+ONLINE
+MARKETPLACE
+SHELF LABEL
+BARCODE
+ ↓
+MEASURE
+
+60. PROMOTION INTELLIGENCE
+Promotion engine should use:
+	•	stock ageing
+	•	demand
+	•	margin
+	•	price
+	•	seasonality
+	•	expiry
+	•	customer behaviour
+	•	competitor behaviour.
+Actions:
+	•	discount
+	•	bundle
+	•	coupon
+	•	Buy X Get Y
+	•	clearance
+	•	cross-merchant promotion.
+
+61. CUSTOMER INTELLIGENCE
+AI should identify:
+	•	new customers
+	•	repeat customers
+	•	churn risk
+	•	high-value customers
+	•	inactive customers
+	•	product affinity
+	•	cross-sell opportunity.
+
+62. SALES INTELLIGENCE
+Answers:
+	•	what sells
+	•	when it sells
+	•	where it sells
+	•	why sales changed
+	•	what should be promoted
+	•	what should be stocked.
+
+63. GLOBAL COMMERCE ARCHITECTURE
+Do not build India first and retrofit global later.
+India is a market configuration.
+Global configuration supports:
+	•	country
+	•	region
+	•	city
+	•	timezone
+	•	language
+	•	currency
+	•	tax
+	•	fiscal calendar
+	•	payment methods
+	•	measurement
+	•	business calendar
+	•	invoice rules
+	•	compliance
+	•	localization.
+
+64. GLOBAL PRODUCT MODEL
+GLOBAL PRODUCT
+      ↓
+COUNTRY VARIANT
+      ↓
+MARKET VARIANT
+      ↓
+MERCHANT SKU
+      ↓
+LOCATION SKU
+Different markets can have:
+	•	different barcode
+	•	price
+	•	currency
+	•	tax
+	•	pack
+	•	language
+	•	images
+	•	compliance.
+
+65. GLOBAL TAX ENGINE
+Abstract model:
+Tax Profile
+Tax Jurisdiction
+Tax Rule
+Tax Rate
+Tax Category
+Tax Exemption
+Tax Transaction
+India can configure:
+	•	GST
+	•	CGST
+	•	SGST
+	•	IGST
+	•	UTGST
+	•	HSN
+	•	SAC.
+Other countries must be configurable without rewriting Commerce OS.
+
+66. GLOBAL MONEY MODEL
+Store money as:
+minor_units
++
+currency_code
+Never store business money as floating-point values.
+Exchange rates are separately versioned.
+
+67. SEARCH / DISCOVERY GAP
+A dedicated ecosystem search layer is required.
+It should search:
+	•	products
+	•	services
+	•	restaurants
+	•	merchants
+	•	orders
+	•	customers
+	•	inventory
+	•	documents.
+Support:
+	•	keyword
+	•	barcode
+	•	semantic search
+	•	filters
+	•	permissions.
+
+68. NOTIFICATION PLATFORM
+This is a required shared service.
+Channels:
+	•	in-app
+	•	push
+	•	email
+	•	SMS
+	•	WhatsApp where legally/configurationally supported.
+Notification engine handles:
+	•	templates
+	•	localization
+	•	preferences
+	•	priority
+	•	retries
+	•	delivery status.
+
+69. DOCUMENT / MEDIA PLATFORM
+Required for:
+	•	invoices
+	•	product images
+	•	barcode evidence
+	•	receiving photos
+	•	identity documents
+	•	delivery proof
+	•	receipts
+	•	reports.
+All files require:
+	•	owner
+	•	object relationship
+	•	access policy
+	•	version
+	•	retention policy
+	•	audit.
+
+70. DEVICE PLATFORM
+Required because VINII POS is hardware-connected.
+Devices:
+	•	POS terminal
+	•	Android phone
+	•	scanner
+	•	barcode printer
+	•	label printer
+	•	receipt printer
+	•	weighing scale
+	•	kitchen printer
+	•	display
+	•	cash drawer.
+Device registry must support:
+DEVICE
+→ ORGANIZATION
+→ LOCATION
+→ USER
+→ CAPABILITY
+→ STATUS
+→ LAST SEEN
+
+71. OFFLINE-FIRST OPERATIONS
+Critical operations must work during connectivity loss:
+	•	POS
+	•	barcode scanning
+	•	stock counting
+	•	receiving
+	•	basic order capture.
+Architecture:
+DEVICE LOCAL STORE
+ ↓
+OUTBOX
+ ↓
+SYNC
+ ↓
+SERVER
+ ↓
+CONFLICT RESOLUTION
+ ↓
+EVENT BUS
+Every offline transaction needs an idempotency key.
+
+72. FRAUD / RISK / ANOMALY LAYER
+Required for scale.
+Detect:
+	•	suspicious refunds
+	•	unusual discounts
+	•	stock manipulation
+	•	repeated voids
+	•	fake deliveries
+	•	rider GPS anomalies
+	•	commission abuse
+	•	coupon abuse
+	•	unusual price changes.
+
+73. DATA GOVERNANCE
+Required platform layer:
+	•	data classification
+	•	retention
+	•	deletion
+	•	export
+	•	consent
+	•	access logs
+	•	privacy policies
+	•	regional data rules.
+
+74. MASTER DATABASE DOMAIN MODEL
+Core domains:
+IDENTITY
+ORGANIZATION
+COMMERCIAL
+FEATURE
+CATALOGUE
+COMMERCE
+INVENTORY
+PURCHASE
+PRICING
+PROMOTION
+CRM
+FULFILMENT
+DELIVERY
+HUB
+GROWTH
+COMMISSION
+AI
+AUTOMATION
+NOTIFICATION
+DOCUMENT
+DEVICE
+ANALYTICS
+AUDIT
+SUPPORT
+DEVELOPER
+GLOBALIZATION
+RISK
+
+75. CRITICAL DATABASE OBJECTS
+Identity
+users
+identities
+sessions
+memberships
+roles
+permissions
+role_permissions
+access_policies
+Organization
+organizations
+brands
+locations
+departments
+employees
+organization_settings
+Catalogue
+categories
+manufacturers
+brands
+products
+product_variants
+skus
+attributes
+attribute_definitions
+product_attribute_values
+Commerce
+customers
+orders
+order_lines
+bookings
+booking_lines
+payments
+refunds
+settlements
+Inventory
+warehouses
+inventory_locations
+inventory_balances
+inventory_lots
+inventory_batches
+stock_movements
+stock_reservations
+stock_audits
+stock_adjustments
+Purchase
+suppliers
+purchase_orders
+purchase_order_lines
+receiving_batches
+receiving_lines
+supplier_invoices
+grns
+grn_lines
+grn_exceptions
+Pricing
+price_books
+price_book_items
+price_versions
+price_rules
+price_change_requests
+price_recommendations
+price_experiments
+price_experiment_variants
+Competitor Pricing
+competitors
+competitor_locations
+competitor_products
+competitor_services
+competitor_menu_items
+competitor_price_observations
+competitor_price_sources
+competitor_snapshots
+market_price_indices
+
+76. HUB DATABASE
+hubs
+hub_zones
+hub_merchants
+hub_storage_locations
+hub_inventory
+hub_inventory_movements
+hub_receipts
+hub_putaway_tasks
+hub_orders
+hub_pick_tasks
+hub_packages
+hub_transfers
+hub_returns
+hub_capacity
+
+77. FULFILMENT DATABASE
+fulfilment_plans
+fulfilment_plan_lines
+delivery_groups
+delivery_group_orders
+delivery_jobs
+delivery_stops
+delivery_routes
+delivery_assignments
+delivery_proofs
+delivery_exceptions
+
+78. AI DATABASE
+ai_agents
+ai_models
+ai_prompts
+ai_tools
+ai_knowledge_sources
+ai_recommendations
+ai_decisions
+ai_actions
+ai_action_results
+ai_feedback
+
+79. AUTOMATION DATABASE
+workflows
+workflow_versions
+workflow_nodes
+rules
+automation_runs
+automation_actions
+automation_failures
+
+80. AUDIT DATABASE
+audit_logs
+audit_changes
+audit_approvals
+audit_access
+audit_ai_actions
+Audit records should be append-only for critical domains.
+
+81. MASTER EVENT ARCHITECTURE
+Every important action generates an event.
+Examples:
+product.created
+product.updated
+
+receiving.started
+receiving.item_scanned
+receiving.item_photographed
+receiving.completed
+
+grn.created
+grn.line_matched
+grn.exception_detected
+grn.approved
+
+barcode.generated
+barcode.print_requested
+barcode.print_completed
+
+stock.received
+stock.adjusted
+stock.reserved
+stock.released
+
+purchase.recommended
+purchase.warning_created
+purchase.overridden
+
+price.observed
+competitor_price.updated
+price_recommendation.created
+price_change.requested
+price_change.approved
+price_changed
+
+promotion.recommended
+promotion.created
+promotion.started
+promotion.completed
+
+order.created
+order.reserved
+order.fulfilment_planned
+order.fulfilled
+order.cancelled
+order.refunded
+
+hub.created
+hub.inventory_received
+hub.inventory_putaway
+hub.inventory_reserved
+hub.inventory_picked
+hub.order_packed
+hub.order_dispatched
+
+delivery.created
+delivery.assigned
+delivery.combination_candidate_created
+delivery.combined
+delivery.split
+delivery.route_optimized
+delivery.completed
+
+ai.recommendation.created
+ai.recommendation.accepted
+ai.recommendation.rejected
+ai.action.executed
+
+82. MASTER API ARCHITECTURE
+API families:
+AUTH
+ORG
+USER
+RBAC
+SUBSCRIPTION
+FEATURE
+CONFIG
+CATALOGUE
+PRODUCT
+CUSTOMER
+ORDER
+PAYMENT
+INVENTORY
+PURCHASE
+RECEIVING
+GRN
+BARCODE
+SHELF LABEL
+PRICING
+PROMOTION
+CRM
+FULFILMENT
+HUB
+DELIVERY
+RIDER
+GROWTH
+COMMISSION
+AI
+AUTOMATION
+NOTIFICATION
+DOCUMENT
+DEVICE
+ANALYTICS
+AUDIT
+SUPPORT
+DEVELOPER
+Every API receives:
+request_id
+tenant_id
+user_id
+authorization_context
+idempotency_key
+timestamp
+Critical APIs must be idempotent.
+
+83. PERMISSION MODEL
+Permissions should be action-level, not page-level only.
+Examples:
+catalogue.view
+catalogue.edit
+
+receiving.create
+receiving.submit
+
+grn.create
+grn.approve
+
+inventory.view
+inventory.adjust
+inventory.audit
+
+purchase.create
+purchase.approve
+purchase.override
+
+price_intel.view
+price_intel.recommend
+
+price_change.request
+price_change.approve
+price_change.execute
+
+promotion.create
+promotion.approve
+
+hub.view
+hub.manage
+hub.inventory.receive
+hub.inventory.adjust
+hub.pick
+hub.pack
+hub.dispatch
+
+fulfilment.optimize
+fulfilment.override
+
+delivery.assign
+delivery.combine
+delivery.split
+
+ai.view
+ai.approve
+ai.automate
+
+84. APPROVAL ENGINE
+Sensitive actions require policy-based approval.
+Examples:
+PRICE CHANGE
+STOCK ADJUSTMENT
+LARGE REFUND
+PURCHASE OVERRIDE
+PROMOTION
+HUB INVENTORY ADJUSTMENT
+DELIVERY OVERRIDE
+AI AUTOMATION
+The approval engine supports:
+	•	single approver
+	•	multi-approver
+	•	threshold approval
+	•	location approval
+	•	role approval
+	•	escalation.
+
+85. ANALYTICS MODEL
+Every critical page/action should emit analytics.
+Example:
+PAGE VIEW
+→ ACTION
+→ RESULT
+→ BUSINESS OUTCOME
+KPIs include:
+	•	sales
+	•	conversion
+	•	inventory turns
+	•	stock days
+	•	margin
+	•	fulfilment time
+	•	delivery SLA
+	•	hub utilization
+	•	rider utilization
+	•	combined delivery rate
+	•	customer retention
+	•	AI acceptance rate.
+
+86. AI DECISION LOOP
+The final intelligence architecture is:
+DATA
+ ↓
+EVENTS
+ ↓
+FEATURES
+ ↓
+AI / RULES
+ ↓
+INSIGHT
+ ↓
+RECOMMENDATION
+ ↓
+CONFIDENCE
+ ↓
+APPROVAL
+ ↓
+ACTION
+ ↓
+MEASUREMENT
+ ↓
+FEEDBACK
+ ↓
+MODEL IMPROVEMENT
+
+87. STORE AI
+Answers:
+	•	What should I stop buying?
+	•	What is dead stock?
+	•	What should I reorder?
+	•	What should I promote?
+	•	Which price is wrong?
+	•	Which products are underperforming?
+	•	Which products should move to the hub?
+
+88. RESTAURANT AI
+Answers:
+	•	Which dish is underpriced?
+	•	Which dish has low margin?
+	•	What ingredients will run out?
+	•	What demand is expected?
+	•	Where is wastage abnormal?
+	•	How should menu pricing change?
+
+89. SERVICE AI
+Answers:
+	•	Which services are underpriced?
+	•	Which staff are overloaded?
+	•	Which slots are underutilized?
+	•	Which customers may churn?
+	•	When should capacity increase?
+
+90. NETWORK AI
+This is the long-term differentiator.
+AI optimizes:
+CUSTOMER DEMAND
+ ↓
+INVENTORY POSITION
+ ↓
+HUB LOCATION
+ ↓
+FULFILMENT SOURCE
+ ↓
+ORDER COMBINATION
+ ↓
+RIDER
+ ↓
+ROUTE
+ ↓
+DELIVERY
+ ↓
+NETWORK LEARNING
+
+91. MASTER FULFILMENT ENGINE
+Every order enters:
+ORDER
+ ↓
+INVENTORY DISCOVERY
+ ↓
+SOURCE OPTIONS
+ ├── Merchant
+ ├── Warehouse
+ ├── Hub
+ └── Multiple Sources
+ ↓
+COST / TIME / SLA
+ ↓
+FULFILMENT PLAN
+
+92. FULFILMENT STRATEGIES
+Supported:
+Merchant Fulfilment
+Merchant → Customer.
+Hub Fulfilment
+Hub → Customer.
+Mixed Fulfilment
+Merchant + Hub.
+Split Fulfilment
+Multiple independent deliveries.
+Combined Fulfilment
+Multiple merchants → one coordinated delivery.
+
+93. COMBINED DELIVERY ENGINE
+Inputs:
+distance
+time
+readiness
+SLA
+package
+temperature
+vehicle
+rider capacity
+merchant policy
+customer promise
+Output:
+COMBINE
+or
+SEPARATE
+Every decision must store a reason.
+
+94. MASTER CUSTOMER ORDER FLOW
+CUSTOMER SEARCH
+ ↓
+PRODUCTS / SERVICES
+ ↓
+CART
+ ↓
+MULTI-MERCHANT GROUPING
+ ↓
+INVENTORY CHECK
+ ↓
+FULFILMENT OPTIONS
+ ↓
+COMBINED DELIVERY CHECK
+ ↓
+PRICE / TAX / DELIVERY FEE
+ ↓
+PAYMENT
+ ↓
+ORDER
+ ↓
+FULFILMENT
+ ↓
+DELIVERY
+ ↓
+PROOF
+ ↓
+SETTLEMENT
+ ↓
+REVIEW
+ ↓
+LOYALTY
+
+95. MERCHANT OPERATING LOOPS
+Store
+PURCHASE
+→ RECEIVE
+→ MATCH
+→ CREATE
+→ BARCODE
+→ LABEL
+→ SHELF
+→ SELL
+→ AUDIT
+→ ANALYZE
+→ PRICE
+→ PROMOTE
+→ REORDER
+Restaurant
+MENU
+→ PURCHASE
+→ RECEIVE
+→ PREPARE
+→ SELL
+→ FULFIL
+→ MEASURE
+→ PRICE
+→ PROMOTE
+→ OPTIMIZE
+Service
+SERVICE CATALOGUE
+→ PRICE
+→ BOOK
+→ PROVIDE
+→ PAY
+→ REVIEW
+→ MEASURE
+→ OPTIMIZE
+→ PROMOTE
+→ RETAIN
+Hub
+MERCHANT INVENTORY
+→ RECEIVE
+→ PUTAWAY
+→ RESERVE
+→ PICK
+→ PACK
+→ CONSOLIDATE
+→ DISPATCH
+→ DELIVER
+→ REPLENISH
+
+96. GAP CLOSURE — PREVIOUSLY MISSING AREAS
+The final architecture must explicitly include these additional platform capabilities:
+1. Unified Hub Network
+Physical distributed fulfilment infrastructure.
+2. Merchant-Owned Inventory at Hub
+Ownership/custody separation.
+3. Combined Delivery
+Multi-merchant delivery optimization.
+4. Merchant Rider Sharing
+Store/restaurant riders can participate in permitted combined jobs.
+5. Cross-Merchant Bundling
+Commercial bundles across merchants.
+6. Fulfilment Optimization
+Merchant vs warehouse vs hub vs mixed source.
+7. Inventory Positioning AI
+Decides where inventory should physically reside.
+8. Capacity Intelligence
+Predicts hub/storage/rider capacity.
+9. Search Platform
+One permission-aware search layer.
+10. Notification Platform
+Shared notification service.
+11. Document/Media Platform
+Invoices, evidence, images, proofs.
+12. Device Platform
+POS/scanners/printers/scales.
+13. Offline/Sync Layer
+Critical merchant operations continue offline.
+14. Fraud/Risk
+Financial, stock, delivery and commission anomaly detection.
+15. Data Governance
+Retention, access, deletion, export and compliance.
+16. Approval Engine
+Sensitive actions require controlled approval.
+17. Feature/Configuration Versioning
+Configuration changes need versioning and rollback.
+18. Price Provenance
+Competitor observations must have source and confidence.
+19. Settlement Engine
+Multi-merchant orders require independent financial settlement.
+20. SLA Engine
+Merchant, hub and delivery SLAs need machine-readable rules.
+
+97. COMPLETE SYSTEM HANDOFF
+Every feature must be traceable:
+FIGMA
+ ↓
+PAGE-ID
+ ↓
+ROUTE-ID
+ ↓
+COMPONENT-ID
+ ↓
+USER ACTION
+ ↓
+API-ID
+ ↓
+PERMISSION-ID
+ ↓
+BUSINESS RULE
+ ↓
+EVENT-ID
+ ↓
+DATABASE
+ ↓
+WORKFLOW
+ ↓
+NOTIFICATION
+ ↓
+ANALYTICS
+ ↓
+AUDIT
+ ↓
+AI
+ ↓
+QA
+Nothing important should exist outside this chain.
+
+98. EXAMPLE TRACEABILITY
+Combined Delivery
+PAGE-HUB-013
+        ↓
+ROUTE-HUB-COMBINED
+        ↓
+COMPONENT-COMBINATION-SCORE
+        ↓
+API-FULFIL-OPTIMIZE
+        ↓
+PERMISSION-DELIVERY-COMBINE
+        ↓
+FULFILMENT RULE ENGINE
+        ↓
+delivery_groups
+delivery_group_orders
+delivery_jobs
+        ↓
+EVENT-DELIVERY-COMBINED
+        ↓
+CUSTOMER NOTIFICATION
+        ↓
+ANALYTICS-COMBINATION
+        ↓
+AUDIT-DELIVERY-COMBINE
+        ↓
+AI-FULFILMENT
+        ↓
+QA-HUB-COMBINATION
+
+99. PAGE STANDARD
+Every page in the system must have these definitions:
+PAGE-ID
+Application
+Route
+User
+Objective
+Entry Point
+Preconditions
+UI Components
+Data
+States
+Actions
+Permissions
+Validation
+API
+Events
+Database
+Notifications
+Handoffs
+Analytics
+Audit
+AI
+QA
+Error States
+Empty States
+Loading States
+Offline State
+Security
+
+100. COMPONENT STANDARD
+Shared components should include:
+AppShell
+Sidebar
+Topbar
+Breadcrumb
+LocationSwitcher
+OrganizationSwitcher
+DataTable
+DataGrid
+Search
+FilterBuilder
+SortControl
+Pagination
+BulkActions
+Form
+DynamicField
+AttributeField
+CurrencyInput
+QuantityInput
+BarcodeInput
+Scanner
+ProductCard
+Cart
+OrderPanel
+PaymentPanel
+TaxBreakdown
+DiscountPanel
+StockCard
+StockMovement
+ReceivingLine
+GRNLine
+AuditLine
+AIInsightCard
+RecommendationCard
+ConfidenceBadge
+ExplanationPanel
+AIActionPanel
+ApprovalBar
+ApprovalDialog
+ApprovalTimeline
+ChangeDiff
+ActivityTimeline
+
+101. STATE ARCHITECTURE
+Every entity requires explicit states.
+Example Order:
+DRAFT
+PLACED
+PAID
+RESERVED
+FULFILMENT_PLANNED
+PICKING
+PACKED
+READY
+ASSIGNED
+IN_TRANSIT
+DELIVERED
+CANCELLED
+REFUNDED
+Hub inventory:
+INBOUND
+AVAILABLE
+RESERVED
+PICKED
+PACKED
+DISPATCHED
+DAMAGED
+QUARANTINED
+RETURNED
+AI:
+GENERATED
+REVIEWED
+ACCEPTED
+REJECTED
+APPROVED
+EXECUTING
+EXECUTED
+FAILED
+OVERRIDDEN
+
+102. SECURITY ARCHITECTURE
+Mandatory:
+	•	tenant isolation
+	•	organization isolation
+	•	location scope
+	•	hub scope
+	•	role-based access
+	•	policy-based access
+	•	API authorization
+	•	encryption
+	•	secret management
+	•	audit
+	•	device authentication
+	•	session management
+	•	rate limiting
+	•	idempotency.
+
+103. MULTI-TENANT MODEL
+PLATFORM
+ ↓
+ORGANIZATION
+ ↓
+BRAND
+ ↓
+REGION
+ ↓
+LOCATION
+ ↓
+DEPARTMENT
+ ↓
+USER
+ ↓
+ROLE
+ ↓
+PERMISSION
+Hub introduces:
+ORGANIZATION
+ ↓
+MERCHANT
+ ↓
+HUB PARTICIPATION
+ ↓
+HUB INVENTORY
+Access must respect both organizational and physical scopes.
+
+104. FINANCIAL MODEL
+A multi-merchant order must preserve:
+CUSTOMER PAYMENT
+       ↓
+ORDER ALLOCATION
+       ↓
+MERCHANT A
+MERCHANT B
+MERCHANT C
+       ↓
+PLATFORM FEE
+DELIVERY FEE
+HUB FEE
+COMMISSION
+TAX
+       ↓
+SETTLEMENT
+Never collapse all merchant economics into one transaction record.
+
+105. DELIVERY ECONOMICS
+Combined delivery should calculate:
+Normal Delivery Cost
+-
+Combined Delivery Cost
+=
+Network Saving
+Then the system can determine:
+	•	customer saving
+	•	merchant benefit
+	•	platform benefit
+	•	rider economics.
+
+106. HUB ECONOMICS
+For every merchant, show:
+Storage Cost
++
+Inbound Cost
++
+Fulfilment Cost
++
+Delivery Cost
+-
+Delivery Savings
+-
+Sales Increase
+=
+Hub ROI
+The merchant should be able to see why participation is beneficial.
+
+107. MASTER NETWORK OPTIMIZATION
+Eventually Proviyaa should optimize:
+WHERE INVENTORY LIVES
+        ↓
+WHERE ORDERS ARE FULFILLED
+        ↓
+WHICH ORDERS ARE COMBINED
+        ↓
+WHICH RIDER MOVES THEM
+        ↓
+WHICH ROUTE IS USED
+        ↓
+WHAT PRICE IS CHARGED
+        ↓
+WHAT STOCK SHOULD BE REPLENISHED
+This is the strategic moat.
+
+108. FINAL ECOSYSTEM USER FLOWS
+Merchant
+ONBOARD
+→ CONFIGURE
+→ CATALOGUE
+→ PURCHASE
+→ RECEIVE
+→ STOCK
+→ PRICE
+→ SELL
+→ FULFIL
+→ DELIVER
+→ SETTLE
+→ ANALYZE
+→ OPTIMIZE
+Customer
+DISCOVER
+→ SEARCH
+→ SELECT
+→ CART
+→ CHECKOUT
+→ PAY
+→ TRACK
+→ RECEIVE
+→ REVIEW
+→ RETURN / SUPPORT
+→ LOYALTY
+Hub
+ONBOARD MERCHANT
+→ RECEIVE STOCK
+→ STORE
+→ RESERVE
+→ PICK
+→ PACK
+→ CONSOLIDATE
+→ DISPATCH
+→ REPLENISH
+Rider
+ONLINE
+→ RECEIVE JOB
+→ PICKUP
+→ NAVIGATE
+→ MULTI-PICKUP
+→ CONSOLIDATE
+→ DELIVER
+→ PROOF
+→ EARN
+Platform
+CONFIGURE
+→ ENABLE
+→ OBSERVE
+→ GOVERN
+→ OPTIMIZE
+→ AUDIT
+→ SCALE
+
+109. FINAL PROVIIYAA ECOSYSTEM
+The complete system is therefore:
+                          PROVIIYAA
+                              MASTER
+                                │
+       ┌────────────────────────┼────────────────────────┐
+       │                        │                        │
+ CONTROL PLANE             COMMERCE OS            INTELLIGENCE OS
+       │                        │                        │
+       │               ┌────────┼────────┐               │
+       │               │        │        │               │
+       │             STORE  RESTAURANT SERVICE            │
+       │               │        │        │               │
+       │               └────────┼────────┘               │
+       │                        │                        │
+       │                   INVENTORY OS                  │
+       │                        │                        │
+       │            ┌───────────┼───────────┐            │
+       │            │           │           │            │
+       │          STORE     WAREHOUSE      HUB           │
+       │                                    │            │
+       │                             UNIFIED HUB         │
+       │                                    │            │
+       └────────────────────────────────────┼────────────┘
+                                            │
+                                      FULFILMENT OS
+                                            │
+                              ┌─────────────┼─────────────┐
+                              │             │             │
+                         MERCHANT       VINII HUB      COMBINED
+                           RIDER          RIDER         DELIVERY
+                              │             │             │
+                              └─────────────┼─────────────┘
+                                            │
+                                       ONECITY
+                                            │
+                                         CUSTOMER
+
+110. THE FINAL PRODUCT PHILOSOPHY
+For employees
+Simple action.
+For managers
+One decision.
+For owners
+One opportunity.
+For customers
+One experience.
+For merchants
+One operating system.
+For hubs
+One fulfilment network.
+For riders
+One optimized job flow.
+For Master
+One control plane.
+For AI
+One connected ecosystem to optimize.
+
+111. FINAL STRATEGIC POSITIONING
+Proviyaa should not ultimately compete as merely:
+	•	POS software
+	•	restaurant software
+	•	inventory software
+	•	marketplace
+	•	delivery app
+	•	warehouse software
+	•	AI dashboard.
+The complete vision is:
+Proviyaa Global is a configurable Commerce Operating System that connects merchants, inventory, Unified Hubs, customers and delivery networks into one AI-optimized local and global commerce ecosystem.
+VINII becomes the merchant and operational product family.
+OneCity becomes the consumer marketplace.
+VINII Unified Hubs become the physical network.
+Commerce OS becomes the transactional brain.
+Inventory OS becomes the stock truth.
+Fulfilment OS becomes the allocation brain.
+Delivery OS becomes the movement layer.
+AI becomes the optimization layer.
+Master becomes the control plane.
+
+112. FINAL BUILD CONTRACT
+No page should be considered complete until:
+PAGE
+✓ PAGE-ID
+
+FIGMA
+✓ FIGMA NODE
+
+ROUTE
+✓ ROUTE-ID
+
+COMPONENT
+✓ COMPONENT-ID
+
+USER
+✓ ACTOR
+
+FUNCTION
+✓ FUNCTION
+
+ACTION
+✓ ACTION
+
+PERMISSION
+✓ PERMISSION-ID
+
+API
+✓ API-ID
+
+EVENT
+✓ EVENT-ID
+
+DATABASE
+✓ TABLE + SCHEMA
+
+NOTIFICATION
+✓ TEMPLATE
+
+ANALYTICS
+✓ EVENT + KPI
+
+AUDIT
+✓ AUDIT RECORD
+
+AI
+✓ AI OPPORTUNITY
+
+QA
+✓ TEST CASE
+
+ERROR
+✓ ERROR STATE
+
+OFFLINE
+✓ OFFLINE BEHAVIOR
+
+SECURITY
+✓ AUTHORIZATION
+
+HANDOFF
+✓ NEXT SYSTEM
+
+Only then is a feature build-ready.
+
+113. FINAL ARCHITECTURAL END STATE
+                   ┌─────────────────────┐
+                    │  PROVIIYAA MASTER   │
+                    │ CONTROL + GOVERNANCE│
+                    └──────────┬──────────┘
+                               │
+             ┌─────────────────┼─────────────────┐
+             │                 │                 │
+       COMMERCE OS       INVENTORY OS       INTELLIGENCE OS
+             │                 │                 │
+     ┌───────┼───────┐   ┌─────┼─────┐     ┌────┼─────┐
+     │       │       │   │     │     │     │    │     │
+   STORE RESTAURANT SERVICE STORE WH  HUB   AI   RULES DATA
+     │       │       │          │     │
+     └───────┼───────┘          └─────┘
+             │
+        ORDER ENGINE
+             │
+      FULFILMENT ENGINE
+             │
+       ┌─────┼─────┐
+       │     │     │
+    MERCHANT HUB COMBINED
+     RIDER RIDER DELIVERY
+       │     │     │
+       └─────┼─────┘
+             │
+       ONECITY CUSTOMER
+This is the final ecosystem foundation.
+The next engineering layer should not redesign the architecture again. It should convert this architecture into the canonical engineering registry:
+PAGE Registry → Route Registry → Figma Registry → Component Registry → API Registry → Event Registry → Database ERD → Permission Registry → Workflow Registry → Notification Registry → Analytics Registry → Audit Registry → AI Registry → QA Registry.
+That registry becomes the single source of truth for product, UX, frontend, backend, database, QA, AI and operations.
+The important architectural addition is now fully integrated: Unified Hubs are not a side module, and combined merchant/rider deliveries are not a marketplace hack. They are native capabilities of the Inventory + Fulfilment + Delivery layers. This gives Proviyaa a path from merchant software → local commerce network → distributed fulfilment network → AI-optimized commerce infrastructure.
+

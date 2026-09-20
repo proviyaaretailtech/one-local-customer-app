@@ -1,0 +1,456 @@
+PROVIYAA GLOBAL
+Complete Product & Platform Structure
+One Commerce OS. Multiple Merchant Experiences. One Connected Ecosystem.
+Master architecture covering the Master Control Plane, Subscription Management, Feature Store, Commerce OS, VINII POS, One Latur, OnLatur, CRM, Analytics, Automation, AI and Integration Platform.
+1. Product Vision
+PROVIYAA GLOBAL is a unified Commerce Operating System. The platform uses one shared transactional core and multiple configurable experience applications rather than separate backends.
+PROVIYAA GLOBAL │ ├── MASTER CONTROL PLANE ├── SUBSCRIPTION PLATFORM  ├── FEATURE STORE ├── CORE COMMERCE OS ├── VINII POS ├── ONE LATUR ├── ONLATUR ├── ORGANIZATION PORTAL ├── CRM ├── ANALYTICS ├── AUTOMATION / AI └── INTEGRATION PLATFORM
+2. Complete Product Map
+Public / Corporate Website — product, pricing, feature discovery, documentation, partners and sales.
+	•	Master Control Plane — central platform governance and administration. ( growth panel for Pos and commission panel for app ) 
+
+2.1 Commerce OS — shared business, data and transaction core, demo environment , Flow builder , Flow deployment   ,2.1.1  Automation / AI — workflows, rules and intelligent capabilities. Subdomain-based Multi-tenancy + Config-driven Workflows 
+2.2 Growth Panel — plans, packs, add-ons, billing and entitlements , service providers ( selling dashboard for sales on commission basis ) , affiliate marketing users ( commissions and sales users ) ,  
+2.3 CRM — customer relationship and cross-commerce intelligence.
+2.4 Integration Platform — payments, messaging, accounting, ERP, maps, APIs and webhooks.
+
+3 Vinii Store— capability catalogue, releases, pricing, dependencies and organization subscriptions , NEW ADD ONS , Market place feature 
+4 VINII POS — merchant operating system for 
+4.1 Organization Portal — merchant administration and self-service.  4.2 Analytics — merchant and platform intelligence.
+5.1 Restaurant , 5.2  Store and 5.3 Service.
+6 One Latur — unified customer marketplace and demand layer.
+7 OneLatur — centralized delivery and fulfillment network.
+
+
+
+
+
+3. Master Control Plane
+The Master Control Plane is the central operating system control centre for Proviyaa. It governs organizations, subscriptions, features, configurations, workflows, permissions, integrations, analytics, releases and audit.
+MASTER CONTROL PLANE │ ├── Dashboard ├── Organization Management │   ├── Organizations │   ├── Profiles │   ├── Locations │   ├── Brands │   ├── Users │   ├── Roles │   ├── Permissions │   └── Lifecycle │ ├── Subscription Management │   ├── Dashboard │   ├── Plans │   ├── Plan Builder │   ├── Subscription Packs │   ├── Pack Builder │   ├── Add-ons │   ├── Pricing │   ├── Billing Cycles │   ├── Trials │   ├── Coupons / Discounts │   ├── Subscriptions │   ├── Renewals │   ├── Upgrades / Downgrades │   ├── Cancellations / Pauses │   ├── Invoices │   ├── Payments / Refunds / Credits │   ├── Failed Payments / Dunning │   ├── Usage & Metering │   └── Revenue │ ├── Feature Store ├── Configuration ├── UI/UX Studio ├── Workflow Studio ├── Rules Engine ├── Automation ├── Integrations ├── Marketplace Management ├── Delivery Management ├── Analytics ├── Release Management ├── Audit & Compliance └── Platform Settings
+4. Subscription Management
+Subscription Management is a first-class module of the Master Control Plane. It controls what Proviyaa sells, pricing, billing lifecycle, organization subscriptions, upgrades, downgrades, renewals, cancellations and usage.
+Base Plans
+Starter — Core POS and basic operations.
+Growth — Multi-location and central management.
+Pro — Multiple brands and advanced operations.
+Enterprise — Custom UI, workflows and integrations.
+Subscription Packs
+Restaurant Growth Pack
+Store Growth Pack
+Service Growth Pack
+Automation Pack
+AI Pack
+Analytics Pack
+Marketing Pack
+Delivery Pack
+Enterprise Pack
+Individual Add-ons
+AI
+WhatsApp
+Loyalty
+Advanced CRM
+Advanced Analytics
+Custom Workflow
+API Access
+Additional Location / User / Storage
+Commercial Model
+BASE PLAN    + SUBSCRIPTION PACKS    + INDIVIDUAL ADD-ONS    + USAGE / METERING    = ORGANIZATION SUBSCRIPTION
+5. Feature Store
+The Vinii Storeis the central capability registry and commercial feature marketplace. A new capability is registered once, versioned, tested, published, priced and made available to eligible organizations.
+FEATURE RELEASE       ↓ REGISTER       ↓ VERSION       ↓ TEST / BETA       ↓ PUBLISH       ↓ SET PRICING & ELIGIBILITY       ↓ PLAN / PACK / ADD-ON       ↓ ORGANIZATION SUBSCRIBES       ↓ ENTITLEMENT       ↓ ACTIVATION       ↓ CONFIGURATION       ↓ PRODUCTION
+Vinii StoreModules
+Feature Catalogue
+Categories and Modules
+Feature Versions
+Dependencies
+Feature Flags
+Pricing
+Eligibility
+Feature Rollouts
+Organization Entitlements
+Feature Configuration
+Overrides
+Beta Features
+Release Management
+UI Schema
+Feature Permissions
+Usage Limits and Metering
+Audit Logs
+Deprecation / Retirement
+6. Core Commerce OS
+Commerce OS is the shared source of truth for business entities and transactions across VINII POS, One Latur and OnLatur.
+Identity
+Organizations
+Users
+Customers
+Merchants
+Locations
+Brands
+Catalogue
+Categories
+Products
+Services
+Variants and Modifiers
+Orders
+Bookings
+Payments
+Refunds
+Settlements
+Invoices
+Inventory
+Warehouses
+Procurement
+Employees and Staff
+CRM
+Loyalty
+Promotions
+Delivery and Fulfilment
+Notifications
+Analytics
+7. Identity, Authentication & Authorization
+IDENTITY PLATFORM │ ├── Users ├── Authentication ├── Sessions ├── Passwords ├── OAuth ├── MFA / 2FA ├── OTP ├── Invitations ├── Organization Membership ├── Roles ├── Permissions ├── Access Policies └── Audit
+Organizations are merchant tenants. Customers are platform-level users and may interact with multiple organizations.
+8. Organization / Tenant Management
+PROVIYAA │ ├── Organization A │   ├── Brand │   ├── Location 1 │   ├── Location 2 │   └── Users │ ├── Organization B │   ├── Location 1 │   └── Users │ └── Organization C     ├── Brand     ├── Location 1     ├── Location 2     └── Users
+Organization profile and business details
+Brands and locations
+Employees and users
+Roles and permissions
+Subscription and billing
+Feature entitlements
+Configuration
+Integrations
+Audit
+9. VINII POS — Merchant Experience
+VINII POS uses the shared Commerce OS and provides three configurable vertical experiences.
+Restaurant
+Dashboard
+POS
+KOT
+Tables
+Dine-in
+Takeaway
+Delivery
+Menu
+Categories
+Modifiers
+Orders
+Customers
+Inventory
+Purchase
+Staff
+CRM
+Loyalty
+Reports
+Settings
+Store
+Dashboard
+POS
+Products
+Categories
+Barcode
+Orders
+Customers
+Inventory
+Warehouse
+Purchase
+Stock Transfer
+Suppliers
+CRM
+Loyalty
+Reports
+Settings
+Service
+Dashboard
+POS
+Services
+Categories
+Staff
+Calendar
+Appointments
+Bookings
+Packages
+Membership
+Customers
+CRM
+Payments
+Reports
+Settings
+10. One Latur — Customer Marketplace
+One Latur is the unified customer-facing demand layer for restaurants, stores and services.
+Onboarding
+Location
+Home
+Search
+Categories
+Restaurants
+Stores
+Services
+Merchant Profiles
+Products and Services
+Cart
+Checkout
+Payments
+Orders
+Bookings
+Delivery Tracking
+Offers
+Loyalty
+Notifications
+Profile
+Customer Journeys
+RESTAURANT Menu → Cart → Checkout → Delivery  STORE Category → Product → Cart → Checkout → Delivery  SERVICE Provider → Service → Date → Time → Staff → Booking → Payment
+11. OnLatur — Delivery & Fulfilment
+ONLATUR │ ├── Rider App │   ├── Onboarding / KYC │   ├── Availability │   ├── Delivery Jobs │   ├── Pickup │   ├── Navigation │   ├── Delivery │   ├── Earnings │   ├── Wallet │   ├── Incentives │   ├── Performance │   └── Support │ ├── Delivery Operations │   ├── Riders │   ├── Dispatch │   ├── Jobs │   ├── Zones │   ├── Vehicles │   ├── Routing │   ├── Pricing │   └── Tracking │ └── Delivery Engine     ├── Eligibility     ├── Assignment     ├── Capacity     ├── Routing     ├── Tracking     └── Completion
+12. Fulfilment Engine
+Delivery should be generic rather than restaurant-specific.
+ORDER  ↓ FULFILMENT REQUIREMENT  ↓ DELIVERY ENGINE  ↓ DELIVERY JOB  ↓ RIDER  ↓ COMPLETION
+Food
+Retail products
+Medicine
+Documents
+Service pickup
+Other fulfilment types
+13. Order Management
+ORDER_CREATED       ↓ PAYMENT_CONFIRMED       ↓ MERCHANT_ACCEPTED       ↓ PREPARING       ↓ READY       ↓ DELIVERY_ASSIGNED       ↓ PICKED_UP       ↓ DELIVERED       ↓ COMPLETED
+Creation
+Acceptance
+Preparation
+Fulfilment
+Delivery
+Cancellation
+Refund
+Return
+Completion
+History
+14. Booking Platform
+Service
+Provider
+Staff
+Availability
+Calendar
+Slots
+Booking
+Payment
+Confirmation
+Reschedule
+Cancellation
+Completion
+15. Inventory Platform
+Products
+SKUs
+Stock
+Warehouses
+Locations
+Suppliers
+Purchase Orders
+Goods Receipt
+Stock Transfer
+Stock Adjustment
+Consumption
+Low Stock
+Reorder
+Stock Audit
+Inventory Analytics
+16. CRM Platform
+Customer Profiles
+Customer Timeline
+Orders
+Bookings
+Interactions
+Segments
+Tags
+Campaigns
+Promotions
+Loyalty
+Customer Value
+Retention
+Cross-Commerce Insights
+17. Payment & Billing Platform
+Customer Payments
+Merchant Payments
+Subscription Payments
+Feature Payments
+Pack Payments
+Refunds
+Credits
+Commissions
+Settlements
+Merchant Payouts
+Rider Earnings
+Reconciliation
+18. Workflow Engine
+Order Workflows
+Booking Workflows
+Payment Workflows
+Refund Workflows
+Inventory Workflows
+Delivery Workflows
+Subscription Workflows
+Feature Activation Workflows
+Onboarding Workflows
+Approval Workflows
+Notification Workflows
+Automation Workflows
+19. Rules Engine
+Pricing
+Promotions
+Commission
+Tax
+Delivery Fee
+Delivery Radius
+Minimum Order
+Loyalty
+Inventory
+Booking
+Cancellation
+Refund
+Subscription Eligibility
+Feature Eligibility
+20. Automation Platform
+Triggers
+Conditions
+Actions
+Scheduled Jobs
+Event Automation
+Notifications
+CRM Automation
+Marketing Automation
+Inventory Automation
+Subscription Automation
+Workflow Automation
+21. Notification Platform
+Push
+Email
+SMS
+WhatsApp
+In-App
+Merchant Alerts
+Customer Alerts
+Rider Alerts
+Subscription Alerts
+Payment Alerts
+System Alerts
+22. Analytics Platform
+Merchant Analytics
+Sales
+Orders
+Revenue
+Customers
+Products
+Inventory
+Bookings
+Delivery
+Staff
+Profitability
+Platform Analytics
+GMV
+Orders
+Organizations
+MRR
+ARR
+Subscriptions
+Feature Adoption
+Pack Adoption
+Churn
+Retention
+Customer Growth
+Delivery Performance
+23. AI Platform
+AI Assistant
+Sales Intelligence
+Customer Intelligence
+Inventory Forecasting
+Demand Forecasting
+Product Recommendations
+Marketing Assistant
+Analytics Assistant
+Support Assistant
+Workflow AI
+AI capabilities can be independently packaged and sold through the Vinii Storeas features, add-ons or packs.
+24. Integration Hub
+Payments
+WhatsApp
+SMS
+Email
+Maps
+Accounting
+ERP
+CRM
+POS
+Delivery
+Webhooks
+REST APIs
+External Apps
+25. API Platform
+API Gateway
+Authentication
+Authorization
+REST APIs
+GraphQL
+Webhooks
+API Keys
+Rate Limits
+Versioning
+Developer Portal
+API Analytics
+26. Event Platform
+EVENT PLATFORM │ ├── Event Bus ├── Event Registry ├── Event Consumers ├── Retry ├── Dead Letter Queue ├── Webhooks ├── Event Audit └── Monitoring
+A single event can update multiple systems. For example, ORDER_CREATED can trigger POS, CRM, Payment, Delivery and Analytics consumers.
+27. Release Management
+Features
+Versions
+Environments
+Development
+Staging
+Production
+Feature Flags
+Beta Releases
+Rollouts
+Approvals
+UAT
+Deployment
+Rollback
+28. Audit & Compliance
+Login Audit
+User Changes
+Permission Changes
+Feature Changes
+Subscription Changes
+Billing Changes
+Configuration Changes
+Workflow Changes
+Rule Changes
+Integration Changes
+Data Access
+System Events
+29. Frontend Application Structure
+/apps ├── master-admin ├── organization-portal ├── viniipos │   ├── restaurant │   ├── store │   └── service ├── one-latur ├── onlatur-rider ├── delivery-operations ├── public-web ├── pricing ├── feature-store └── developer-portal
+30. Shared Frontend Packages
+/packages ├── ui ├── design-system ├── auth ├── permissions ├── feature-sdk ├── subscription-sdk ├── billing-sdk ├── configuration-sdk ├── workflow-sdk ├── rules-sdk ├── api-client ├── event-client ├── analytics-sdk ├── maps-sdk ├── notification-sdk └── utilities
+31. Backend Services
+/services ├── api-gateway ├── identity-service ├── organization-service ├── user-service ├── customer-service ├── merchant-service ├── catalogue-service ├── product-service ├── service-catalogue-service ├── order-service ├── booking-service ├── payment-service ├── billing-service ├── invoice-service ├── inventory-service ├── warehouse-service ├── procurement-service ├── crm-service ├── loyalty-service ├── promotion-service ├── delivery-service ├── dispatch-service ├── rider-service ├── tracking-service ├── subscription-service ├── entitlement-service ├── feature-service ├── configuration-service ├── workflow-service ├── rules-service ├── automation-service ├── notification-service ├── integration-service ├── analytics-service ├── ai-service ├── audit-service └── webhook-service
+32. Core Domain Structure
+/core ├── identity ├── organizations ├── customers ├── merchants ├── locations ├── catalog ├── products ├── services ├── orders ├── bookings ├── payments ├── invoices ├── inventory ├── warehouses ├── employees ├── crm ├── loyalty ├── promotions ├── delivery ├── notifications └── analytics
+33. Platform Domain Structure
+/platform ├── subscriptions ├── plans ├── packs ├── add-ons ├── billing ├── entitlements ├── features ├── feature_versions ├── feature_dependencies ├── feature_rollouts ├── configurations ├── ui_schema ├── workflows ├── rules ├── automation ├── permissions ├── events ├── webhooks ├── audit └── versioning
+34. Key Commercial Relationship
+PLAN  │  ├── PLAN_FEATURE  └── PLAN_LIMIT         │         ↓ ORGANIZATION SUBSCRIPTION         │         ├── PACK SUBSCRIPTION         ├── ADD-ON SUBSCRIPTION         └── USAGE               │               ↓          ENTITLEMENT               │               ↓            FEATURE               │               ↓         CONFIGURATION               │               ↓           PERMISSION               │               ↓          APPLICATION
+35. Feature Access Logic
+FEATURE STORE "What exists?"       ↓ SUBSCRIPTION "What was purchased?"       ↓ ENTITLEMENT "What is allowed?"       ↓ PERMISSION "What can this user do?"       ↓ APPLICATION "What does the user see?
+36. Configuration Hierarchy
+PLATFORM DEFAULT        ↓ REGION        ↓ PLAN        ↓ ORGANIZATION        ↓ LOCATION        ↓ ROLE        ↓ USER
+The most specific valid configuration should take precedence. This enables standardized SaaS functionality with organization-specific and role-specific customization.
+37. Complete Business Loop
+CUSTOMER    ↓ ONE LATUR    ↓ DISCOVERY    ↓ ORDER / BOOKING    ↓ CORE COMMERCE OS    ↓ VINII POS    ↓ FULFILMENT    ↓ ONLATUR    ↓ DELIVERY    ↓ CUSTOMER    ↓ COMPLETED    │    ├── CRM    ├── PAYMENT    ├── INVENTORY    └── ANALYTICS            ↓ MASTER CONTROL PLANE            ↓ FEATURE STORE + SUBSCRIPTIONS            ↓ ORGANIZATION            ↓ CONFIGURATION            ↓ EXPERIENCE
+38. Final Product Hierarchy
+PROVIYAA GLOBAL │ ├── CONTROL PLANE │   ├── Organization Management │   ├── Subscription Management │   ├── Feature Store │   ├── Configuration │   ├── UI/UX Studio │   ├── Workflow │   ├── Rules │   ├── Automation │   ├── Integrations │   ├── Analytics │   └── Audit │ ├── COMMERCIAL PLATFORM │   ├── Plans │   ├── Packs │   ├── Add-ons │   ├── Billing │   ├── Usage │   └── Entitlements │ ├── CORE COMMERCE OS │   ├── Identity │   ├── Organizations │   ├── Customers │   ├── Catalogue │   ├── Products │   ├── Services │   ├── Orders │   ├── Bookings │   ├── Payments │   ├── Inventory │   ├── CRM │   ├── Delivery │   ├── Notifications │   └── Analytics │ ├── MERCHANT EXPERIENCE │   └── VINII POS │       ├── Restaurant │       ├── Store │       └── Service │ ├── CUSTOMER EXPERIENCE │   └── ONE LATUR │ ├── DELIVERY EXPERIENCE │   └── ONLATUR │ └── INTELLIGENCE     ├── CRM     ├── Analytics     ├── Automation     └── AI
+39. Core Strategic Model
+PROVIYAA should operate as a Commerce Operating System rather than a POS with a marketplace attached.
+BUILD ONCE     ↓ CORE COMMERCE OS     ↓ ┌────────────┬────────────┬────────────┐ VINII POS    ONE LATUR    ONLATUR     ↓            ↓            ↓ MERCHANT      CUSTOMER      DELIVERY     └────────────┬────────────┘                  ↓          MASTER CONTROL PLANE                  ↓     SUBSCRIPTIONS + FEATURE STORE                  ↓         SELL CAPABILITIES                  ↓           ORGANIZATIONS                  ↓            CONFIGURATION                  ↓              OPERATE                  ↓           DATA + EVENTS                  ↓        CRM / ANALYTICS / AI
+40. Operating Principle
+The complete Proviyaa model is: Build Once → Register Once → Release Once → Package or sell individually → Allow eligible organizations to subscribe → Create entitlement → Configure per organization → Activate in the appropriate experience → Measure usage and outcomes → Feed intelligence back into the platform.
+This structure keeps the Master Control Plane as the central governance layer, Commerce OS as the shared transactional core, Vinii Store as the capability and commercial catalogue, Subscription Management as the commercial lifecycle system, and VINII POS / One Latur / OnLatur as configurable experience layers.
+PROVIYAA GLOBAL — Complete Product & Platform Structure
+

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Expo Web Preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web"],
+      "cwd": "frontend",
+      "port": 19006
+    }
+  ]
+}
