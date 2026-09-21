@@ -2,7 +2,8 @@
 // TEMPORARY: held in server memory (lost on restart) until the Supabase tables are applied;
 // then these functions write to Postgres and the routes stay the same.
 import { applyCoupon, catalog, deliveryFee, findProduct } from './catalog';
-import { customerKey, HttpError, limit, readBody, sha256 } from './http';
+import { caller } from './auth';
+import { customerKey, HttpError, limit, readBody } from './http';
 
 const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -13,22 +14,22 @@ export type Order = {
   coupon_code: string | null; payment_method: PaymentMethod; payment_status: 'not_charged'; status: string;
   rider_name: string; rider_phone: string; eta_minutes: number; created_at: string;
 };
-type Stored = Order & { city_id: string; customer: string };
+type Stored = Order & { city_id: string; customer: string; user_id: string | null };
 
 type Memory = { orders: Stored[]; replies: Map<string, { fingerprint: string; order: Order; at: number }>; enquiries: object[]; support: object[] };
 const g = globalThis as unknown as { __onecityStore?: Memory };
 const mem: Memory = (g.__onecityStore ??= { orders: [], replies: new Map(), enquiries: [], support: [] } as Memory);
 
-const publicOrder = ({ city_id, customer, ...order }: Stored): Order => ({
+const publicOrder = ({ city_id, customer, user_id, ...order }: Stored): Order => ({
   ...order,
   // Keep images current if a product photo changed after the order was placed.
   items: order.items.map(i => ({ ...i, image: catalog.products.find(p => p.id === i.id)?.image ?? i.image })),
 });
 
 async function requireCustomer(request: Request) {
-  const key = customerKey(request);
-  if (!key) throw new HttpError(401, 'Please update the app and try again.');
-  return { key, hash: await sha256(key) };
+  const who = await caller(request);
+  if (!who.owner) throw new HttpError(401, 'Please update the app and try again.');
+  return { hash: who.owner, userId: who.userId };
 }
 
 // Prices, fees and discounts are always recomputed here; what the app sends is only a check.
@@ -73,23 +74,20 @@ export async function createOrder(request: Request, city: string): Promise<Order
     // No real rider exists yet; the tracking screen already says so.
     rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date().toISOString(),
   };
-  mem.orders.push({ ...order, city_id: city, customer: customer.hash });
+  mem.orders.push({ ...order, city_id: city, customer: customer.hash, user_id: customer.userId });
   if (replyKey) mem.replies.set(replyKey, { fingerprint, order, at: Date.now() });
   return order;
 }
 
-// Only the device that placed an order can list or open it.
+// Only the account (or device) that placed an order can list or open it.
 export async function listOrders(request: Request): Promise<Order[]> {
-  const key = customerKey(request);
-  if (!key) return [];
-  const hash = await sha256(key);
-  return mem.orders.filter(o => o.customer === hash).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200).map(publicOrder);
+  const { matches } = await caller(request);
+  return mem.orders.filter(o => matches.includes(o.customer)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200).map(publicOrder);
 }
 
 export async function getOrder(request: Request, id: string): Promise<Order> {
-  const key = customerKey(request);
-  const hash = key ? await sha256(key) : null;
-  const order = mem.orders.find(o => o.id === id && o.customer === hash);
+  const { matches } = await caller(request);
+  const order = mem.orders.find(o => o.id === id && matches.includes(o.customer));
   if (!order) throw new HttpError(404, 'Order not found');
   return publicOrder(order);
 }

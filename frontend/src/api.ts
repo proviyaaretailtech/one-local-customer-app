@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { accessToken } from './lib/supabase';
 // backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
 // In development on a phone (Expo Go), fall back to the dev server that served the app,
 // which also serves app/api.
@@ -37,20 +38,26 @@ function getCustomerKey(): Promise<string> {
   }).catch(() => randomId()));
 }
 
+// Every call says which device it is and, when signed in, who the customer is.
+async function identity(): Promise<Record<string, string>> {
+  const [key, token] = await Promise.all([getCustomerKey(), accessToken().catch(() => null)]);
+  return token ? { 'X-Customer-Key': key, Authorization: `Bearer ${token}` } : { 'X-Customer-Key': key };
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
 // Like api(), but failures carry the server's own message (the `detail` field).
 export async function apiGet<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { headers: { 'X-Customer-Key': await getCustomerKey() } });
+  const r = await fetch(`${API}${path}`, { headers: await identity() });
   const body = await r.json().catch(() => null);
   if (!r.ok) throw new ApiError(r.status, typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.');
   return resolveMedia(body);
 }
 
 export async function api<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { headers: { 'X-Customer-Key': await getCustomerKey() } });
+  const r = await fetch(`${API}${path}`, { headers: await identity() });
   if (!r.ok) throw new Error(`API ${path} ${r.status}`);
   return resolveMedia(await r.json());
 }
@@ -103,7 +110,7 @@ export type Order = {
 export async function apiPost<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Customer-Key": await getCustomerKey(), ...headers },
+    headers: { "Content-Type": "application/json", ...(await identity()), ...headers },
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`API ${path} ${r.status}`);

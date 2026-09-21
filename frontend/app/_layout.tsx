@@ -14,6 +14,7 @@ import { AppShell } from '@/src/components/app-shell';
 import { colors } from '@/src/theme';
 import { CityMotionProvider } from '@/src/motion';
 import { CustomerProvider } from '@/src/customer';
+import { AuthProvider } from '@/src/auth';
 
 LogBox.ignoreAllLogs(true);
 
@@ -41,7 +42,7 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               <Head><title>OneCity</title></Head>
-              <CustomerProvider><CityMotionProvider><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell></CityMotionProvider></CustomerProvider>
+              <CustomerProvider><AuthProvider><CityMotionProvider><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell></CityMotionProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>
