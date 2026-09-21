@@ -4,7 +4,7 @@ Single source of truth: Supabase (Postgres + Auth + Storage + Realtime)
 Shared endpoints for customer, rider, and merchant (POS) apps
 """
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from pathlib import Path
@@ -15,6 +15,13 @@ import uuid
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from functools import lru_cache
+import hashlib
+
+# Catalogue data modules (the app's read-only source of truth for now)
+from catalog_data import image, BRANDS, EXTRA_PRODUCTS, EXTRA_CATEGORIES, EVENTS, REELS
+from city_catalog import CITY_BRANDS, CITY_PRODUCTS, CITY_CATEGORIES, CITY_REELS
+from store_catalog import STORE_BRANDS, STORE_PRODUCTS, STORE_CATEGORIES, THEMED_STORES
+import media_store
 
 # Supabase client
 try:
@@ -58,6 +65,83 @@ app.add_middleware(
 )
 
 api_router = APIRouter(prefix="/api")
+
+
+
+# ---------- Write store (TEMPORARY, in-memory) ----------
+# MongoDB is gone. Until the Postgres repository layer lands (see
+# docs/BACKEND_REARCHITECTURE_PLAN.md) writes are held in process memory only and are
+# lost on restart. They must NOT go to Supabase: the shared project already has other
+# apps' tables (e.g. public.orders) and this code must never touch them.
+class _Collection:
+    def __init__(self, name):
+        self.name = name
+        self.memory = []
+
+    async def insert_one(self, doc):
+        self.memory.append(doc)
+        return doc
+
+    async def find_one(self, query, projection=None):
+        key, value = next(iter(query.items()))
+        return next((d for d in self.memory if d.get(key) == value), None)
+
+    def find(self, query=None, projection=None):
+        return _Cursor(self)
+
+
+class _Cursor:
+    def __init__(self, collection):
+        self.collection = collection
+        self.key = None
+        self.desc = True
+
+    def sort(self, key, direction=-1):
+        self.key, self.desc = key, direction < 0
+        return self
+
+    async def to_list(self, limit):
+        rows = list(self.collection.memory)
+        if self.key:
+            rows.sort(key=lambda d: str(d.get(self.key) or ""), reverse=self.desc)
+        return rows[:limit]
+
+
+class _DB:
+    def __init__(self):
+        self._tables = {}
+
+    def __getattr__(self, name):
+        return self._tables.setdefault(name, _Collection(name))
+
+
+db = _DB()
+app.state.db = db
+
+
+# ---------- Locality (city scoping) ----------
+# Every listing belongs to one city. A viewer only ever sees their own city's
+# listings. The city comes from ?city= or the X-City header (default: latur),
+# is validated here, and later will be tied to the signed-in user's profile.
+ACTIVE_CITIES = {'latur': 'Latur, Maharashtra'}
+
+
+def resolve_city(city: Optional[str] = Query(None), x_city: Optional[str] = Header(None)) -> str:
+    slug = (city or x_city or 'latur').strip().lower()
+    if slug not in ACTIVE_CITIES:
+        raise HTTPException(status_code=404, detail="We haven't launched in this city yet")
+    return slug
+
+
+def city_of(item) -> str:
+    """City a catalogue item belongs to; the existing sample catalogue is all Latur."""
+    if isinstance(item, dict):
+        return item.get('city_id') or 'latur'
+    return getattr(item, 'city_id', None) or 'latur'
+
+
+def in_city(items, city):
+    return [i for i in items if city_of(i) == city]
 
 
 # ---------- Models ----------
@@ -388,31 +472,31 @@ async def get_discover_chips():
 
 
 @api_router.get("/banners", response_model=List[Banner])
-async def get_banners():
-    return BANNERS
+async def get_banners(city: str = Depends(resolve_city)):
+    return in_city(BANNERS, city)
 
 
 @api_router.get("/stores", response_model=List[Store])
-async def get_stores():
-    return STORES
+async def get_stores(city: str = Depends(resolve_city)):
+    return in_city(STORES, city)
 
 
 @api_router.get("/stores/{store_id}", response_model=Store)
-async def get_store(store_id: str):
-    for s in STORES:
+async def get_store(store_id: str, city: str = Depends(resolve_city)):
+    for s in in_city(STORES, city):
         if s.id == store_id:
             return s
     raise HTTPException(status_code=404, detail="Store not found")
 
 
 @api_router.get("/stores/{store_id}/products", response_model=List[Product])
-async def get_store_products(store_id: str):
-    return [p for p in PRODUCTS if p.store_id == store_id]
+async def get_store_products(store_id: str, city: str = Depends(resolve_city)):
+    return [p for p in in_city(PRODUCTS, city) if p.store_id == store_id]
 
 
 @api_router.get("/products", response_model=List[Product])
-async def get_products(category_id: Optional[str] = None, chip: Optional[str] = None, department: Optional[str] = None, brand_id: Optional[str] = None, q: Optional[str] = None):
-    items = PRODUCTS
+async def get_products(category_id: Optional[str] = None, chip: Optional[str] = None, department: Optional[str] = None, brand_id: Optional[str] = None, q: Optional[str] = None, city: str = Depends(resolve_city)):
+    items = in_city(PRODUCTS, city)
     if category_id:
         items = [p for p in items if p.category_id == category_id]
     if department:
@@ -449,15 +533,15 @@ async def get_products(category_id: Optional[str] = None, chip: Optional[str] = 
 
 
 @api_router.get("/products/buy-again", response_model=List[Product])
-async def buy_again():
+async def buy_again(city: str = Depends(resolve_city)):
     # simulated repeat purchases
     ids = {"p4", "p6", "p8", "p11", "p16"}
-    return [p for p in PRODUCTS if p.id in ids]
+    return [p for p in in_city(PRODUCTS, city) if p.id in ids]
 
 
 @api_router.get("/products/{product_id}", response_model=Product)
-async def get_product(product_id: str):
-    for p in PRODUCTS:
+async def get_product(product_id: str, city: str = Depends(resolve_city)):
+    for p in in_city(PRODUCTS, city):
         if p.id == product_id:
             return p
     raise HTTPException(status_code=404, detail="Product not found")
@@ -496,9 +580,9 @@ async def apply_coupon(payload: CouponApply):
 
 # ---------- Orders ----------
 @api_router.post("/orders", response_model=Order)
-async def create_order(payload: OrderCreate):
+async def create_order(payload: OrderCreate, city: str = Depends(resolve_city)):
     order = Order(**payload.dict())
-    doc = order.dict()
+    doc = {**order.dict(), 'city_id': city}
     await db.orders.insert_one(doc)
     return order
 
@@ -527,18 +611,18 @@ async def get_order(order_id: str):
 
 
 @api_router.get('/catalog')
-async def catalog():
-    return {'brands': BRANDS, 'products': PRODUCTS, 'categories': CATEGORIES, 'events': EVENTS, 'themed_stores': THEMED_STORES, 'sample': True}
+async def catalog(city: str = Depends(resolve_city)):
+    return {'city': city, 'brands': in_city(BRANDS, city), 'products': in_city(PRODUCTS, city), 'categories': CATEGORIES, 'events': in_city(EVENTS, city), 'themed_stores': in_city(THEMED_STORES, city), 'sample': True}
 
 
 @api_router.get('/reels')
-async def reels():
-    return [{**r, 'video_web': r['video'] + '-webm', 'product': next(p for p in PRODUCTS if p.id == r['product_id']), 'brand': next(b for b in BRANDS if b['id'] == r['brand_id'])} for r in CITY_REELS]
+async def reels(city: str = Depends(resolve_city)):
+    return [{**r, 'video_web': r['video'] + '-webm', 'product': next(p for p in PRODUCTS if p.id == r['product_id']), 'brand': next(b for b in BRANDS if b['id'] == r['brand_id'])} for r in in_city(CITY_REELS, city)]
 
 
 @api_router.get('/events')
-async def events(kind: Optional[str] = None):
-    return [e for e in EVENTS if not kind or e['kind'] == kind]
+async def events(kind: Optional[str] = None, city: str = Depends(resolve_city)):
+    return [e for e in in_city(EVENTS, city) if not kind or e['kind'] == kind]
 
 
 class BookingEnquiryCreate(BaseModel):
@@ -599,6 +683,7 @@ async def save_support_request(payload: SupportRequestCreate):
 
 # ---------- App wiring ----------
 app.include_router(api_router)
+app.include_router(media_store.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -613,6 +698,4 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+
