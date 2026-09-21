@@ -1,5 +1,19 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-22 — One Local: Swiggy-style address picking with Google Maps, and Google sign-in
+
+**Customers can now choose where to deliver the way Swiggy does it — search, current location, drop a pin, add flat and street details, and pick from saved addresses — and can sign in with Google so their orders follow them. Both switch fully on once the Google keys are added.**
+
+- **Why:** The founder asked for map-based addresses "like Swiggy". Until now the delivery location was a line of free text with no map position, so the app could not tell whether an address is inside Latur, and there was no sign-in at all.
+- **Structural decisions:**
+  - Swiggy's app was used only as a reference for the steps (viewed on the founder's mirrored iPhone, nothing changed there); the screens are OneCity's own design, not copies.
+  - Google Maps was chosen by the founder. Address search and pin-to-address run on our server, so the paid Google key never ships inside the app and use can be limited per device; only a website-restricted display key is public.
+  - Delivery area is a centre and radius around Latur for now (15 km); addresses outside it are refused with a clear message. Proper drawn zones can replace it later.
+  - Google sign-in (founder's choice) goes through Supabase. The app talks to Supabase only to sign in; all data still goes through our own API. Old app code that read another app's order table in the shared database was removed.
+- **What works now:** The location header opens the new picker; adding, editing and deleting addresses works end to end, and the chosen address is remembered with its map position. Without keys, the map politely says it is not switched on and customers can type their address. "Continue with Google" appears on the Account screen and explains that it is not switched on yet. Signed-in customers' orders are tied to their account.
+- **Left undone:** The Google keys and the Supabase Google setting (see `docs/SETUP_GOOGLE_MAPS_AND_SIGN_IN.md`). Saved addresses and profiles still live on the phone, not yet in the database. "Request an address over WhatsApp" and location photos from Swiggy's flow were not built. Writing to the Supabase database is still blocked: the Supabase login cannot be read from the keychain, even in the founder's own terminal.
+- **Open questions for the founder:** Is 15 km around Latur the right delivery area to start with? Should placing an order require signing in, once Google sign-in is on?
+
 ## 2026-09-22 — One Local: The app now runs its own backend; the Python server is retired and every image is back
 
 **The One Local app now serves its own data from the same project (no separate Python server), customers' orders are private and priced by the server, and all 129 catalogue images and videos were rebuilt from their original sources.**
