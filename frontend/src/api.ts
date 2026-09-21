@@ -2,7 +2,10 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
-const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || '').replace(/\/$/, '');
+// In development on a phone (Expo Go), fall back to the dev server that served the app,
+// which also serves app/api.
+const devServer = Constants.expoConfig?.hostUri ? `http://${Constants.expoConfig.hostUri}` : '';
+const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || devServer).replace(/\/$/, '');
 // On web the API is served by this same Expo Router app (app/api), so requests stay
 // same-origin; native apps use the configured backend URL.
 export const BACKEND = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : configuredBackend;
