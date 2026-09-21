@@ -37,6 +37,18 @@ function getCustomerKey(): Promise<string> {
   }).catch(() => randomId()));
 }
 
+export class ApiError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
+// Like api(), but failures carry the server's own message (the `detail` field).
+export async function apiGet<T>(path: string): Promise<T> {
+  const r = await fetch(`${API}${path}`, { headers: { 'X-Customer-Key': await getCustomerKey() } });
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new ApiError(r.status, typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.');
+  return resolveMedia(body);
+}
+
 export async function api<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, { headers: { 'X-Customer-Key': await getCustomerKey() } });
   if (!r.ok) throw new Error(`API ${path} ${r.status}`);

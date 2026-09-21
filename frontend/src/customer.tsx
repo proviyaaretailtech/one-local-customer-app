@@ -2,7 +2,12 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type PaymentMethod = 'cod' | 'upi' | 'card' | 'netbanking';
-export type Address = { id: string; label: string; name: string; phone: string; line: string; area: string; pin: string };
+export type Address = {
+  id: string; label: string; name: string; phone: string; line: string; area: string; pin: string;
+  // Added with the map flow; older saved addresses do not have them.
+  kind?: 'home' | 'work' | 'other'; lat?: number; lng?: number; building?: string; street?: string;
+  locality?: string; formatted?: string; instructions?: string;
+};
 export type Profile = { name: string; email: string; phone: string; avatar: string };
 type CustomerData = { profile: Profile; addresses: Address[]; payment: PaymentMethod; referral: string };
 const KEY = 'onecity.customer.v1';

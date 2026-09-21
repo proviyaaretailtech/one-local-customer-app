@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname, useRouter } from 'expo-router';
@@ -15,7 +15,7 @@ import { useCityScroll } from '../motion';
 import { FloatingCart } from './floating-cart';
 import { BottomNavigation } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
-import { DeliveryLocationContext } from '../delivery-location';
+import { DeliveryLocationContext, Point } from '../delivery-location';
 
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -28,16 +28,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { y, headerHeight, setHeaderHeight, scrollRef } = useCityScroll();
   const [compact, setCompact] = useState(false);
   useEffect(() => { const id = y.addListener(({ value }) => setCompact(value > headerHeight - 50)); return () => y.removeListener(id); }, [y, headerHeight]);
-  const [location, setLocation] = useState('Latur, Maharashtra'); const [draft, setDraft] = useState(location); const [editing, setEditing] = useState(false); const [error, setError] = useState('');
-  useEffect(() => { AsyncStorage.getItem('one-latur-location').then(v => { if (v) setLocation(v); }).catch(() => {}); }, []);
-  const save = async () => { if (draft.trim().length < 3) return; try { await AsyncStorage.setItem('one-latur-location', draft.trim()); setLocation(draft.trim()); setEditing(false); } catch { setError('Could not save. Please try again.'); } };
-  return <DeliveryLocationContext.Provider value={{ location, setLocation, edit: () => { setDraft(location); setError(''); setEditing(true); } }}><View style={styles.container}>
+  const [location, setLocationText] = useState('Latur, Maharashtra'); const [point, setPoint] = useState<Point | null>(null);
+  useEffect(() => {
+    AsyncStorage.multiGet(['one-latur-location', 'one-latur-location-point']).then(([[, text], [, saved]]) => {
+      if (text) setLocationText(text);
+      try { if (saved) setPoint(JSON.parse(saved)); } catch {}
+    }).catch(() => {});
+  }, []);
+  const setLocation = (value: string, next: Point | null = null) => {
+    setLocationText(value); setPoint(next);
+    AsyncStorage.multiSet([['one-latur-location', value], ['one-latur-location-point', next ? JSON.stringify(next) : '']]).catch(() => {});
+  };
+  const openLocation = () => router.push('/location' as never);
+  return <DeliveryLocationContext.Provider value={{ location, point, setLocation, edit: openLocation }}><View style={styles.container}>
     {!reels && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
         <View style={styles.topRow}>{!isHome && <Pressable testID="global-back-button" accessibilityLabel="Go to previous page" onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Pressable>}<Pressable testID="header-brand-home" accessibilityLabel="OneCity home" onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><Image testID="company-logo" accessibilityLabel="OneCity" source={mediaUrl('city-logo')} contentFit="contain" style={styles.logo} /></Pressable>
           <View style={styles.topActions}>{[{ id: 'wallet', icon: 'wallet-outline', route: '/wallet' }, { id: 'cart', icon: 'bag-handle-outline', route: '/cart' }, { id: 'profile', icon: 'person-outline', route: '/account' }].map(b => <Pressable testID={b.id === 'profile' ? 'header-profile-btn' : `header-${b.id}-button`} accessibilityLabel={b.id} key={b.id} onPress={() => router.navigate(b.route as any)} style={styles.iconButton}><Icon name={b.icon as any} size={18} color={colors.onSurface} />{b.id === 'cart' && totalItems > 0 && <View style={styles.badge}><Text testID="header-cart-count" style={styles.badgeText}>{totalItems}</Text></View>}</Pressable>)}</View>
         </View>
-        <Pressable testID="location-button" accessibilityRole="button" accessibilityLabel="Change location" onPress={() => { setDraft(location); setError(''); setEditing(true); }} style={styles.location}><Icon name="location-outline" size={13} color={colors.onSurface} /><Text testID="selected-location" style={styles.address} numberOfLines={1}>{location}</Text><Icon name="chevron-down" size={10} color={colors.onSurface} /></Pressable>
+        <Pressable testID="location-button" accessibilityRole="button" accessibilityLabel="Change location" onPress={openLocation} style={styles.location}><Icon name="location-outline" size={13} color={colors.onSurface} /><Text testID="selected-location" style={styles.address} numberOfLines={1}>{location}</Text><Icon name="chevron-down" size={10} color={colors.onSurface} /></Pressable>
         <View style={styles.searchRow}><Pressable testID="header-search-button" accessibilityLabel="Search products" onPress={() => router.navigate('/search' as any)} style={styles.searchText}><Icon name="search-outline" size={18} color={colors.onSurface} /><Text style={styles.placeholder}>A little search. A lovely find.</Text></Pressable><Pressable testID="header-voice-search" accessibilityLabel="Search with voice" onPress={() => router.push('/smart-search?mode=voice' as any)} style={styles.searchIcon}><Icon name="mic-outline" size={18} color={colors.onSurface} /></Pressable><View style={styles.searchDivider} /><Pressable testID="header-camera-search" accessibilityLabel="Search with a photo" onPress={() => router.push('/smart-search?mode=image' as any)} style={styles.searchIcon}><Icon name="camera-outline" size={19} color={colors.onSurface} /></Pressable></View>
       </View><DepartmentStrip /></View>
     </LinearGradient></Animated.View>}
@@ -46,7 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
-    <Modal visible={editing} transparent animationType="slide" onRequestClose={() => setEditing(false)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modal}><View testID="location-modal" style={styles.sheet}><View style={styles.topRow}><Text style={styles.modalTitle}>Your little corner of the city</Text><Pressable testID="close-location" style={styles.iconButton} onPress={() => setEditing(false)}><Icon name="close" size={20} color={colors.onSurface} /></Pressable></View><Text style={styles.help}>Enter your area in Latur. Sample delivery address.</Text><TextInput testID="location-input" value={draft} onChangeText={setDraft} placeholder="Area, Latur" style={styles.input} maxLength={100} />{!!error && <Text testID="location-error" style={styles.help}>{error}</Text>}<Pressable testID="save-location" disabled={draft.trim().length < 3} style={[styles.save, draft.trim().length < 3 && styles.disabled]} onPress={save}><Text style={styles.saveText}>Save location</Text></Pressable></View></KeyboardAvoidingView></Modal>
   </View></DeliveryLocationContext.Provider>;
 }
 const styles = StyleSheet.create({

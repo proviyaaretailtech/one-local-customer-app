@@ -17,6 +17,24 @@ export const catalog = data;
 // The sample catalogue is all Latur. A second city is data (city_id on rows), not code.
 export const ACTIVE_CITIES: Record<string, string> = { latur: 'Latur, Maharashtra' };
 
+// Where each city delivers: a centre and radius. A starting approximation; move to polygons
+// (or pincode lists) once real delivery zones are drawn.
+export const SERVICE_AREAS = [
+  { city: 'latur', name: 'Latur', lat: 18.4088, lng: 76.5604, radiusKm: 15 },
+];
+
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+export function serviceability(point: { lat: number; lng: number }) {
+  const nearest = SERVICE_AREAS.map(area => ({ area, km: distanceKm(point, area) })).sort((x, y) => x.km - y.km)[0];
+  const serviceable = nearest.km <= nearest.area.radiusKm;
+  return { serviceable, city: serviceable ? nearest.area.city : null, nearest_city: nearest.area.name, distance_km: Math.round(nearest.km * 10) / 10 };
+}
+
 export function resolveCity(request: Request): string {
   const url = new URL(request.url);
   const slug = (url.searchParams.get('city') || request.headers.get('x-city') || 'latur').trim().toLowerCase();

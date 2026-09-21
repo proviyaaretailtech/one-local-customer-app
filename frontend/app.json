@@ -5,14 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "onecity",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Find products using a photo",
         "NSMicrophoneUsageDescription": "Search for products with your voice",
-        "NSPhotoLibraryUsageDescription": "Choose product photos for visual search"
+        "NSPhotoLibraryUsageDescription": "Choose product photos for visual search",
+        "NSLocationWhenInUseUsageDescription": "OneCity uses your location to find your delivery address."
       },
       "bundleIdentifier": "com.emergent.onelaturmarket.rrvr15"
     },
@@ -62,6 +63,12 @@
           "cameraPermission": "Find products using a photo",
           "photosPermission": "Choose product photos for visual search",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "OneCity uses your location to find your delivery address."
         }
       ]
     ],
