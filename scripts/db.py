@@ -289,6 +289,12 @@ def cmd_local_seed():
     for email, role in (('manager@pilot.local', 'manager'), ('kitchen@pilot.local', 'kitchen')):
         uid = local_create_user(status, email, 'pilot-test-123')
         insert('org_users', [{'organization_id': oid, 'user_id': uid, 'role_id': roles[role], 'email': email, 'full_name': role.title() + ' (test)', 'status': 'active'}])
+    # One Local channel for the pilot (needs migration 0022): accepting, with a TEST address in Latur.
+    has_channels = local_json("select to_regclass('public.ol_merchant_channels') is not null as ok")[0]['ok']
+    if has_channels:
+        local_psql(f"insert into public.ol_merchant_channels (organization_id, accepting, address, lat, lng) values "
+                   f"('{oid}', true, 'TEST ADDRESS — Ganj Golai, Latur 413512', 18.4031, 76.5732) "
+                   "on conflict (organization_id) do nothing;", quiet=True)
     print(f"seeded pilot '{org['name']}': {len(rows('menu_categories'))} categories, {len(rows('menu_items'))} items; "
           'test logins manager@pilot.local / kitchen@pilot.local (password pilot-test-123, local only)')
 
