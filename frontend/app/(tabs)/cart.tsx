@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -7,7 +7,7 @@ import Icon from "@react-native-vector-icons/ionicons";
 import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
 import { useCart } from "@/src/cart";
-import { apiPost, Coupon, CouponResult, Order } from "@/src/api";
+import { apiPost, Coupon, CouponResult, Order, randomId } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { OneSaver } from '@/src/components/one-saver';
 import { CheckoutPayment } from '@/src/components/checkout-payment';
@@ -24,6 +24,7 @@ export default function CartScreen() {
   const couponDiscount = applied && totalPrice >= applied.min_order ? Math.min(totalPrice, applied.kind === 'flat' ? applied.value : Math.round(totalPrice * applied.value / 100)) : 0;
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [placing, setPlacing] = useState(false);
+  const checkoutKey = useRef<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [tab, setTab] = useState<'cart' | 'saver'>('cart');
@@ -68,6 +69,8 @@ export default function CartScreen() {
     setCheckoutError('');
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // One key per checkout attempt: a retry or double-tap returns the same order.
+      checkoutKey.current ??= randomId(16);
       const order = await apiPost<Order>("/orders", {
         items: items.map((i) => ({
           id: i.id, name: i.name, weight: i.weight, price: i.price, mrp: i.mrp, image: i.image, qty: i.qty,
@@ -78,7 +81,8 @@ export default function CartScreen() {
         total: grand,
         coupon_code: couponDiscount > 0 ? applied?.code ?? null : null,
         payment_method: payment,
-      });
+      }, { "Idempotency-Key": checkoutKey.current });
+      checkoutKey.current = null;
       clear();
       setApplied(null);
       setCouponCode("");

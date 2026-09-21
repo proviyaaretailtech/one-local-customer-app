@@ -1,9 +1,10 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
 const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || '').replace(/\/$/, '');
-// Browser previews are served through an origin-rewriting proxy. Keep preview
-// requests same-origin; native apps always use the configured backend URL.
+// On web the API is served by this same Expo Router app (app/api), so requests stay
+// same-origin; native apps use the configured backend URL.
 export const BACKEND = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : configuredBackend;
 export const API = BACKEND + '/api';
 export const mediaUrl = (key: string) => `${API}/media/${key}`;
@@ -14,8 +15,27 @@ function resolveMedia(value: any): any {
   return value;
 }
 
+// A random id this device creates once. Until sign-in exists it is what keeps one
+// customer's orders private from another's (the server stores only its hash).
+const CUSTOMER_KEY = 'onecity.customer-key.v1';
+export function randomId(bytes = 24): string {
+  const c = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+  const a = new Uint8Array(bytes);
+  if (c?.getRandomValues) c.getRandomValues(a); else for (let i = 0; i < bytes; i++) a[i] = Math.floor(Math.random() * 256);
+  return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+}
+let customerKey: Promise<string> | null = null;
+function getCustomerKey(): Promise<string> {
+  return (customerKey ??= AsyncStorage.getItem(CUSTOMER_KEY).then(async saved => {
+    if (saved) return saved;
+    const key = randomId();
+    await AsyncStorage.setItem(CUSTOMER_KEY, key);
+    return key;
+  }).catch(() => randomId()));
+}
+
 export async function api<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`);
+  const r = await fetch(`${API}${path}`, { headers: { 'X-Customer-Key': await getCustomerKey() } });
   if (!r.ok) throw new Error(`API ${path} ${r.status}`);
   return resolveMedia(await r.json());
 }
@@ -65,10 +85,10 @@ export type Order = {
   created_at: string;
 };
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Customer-Key": await getCustomerKey(), ...headers },
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`API ${path} ${r.status}`);

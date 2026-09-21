@@ -22,21 +22,4 @@ config.cacheStores = [
 // Reduce the number of workers to decrease resource usage
 config.maxWorkers = 2;
 
-
-// Dev proxy: the web build calls same-origin /api, so forward it to FastAPI.
-const http = require('http');
-const API_TARGET = { host: '127.0.0.1', port: 8001 };
-config.server = {
-  ...config.server,
-  enhanceMiddleware: (middleware) => (req, res, next) => {
-    if (!req.url.startsWith('/api')) return middleware(req, res, next);
-    const upstream = http.request({ ...API_TARGET, path: req.url, method: req.method, headers: { ...req.headers, host: `${API_TARGET.host}:${API_TARGET.port}` } }, (r) => {
-      res.writeHead(r.statusCode, r.headers);
-      r.pipe(res);
-    });
-    upstream.on('error', () => { res.statusCode = 502; res.end('API backend unavailable'); });
-    req.pipe(upstream);
-  },
-};
-
 module.exports = config;

@@ -86,3 +86,6 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Rebuilt catalogue media (uploaded to Supabase Storage; not source)
+backend/.media_build/
