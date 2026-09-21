@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-22 — One Local: Live database mapped and backed up; delivery partner app (OnLatur Rider) PRD written
+
+**We can now see inside the production database, a backup was taken, and there is a PRD for the delivery partner app whose first goal is to prove a rider's phone rings for an incoming order, Swiggy-style.**
+
+- **Why:** The founder made One Local the central app on the production database and asked for a delivery app that receives incoming orders like Swiggy's.
+- **Structural decisions:** Access uses a Supabase access token instead of the keychain login, which macOS keeps re-asking for. The production database holds the OS and restaurant POS (72 tables); One Local will plug into the POS as another order channel, like Swiggy, without changing POS tables. The rider app is a second Expo app in the same repository, sharing One Local's server and design, because riders need permissions (loud alerts, location) that customers should never be asked for. Pilot scope is one restaurant (a dummy one, given a test Latur address) with its 9 menu categories, cash on delivery only.
+- **What works now:** A full backup of the production data and structure sits on this Mac (not in git). A readable map of the database is in `docs/CENTRAL_DB_MAP.md`. The PRD is in `docs/PRD_ONLATUR_RIDER_V1.md`. The server key is in place and verified.
+- **Left undone:** Nothing was changed in the database. Creating One Local's tables was stopped by the assistant's safety check for production changes; the founder must choose how to approve it. Correction to the 2026-09-21 entry: an early draft of One Local's tables had in fact been created (14 empty tables); they will be replaced.
+- **Open questions for the founder:** How to approve production database changes? The eight PRD decisions (pilot restaurant, 30-second accept window, when dispatch starts, calling, rider sign-in, rider pay, cash limit, first test phone). Who handles delivery problems during the pilot?
+
 ## 2026-09-22 — One Local: Swiggy-style address picking with Google Maps, and Google sign-in
 
 **Customers can now choose where to deliver the way Swiggy does it — search, current location, drop a pin, add flat and street details, and pick from saved addresses — and can sign in with Google so their orders follow them. Both switch fully on once the Google keys are added.**
