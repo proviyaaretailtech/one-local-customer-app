@@ -1,5 +1,20 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-22 — One Local: The app now runs its own backend; the Python server is retired and every image is back
+
+**The One Local app now serves its own data from the same project (no separate Python server), customers' orders are private and priced by the server, and all 129 catalogue images and videos were rebuilt from their original sources.**
+
+- **Why:** The founder asked to drop the Python backend and "make this work". The app depended on a Python server that was hard to run and had lost its images when MongoDB went away, and anyone could see everyone's orders.
+- **Structural decisions:**
+  - The app's pages and its data API now come from one Expo Router project, on one address. The alternative (keep a separate Python server) lost because it doubled what has to be run, deployed and secured.
+  - The founder decided the shared Supabase project is the production database and One Local is the central app. Changes to it will be additions only (own tables, never touching the POS or OS tables), with a backup taken first.
+  - Until sign-in exists, each phone or browser gets its own private random key; the server only ever sees orders made with that key.
+  - The server now works out every price, delivery fee and coupon itself; a tampered or out-of-date cart is refused instead of trusted. A double-tap on "Place order" creates one order, not two.
+  - Images were rebuilt by re-running the original import scripts against a local folder instead of the retired storage, rather than scraping them by hand from a browser.
+- **What works now:** Home, departments, stores, products, search filters, coupons, cart and checkout, My Orders and order tracking, Book It enquiries and Help requests, all with their pictures, served with no Python running. Test orders placed on one device are invisible to another.
+- **Left undone:** (1) Nothing is stored in Supabase yet: orders and requests are kept in the server's memory and vanish on restart, and images are served from this Mac. Writing to Supabase needs the founder to approve the Supabase login's keychain pop-up (or add the project's secret key). (2) There is no sign-in yet — the founder has flagged that authentication needs work; it needs a choice of sign-in method. (3) The AI assistant and photo/voice search are switched off with a clear message; they relied on MongoDB and an AI key that is not set. (4) Phones can use the app in development through the Expo Go app; no public web address exists yet.
+- **Open questions for the founder:** How should customers sign in — phone number with a text-message code (needs an SMS provider and Indian DLT registration), email code (works today but Supabase's free email sending is heavily rate-limited), or Google? When will you be at the Mac to approve the keychain pop-up so the database and image uploads can go to Supabase?
+
 ## 2026-09-21 — One Local: App data restored; full backend plan written (MongoDB out, one shared Supabase in)
 
 **The app loads its data again, and there is now a complete written plan to remove MongoDB and run every app on one shared Supabase database. Nothing has been created or changed in Supabase yet.**
