@@ -8,11 +8,24 @@ export type Address = {
   kind?: 'home' | 'work' | 'other'; lat?: number; lng?: number; building?: string; street?: string;
   locality?: string; formatted?: string; instructions?: string;
 };
-export type Profile = { name: string; email: string; phone: string; avatar: string };
+export type Diet = '' | 'veg' | 'egg' | 'nonveg';
+export type Language = 'en' | 'mr' | 'hi';
+export type Profile = {
+  name: string; email: string; phone: string; avatar: string;
+  // Added with the profile overhaul; older saved profiles get the defaults below.
+  photo: string;                 // data URI of a chosen photo, or '' for the avatar icon
+  birthday: string;              // DD/MM, optional — for a birthday treat later
+  diet: Diet;                    // shapes food suggestions ('' = no preference)
+  language: Language;            // Marathi/Hindi are coming soon
+  notifications: { orders: boolean; offers: boolean; bookings: boolean };
+};
 type CustomerData = { profile: Profile; addresses: Address[]; payment: PaymentMethod; referral: string };
 const KEY = 'onecity.customer.v1';
 const SAVED_KEY = 'onecity.saved-products.v1';
-const defaults: CustomerData = { profile: { name: '', email: '', phone: '', avatar: 'person' }, addresses: [], payment: 'cod', referral: '' };
+const defaults: CustomerData = {
+  profile: { name: '', email: '', phone: '', avatar: 'person', photo: '', birthday: '', diet: '', language: 'en', notifications: { orders: true, offers: true, bookings: true } },
+  addresses: [], payment: 'cod', referral: '',
+};
 type Context = CustomerData & { ready: boolean; saved: string[]; error: string; clearError: () => void; update: (patch: Partial<CustomerData>) => Promise<void>; toggleSaved: (id: string) => Promise<void> };
 const CustomerContext = createContext<Context | null>(null);
 export function CustomerProvider({ children }: { children: React.ReactNode }) {
