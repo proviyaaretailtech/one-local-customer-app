@@ -7,16 +7,25 @@ import { useCart } from '../cart';
 import { colors } from '../theme';
 import { nativeDriver, useMotionAllowed } from '../motion';
 import { CartCharacter } from './cart-character';
+// The mascot greets the first add of each app session only. Every later add is confirmed by
+// the floating cart bar (count + total), so the character never interrupts a shopping run.
+const session = globalThis as unknown as { __onecityCelebrated?: boolean };
+
 export function CartCelebration({ top }: { top: number }) {
   const { lastAdded, totalItems } = useCart(); const router = useRouter(); const path = usePathname(); const motion = useMotionAllowed();
   const progress = useRef(new Animated.Value(0)).current; const [visible, setVisible] = useState(false);
   useEffect(() => { setVisible(false); }, [path]);
   useEffect(() => {
-    if (!lastAdded) return; setVisible(true); progress.setValue(motion ? 0 : 1);
-    const animation = Animated.spring(progress, { toValue: 1, friction: 6, tension: 65, useNativeDriver: nativeDriver }); if (motion) animation.start();
-    const timer = setTimeout(() => setVisible(false), motion ? 3400 : 4500);
-    return () => { clearTimeout(timer); animation.stop(); };
+    if (!lastAdded || session.__onecityCelebrated) return;
+    session.__onecityCelebrated = true; setVisible(true); progress.setValue(motion ? 0 : 1);
+    if (motion) Animated.spring(progress, { toValue: 1, friction: 6, tension: 65, useNativeDriver: nativeDriver }).start();
   }, [lastAdded, motion, progress]);
+  // Hiding is keyed on visibility alone, so a quick second add can't cancel it and strand the mascot.
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(() => setVisible(false), motion ? 3400 : 4500);
+    return () => clearTimeout(timer);
+  }, [visible, motion]);
   if (!visible || !lastAdded) return null;
   return <Animated.View testID="cart-added-popup" accessibilityLiveRegion="polite" style={[s.overlay, { top: top + 64, opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [70, 0] }) }, { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]}>
     <View style={s.characterWrap}><View style={s.aura} /><CartCharacter revision={lastAdded.revision} /><Image testID="cart-added-image" source={lastAdded.product.image} contentFit="contain" style={s.product} /><Icon name="sparkles" color={colors.gold} size={22} style={s.sparkle} /></View>

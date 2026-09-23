@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -7,7 +7,7 @@ import Icon from "@react-native-vector-icons/ionicons";
 import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
 import { useCart } from "@/src/cart";
-import { apiPost, Coupon, CouponResult, Order, randomId } from "@/src/api";
+import { apiPost, Bill, Coupon, CouponResult, Order, randomId } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { OneSaver } from '@/src/components/one-saver';
 import { CheckoutPayment } from '@/src/components/checkout-payment';
@@ -21,17 +21,34 @@ export default function CartScreen() {
 
   const [couponCode, setCouponCode] = useState("");
   const [applied, setApplied] = useState<Coupon | null>(null);
-  const couponDiscount = applied && totalPrice >= applied.min_order ? Math.min(totalPrice, applied.kind === 'flat' ? applied.value : Math.round(totalPrice * applied.value / 100)) : 0;
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [placing, setPlacing] = useState(false);
   const checkoutKey = useRef<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [tab, setTab] = useState<'cart' | 'saver'>('cart');
+  const [showTaxes, setShowTaxes] = useState(false);
 
-  const savings = totalMrp - totalPrice;
-  const deliveryFee = totalPrice >= 199 || totalPrice === 0 ? 0 : 15;
-  const grand = Math.max(totalPrice + deliveryFee - couponDiscount, 0);
+  // Every number on this screen comes from the server's bill, so the cart can never show a total
+  // that checkout would then refuse. Re-quoted (debounced) whenever the cart or coupon changes.
+  const [bill, setBill] = useState<Bill | null>(null);
+  const [billError, setBillError] = useState('');
+  const cartKey = items.map(i => `${i.id}x${i.qty}`).join(',');
+  useEffect(() => {
+    if (!items.length) { setBill(null); return; }
+    let live = true;
+    const timer = setTimeout(() => {
+      apiPost<Bill>('/cart/quote', { items: items.map(i => ({ id: i.id, qty: i.qty })), coupon_code: applied?.code ?? null })
+        .then(b => { if (live) { setBill(b); setBillError(''); } })
+        .catch(e => { if (live) setBillError(e instanceof Error ? e.message : 'Could not work out your bill.'); });
+    }, 200);
+    return () => { live = false; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey, applied?.code]);
+  const couponDiscount = bill?.discount ?? 0;
+  const deliveryFee = bill?.delivery_fee ?? 0;
+  const grand = bill?.total ?? totalPrice;
+  const rupees = (n: number) => `₹${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
   const runCoupon = async (code: string) => {
     if (!code.trim() || applying) return;
@@ -64,7 +81,7 @@ export default function CartScreen() {
   };
 
   const handleCheckout = async () => {
-    if (placing || items.length === 0) return;
+    if (placing || items.length === 0 || !bill) return;
     setPlacing(true);
     setCheckoutError('');
     try {
@@ -88,8 +105,8 @@ export default function CartScreen() {
       setCouponCode("");
       setCouponMsg(null);
       router.replace(`/order/${order.id}` as any);
-    } catch {
-      setCheckoutError('Could not place your order. Please try again.');
+    } catch (e) {
+      setCheckoutError(e instanceof Error && !e.message.startsWith('API ') ? e.message : 'Could not place your order. Please try again.');
     } finally {
       setPlacing(false);
     }
@@ -122,10 +139,10 @@ export default function CartScreen() {
               </View>
             </View>
 
-            {deliveryFee > 0 && (
+            {!!bill && bill.amount_to_free_delivery > 0 && (
               <View style={styles.freeHint} testID="free-delivery-hint">
                 <Icon name="rocket-outline" size={18} color={colors.onSuccess} />
-                <Text style={styles.freeHintText}>Add ₹{Math.max(199 - totalPrice, 0)} more for FREE delivery</Text>
+                <Text style={styles.freeHintText}>Add {rupees(bill.amount_to_free_delivery)} more for FREE delivery</Text>
               </View>
             )}
 
@@ -203,22 +220,40 @@ export default function CartScreen() {
             </View>
 
             <CheckoutPayment />
-            {/* Bill details */}
-            <View style={[styles.card, { marginTop: spacing.md }]}>
-              <Text style={styles.billTitle}>Bill Details</Text>
-              <BillRow label="Items total" value={`₹${totalMrp}`} strike />
-              <BillRow label="MRP savings" value={`− ₹${savings}`} success />
-              {couponDiscount > 0 && (
-                <BillRow label={`Coupon ${applied?.code ?? ""}`} value={`− ₹${couponDiscount}`} success />
-              )}
-              <BillRow label="Delivery fee" value={deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`} success={deliveryFee === 0} />
-              <View style={styles.divider} />
-              <BillRow label="Grand total" value={`₹${grand}`} strong />
-              {(savings + couponDiscount) > 0 && (
-                <View style={styles.savings}>
-                  <Text testID="cart-order-savings" style={styles.savingsText}>You save ₹{savings + couponDiscount} on this order</Text>
-                </View>
-              )}
+            {/* Bill details — straight from the server's quote (server/pricing.ts) */}
+            <View style={[styles.card, { marginTop: spacing.md }]} testID="bill-details">
+              <Text style={styles.billTitle}>Bill details</Text>
+              {!bill ? (
+                billError ? <Text testID="bill-error" style={[styles.couponMsg, { color: colors.onError }]}>{billError}</Text>
+                  : <ActivityIndicator testID="bill-loading" style={{ marginTop: spacing.md }} color={colors.forest} />
+              ) : <>
+                <BillRow testID="bill-items" label="Item total" value={rupees(bill.item_total)} was={bill.mrp_savings > 0 ? rupees(bill.item_mrp_total) : undefined} />
+                <BillRow testID="bill-delivery" label="Delivery fee" value={bill.delivery_fee === 0 ? 'FREE' : rupees(bill.delivery_fee)} was={bill.delivery_fee === 0 ? rupees(bill.delivery_fee_before_waiver) : undefined} success={bill.delivery_fee === 0}
+                  note={bill.delivery_fee === 0 ? `Free on orders above ₹${bill.free_delivery_from}` : `Free above ₹${bill.free_delivery_from}`} />
+                {bill.handling_fee > 0 && <BillRow testID="bill-handling" label="Handling fee" value={rupees(bill.handling_fee)} />}
+                {bill.platform_fee > 0 && <BillRow testID="bill-platform" label="Platform fee" value={rupees(bill.platform_fee)} />}
+                {bill.gst_added.total > 0 && <>
+                  <Pressable testID="bill-gst-toggle" accessibilityRole="button" accessibilityState={{ expanded: showTaxes }} onPress={() => setShowTaxes(v => !v)}>
+                    <BillRow label={`GST on food (${bill.gst_added.rate}%)`} value={rupees(bill.gst_added.total)} note={showTaxes ? 'Hide breakdown' : 'CGST + SGST · tap for breakdown'} />
+                  </Pressable>
+                  {showTaxes && <View style={styles.taxBox} testID="bill-gst-breakdown">
+                    <BillRow small label={`CGST ${bill.gst_added.rate / 2}% on ${rupees(bill.gst_added.taxable)}`} value={rupees(bill.gst_added.cgst)} />
+                    <BillRow small label={`SGST ${bill.gst_added.rate / 2}% on ${rupees(bill.gst_added.taxable)}`} value={rupees(bill.gst_added.sgst)} />
+                  </View>}
+                </>}
+                {bill.discount > 0 && <BillRow testID="bill-coupon" label={`Coupon ${bill.coupon?.code ?? ''}`} value={`− ${rupees(bill.discount)}`} success />}
+                <View style={styles.divider} />
+                <BillRow testID="bill-total" label="To pay" value={rupees(bill.total)} strong />
+                {bill.gst_included.length > 0 && <Pressable testID="bill-included-toggle" onPress={() => setShowTaxes(v => !v)} style={{ marginTop: spacing.sm }}>
+                  <Text style={styles.hint}>Item prices include GST{showTaxes ? ':' : ' · tap to see how much'}</Text>
+                  {showTaxes && bill.gst_included.map(t => <BillRow small key={t.rate} label={`${t.rate}% items — CGST ${t.rate / 2}% + SGST ${t.rate / 2}%`} value={rupees(t.cgst + t.sgst)} />)}
+                </Pressable>}
+                {bill.total_savings > 0 && (
+                  <View style={styles.savings}>
+                    <Text testID="cart-order-savings" style={styles.savingsText}>You save {rupees(bill.total_savings)} on this order</Text>
+                  </View>
+                )}
+              </>}
             </View>
           </ScrollView>
 
@@ -240,24 +275,29 @@ export default function CartScreen() {
   );
 }
 
-function BillRow({ label, value, strong, success, strike }: { label: string; value: string; strong?: boolean; success?: boolean; strike?: boolean }) {
+function BillRow({ label, value, strong, success, was, note, small, testID }: { label: string; value: string; strong?: boolean; success?: boolean; was?: string; note?: string; small?: boolean; testID?: string }) {
   return (
-    <View style={billStyles.row}>
-      <Text style={[billStyles.label, strong && billStyles.strong]}>{label}</Text>
-      <Text style={[
-        billStyles.value,
-        strong && billStyles.strong,
-        success && { color: colors.onSuccess },
-        strike && { textDecorationLine: "line-through", color: colors.muted },
-      ]}>{value}</Text>
+    <View style={billStyles.row} testID={testID}>
+      <View style={{ flex: 1 }}>
+        <Text style={[billStyles.label, strong && billStyles.strong, small && billStyles.small]}>{label}</Text>
+        {!!note && <Text style={billStyles.note}>{note}</Text>}
+      </View>
+      <View style={billStyles.values}>
+        {!!was && <Text style={billStyles.was}>{was}</Text>}
+        <Text style={[billStyles.value, strong && billStyles.strong, small && billStyles.small, success && { color: colors.onSuccess }]}>{value}</Text>
+      </View>
     </View>
   );
 }
 
 const billStyles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.sm },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: 'flex-start', marginTop: spacing.sm, gap: spacing.md },
   label: { fontSize: 13, color: colors.onSurfaceSecondary },
+  note: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  values: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  was: { fontSize: 11, color: colors.muted, textDecorationLine: 'line-through' },
   value: { fontSize: 13, color: colors.onSurface, fontWeight: "600" },
+  small: { fontSize: 11 },
   strong: { fontWeight: "800", fontSize: 15, color: colors.onSurface },
 });
 
@@ -289,6 +329,7 @@ const styles = StyleSheet.create({
   stepQty: { color: colors.onBrandPrimary, fontWeight: "700", minWidth: 18, textAlign: "center" },
   billTitle: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
   divider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.sm },
+  taxBox: { marginTop: 4, marginLeft: spacing.md, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.divider },
   savings: { marginTop: spacing.sm, backgroundColor: colors.pastelGreen, padding: spacing.sm, borderRadius: radius.sm },
   savingsText: { color: colors.onSuccess, fontSize: 12, fontWeight: "700" },
   couponHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.md },

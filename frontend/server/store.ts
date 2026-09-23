@@ -2,17 +2,18 @@
 // Backed by Postgres (ol_orders / ol_booking_enquiries / ol_support_requests) when Supabase is
 // configured; falls back to in-process memory otherwise (e.g. `expo start` with no .env), so
 // local UI work never needs a database. See db.ts / dbConfigured().
-import { applyCoupon, deliveryFee, findProduct, getCatalog } from './catalog';
+import { getCatalog } from './catalog';
 import { caller } from './auth';
 import { db, dbConfigured, fromDbError } from './db';
 import { customerKey, HttpError, limit, readBody } from './http';
+import { quote } from './pricing';
 
 const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type OrderItem = { id: string; name: string; weight: string; price: number; mrp: number; image: string; qty: number };
 export type Order = {
-  id: string; items: OrderItem[]; subtotal: number; discount: number; delivery_fee: number; total: number;
+  id: string; items: OrderItem[]; subtotal: number; discount: number; delivery_fee: number; gst: number; total: number;
   coupon_code: string | null; payment_method: PaymentMethod; payment_status: 'not_charged'; status: string;
   rider_name: string; rider_phone: string; eta_minutes: number; created_at: string;
 };
@@ -31,7 +32,7 @@ async function freshenImages(order: Order): Promise<Order> {
 
 const rowToOrder = (row: Record<string, unknown>): Order => ({
   id: row.id as string, items: row.items as OrderItem[], subtotal: Number(row.subtotal), discount: Number(row.discount),
-  delivery_fee: Number(row.delivery_fee), total: Number(row.total), coupon_code: (row.coupon_code as string) ?? null,
+  delivery_fee: Number(row.delivery_fee), gst: Number(row.gst ?? 0), total: Number(row.total), coupon_code: (row.coupon_code as string) ?? null,
   payment_method: row.payment_method as PaymentMethod, payment_status: 'not_charged', status: row.status as string,
   rider_name: (row.rider_name as string) ?? 'Sample rider', rider_phone: (row.rider_phone as string) ?? '',
   eta_minutes: (row.eta_minutes as number) ?? 10, created_at: row.created_at as string,
@@ -83,7 +84,7 @@ export async function createOrder(request: Request, city: string): Promise<Order
   const order = await buildOrder(body, city);
   const { data, error } = await db().from('ol_orders').insert({
     id: order.id, customer_hash: customer.hash, user_id: customer.userId, items: order.items,
-    subtotal: order.subtotal, discount: order.discount, delivery_fee: order.delivery_fee, total: order.total,
+    subtotal: order.subtotal, discount: order.discount, delivery_fee: order.delivery_fee, gst: order.gst, total: order.total,
     coupon_code: order.coupon_code, payment_method: order.payment_method, payment_status: 'not_charged',
     status: 'placed', rider_name: order.rider_name, rider_phone: order.rider_phone, eta_minutes: order.eta_minutes,
     idempotency_key: idempotencyKey || null, city_id: city, created_at: order.created_at,
@@ -118,29 +119,18 @@ export async function refundOrder(orderId: string, amount: number, reason: strin
   return data as { refund_id: string; amount: number; order_payment_status: string; refunded_so_far: number; order_total: number };
 }
 
+// Same bill the cart showed (pricing.ts); the app's total is only a check that nothing changed.
 async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }, city: string): Promise<Order> {
-  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 50) throw new HttpError(400, 'Your cart is empty or too large.');
-  const items: OrderItem[] = await Promise.all(body.items.map(async (raw: unknown) => {
-    const line = raw as { id?: unknown; qty?: unknown };
-    const product = typeof line.id === 'string' ? await findProduct(city, line.id) : undefined;
-    if (!product) throw new HttpError(400, 'An item in your cart is no longer available. Please review your cart.');
-    if (!Number.isInteger(line.qty) || (line.qty as number) < 1 || (line.qty as number) > 99) throw new HttpError(400, 'Please check the quantities in your cart.');
-    return { id: product.id, name: product.name, weight: product.weight, price: product.price, mrp: product.mrp, image: product.image, qty: line.qty as number };
-  }));
-
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const fee = deliveryFee(subtotal);
-  const code = typeof body.coupon_code === 'string' && body.coupon_code.trim() ? body.coupon_code.slice(0, 30) : null;
-  const coupon = code ? await applyCoupon(code, subtotal) : null;
-  if (code && !coupon?.ok) throw new HttpError(409, coupon?.message || 'This coupon can no longer be used.');
-  const discount = coupon?.discount ?? 0;
-  const total = Math.max(subtotal + fee - discount, 0);
-  if (typeof body.total === 'number' && Math.abs(body.total - total) > 0.5) throw new HttpError(409, 'Prices have changed. Please review your cart and try again.');
+  const bill = await quote(city, body.items, body.coupon_code);
+  if (bill.coupon && !bill.coupon.ok) throw new HttpError(409, bill.coupon.message || 'This coupon can no longer be used.');
+  if (typeof body.total === 'number' && Math.abs(body.total - bill.total) > 0.5) throw new HttpError(409, 'Prices have changed. Please review your cart and try again.');
 
   const method = PAYMENT_METHODS.includes(body.payment_method as PaymentMethod) ? (body.payment_method as PaymentMethod) : 'cod';
   return {
-    id: crypto.randomUUID(), items, subtotal, discount, delivery_fee: fee, total,
-    coupon_code: discount > 0 ? coupon!.coupon!.code : null, payment_method: method, payment_status: 'not_charged', status: 'placed',
+    id: crypto.randomUUID(),
+    items: bill.lines.map(l => ({ id: l.id, name: l.name, weight: l.weight, price: l.price, mrp: l.mrp, image: l.image, qty: l.qty })),
+    subtotal: bill.item_total, discount: bill.discount, delivery_fee: bill.delivery_fee, gst: bill.gst_added.total, total: bill.total,
+    coupon_code: bill.discount > 0 ? bill.coupon!.code : null, payment_method: method, payment_status: 'not_charged', status: 'placed',
     // No real rider exists yet; the tracking screen already says so.
     rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date().toISOString(),
   };

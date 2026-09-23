@@ -96,6 +96,7 @@ export type Order = {
   subtotal: number;
   discount: number;
   delivery_fee: number;
+  gst?: number;
   total: number;
   coupon_code?: string | null;
   payment_method?: 'cod' | 'upi' | 'card' | 'netbanking';
@@ -113,9 +114,21 @@ export async function apiPost<T>(path: string, body: unknown, headers: Record<st
     headers: { "Content-Type": "application/json", ...(await identity()), ...headers },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`API ${path} ${r.status}`);
+  // Surface the server's own message ("Prices have changed…") instead of a bare status code.
+  if (!r.ok) { const detail = await r.json().then(b => b?.detail).catch(() => null); throw new Error(typeof detail === 'string' ? detail : `API ${path} ${r.status}`); }
   return resolveMedia(await r.json());
 }
+
+// The cart's bill as the server works it out (server/pricing.ts).
+export type TaxSplit = { rate: number; taxable: number; cgst: number; sgst: number };
+export type Bill = {
+  item_mrp_total: number; item_total: number; mrp_savings: number;
+  delivery_fee: number; delivery_fee_before_waiver: number; free_delivery_from: number; amount_to_free_delivery: number;
+  handling_fee: number; platform_fee: number;
+  gst_added: TaxSplit & { total: number }; gst_included: TaxSplit[];
+  coupon: { code: string; label: string; ok: boolean; message: string } | null;
+  discount: number; total: number; total_savings: number;
+};
 
 export type Brand = { id: string; name: string; department: string; logo: string; image: string; tagline: string };
 export type EventListing = { id: string; title: string; kind: string; subtitle: string; venue: string; price: number; image: string; tag: string; slots: string[] };
