@@ -12,6 +12,9 @@ import { VendorNote } from '@/src/components/vendor-note';
 import { OneSaver } from '@/src/components/one-saver';
 import { CheckoutPayment } from '@/src/components/checkout-payment';
 import { useCustomer } from '@/src/customer';
+import { scheduleOrderJourney } from '@/src/native/ios-extras';
+import { CornerGlow } from '@/src/components/corner-glow';
+import { OneLottie } from '@/src/components/one-lottie';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
@@ -100,6 +103,8 @@ export default function CartScreen() {
         payment_method: payment,
       }, { "Idempotency-Key": checkoutKey.current });
       checkoutKey.current = null;
+      // Order updates as notifications (asks permission here, in context). No-op on the web.
+      void scheduleOrderJourney(order.id, new Date(order.created_at).getTime());
       clear();
       setApplied(null);
       setCouponCode("");
@@ -242,11 +247,12 @@ export default function CartScreen() {
 
             <CheckoutPayment />
             {/* Bill details — straight from the server's quote (server/pricing.ts) */}
-            <View style={[styles.card, { marginTop: spacing.md }]} testID="bill-details">
+            <View style={[styles.card, { marginTop: spacing.md, overflow: 'hidden' }]} testID="bill-details">
+              <CornerGlow color={colors.lime} corner="top-right" size={240} strength={0.2} />
               <Text style={styles.billTitle}>Bill details</Text>
               {!bill ? (
                 billError ? <Text testID="bill-error" style={[styles.couponMsg, { color: colors.onError }]}>{billError}</Text>
-                  : <ActivityIndicator testID="bill-loading" style={{ marginTop: spacing.md }} color={colors.forest} />
+                  : <OneLottie testID="bill-loading" name="neon-loader" size={56} loop style={{ alignSelf: 'center' }} />
               ) : <>
                 <BillRow testID="bill-items" label="Item total" value={rupees(bill.item_total)} was={bill.mrp_savings > 0 ? rupees(bill.item_mrp_total) : undefined} />
                 <BillRow testID="bill-delivery" label="Delivery fee" value={bill.delivery_fee === 0 ? 'FREE' : rupees(bill.delivery_fee)} was={bill.delivery_fee === 0 ? rupees(bill.delivery_fee_before_waiver) : undefined} success={bill.delivery_fee === 0}

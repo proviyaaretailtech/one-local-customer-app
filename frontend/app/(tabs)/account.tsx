@@ -11,6 +11,8 @@ import { Diet, Language, useCustomer } from '@/src/customer';
 import { useAuth } from '@/src/auth';
 import { apiGet, Order } from '@/src/api';
 import { OneGlyph } from '@/src/components/one-button';
+import { CornerGlow } from '@/src/components/corner-glow';
+import { Tap } from '@/src/components/tap';
 
 const INK = '#050605';
 type Row = { icon: string; label: string; sub: string; id: string; route: string; soon?: boolean };
@@ -91,6 +93,7 @@ export default function AccountScreen() {
     {/* Preferences — save on tap */}
     <Text style={s.groupTitle}>Your preferences</Text>
     <View style={s.card}>
+      <CornerGlow color={colors.lime} corner="top-right" size={220} strength={0.18} />
       <Text style={s.prefLabel}>Food preference</Text>
       <View style={s.chips}>{DIETS.map(d => <Pressable key={d.id || 'any'} testID={`pref-diet-${d.id || 'any'}`} accessibilityRole="radio" accessibilityState={{ selected: profile.diet === d.id }} onPress={() => save({ diet: d.id })} style={[s.chip, profile.diet === d.id && s.chipOn]}>
         {!!d.dot && <View style={[s.vegDot, { borderColor: d.dot }]}><View style={[s.vegInner, { backgroundColor: d.dot }]} /></View>}<Text style={[s.chipText, profile.diet === d.id && s.chipTextOn]}>{d.label}</Text>
@@ -112,11 +115,11 @@ export default function AccountScreen() {
 
     {GROUPS.map(g => <View key={g.title}>
       <Text style={s.groupTitle}>{g.title}</Text>
-      <View style={s.rows}>{g.rows.map((r, i) => <Pressable key={r.id} testID={`acc-${r.id}`} onPress={() => router.push(r.route as any)} style={({ pressed }) => [s.row, i === g.rows.length - 1 && s.rowLast, pressed && s.pressed]}>
+      <View style={s.rows}><CornerGlow color={colors.lime} corner="bottom-left" size={200} strength={0.12} />{g.rows.map((r, i) => <Tap key={r.id} testID={`acc-${r.id}`} onPress={() => router.push(r.route as any)} glow={false} style={[s.row, i === g.rows.length - 1 && s.rowLast]}>
         <View style={s.icon}><Icon name={r.icon as any} size={20} color={colors.forest} /></View>
         <View style={s.flex}><Text testID={`acc-${r.id}-label`} style={s.label}>{r.label}</Text><Text style={s.sub}>{r.sub}</Text></View>
         {r.soon ? <View style={s.soon}><Text style={s.soonText}>SOON</Text></View> : <Icon name="chevron-forward" size={18} color={colors.muted} />}
-      </Pressable>)}</View>
+      </Tap>)}</View>
     </View>)}
 
     {user && <Pressable testID="sign-out-btn" onPress={() => auth.signOut()} style={s.signOut}><Icon name="log-out-outline" size={18} color={colors.onError} /><Text style={s.signOutText}>Sign out</Text></Pressable>}
@@ -126,7 +129,7 @@ export default function AccountScreen() {
 }
 
 function Stat({ id, countId, value, label, onPress }: { id: string; countId?: string; value: string; label: string; onPress: () => void }) {
-  return <Pressable testID={id} onPress={onPress} style={({ pressed }) => [s.stat, pressed && s.pressed]}><Text testID={countId} style={s.number}>{value}</Text><Text style={s.statLabel}>{label}</Text></Pressable>;
+  return <Tap testID={id} onPress={onPress} radius={20} style={s.stat}><Text testID={countId} style={s.number}>{value}</Text><Text style={s.statLabel}>{label}</Text></Tap>;
 }
 
 const s = StyleSheet.create({
@@ -161,7 +164,7 @@ const s = StyleSheet.create({
   soonDark: { backgroundColor: INK, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   soonDarkText: { color: colors.electricLime, fontSize: 9, fontWeight: '800', letterSpacing: 1 },
   groupTitle: { fontSize: 12, fontWeight: '800', color: colors.muted, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 22, marginBottom: 8, marginLeft: 6 },
-  card: { backgroundColor: colors.surface, borderRadius: 22, padding: 16 },
+  card: { backgroundColor: colors.surface, borderRadius: 22, padding: 16, overflow: 'hidden' },
   prefLabel: { fontSize: 13, fontWeight: '700', color: colors.onSurface, marginBottom: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface },
@@ -175,7 +178,7 @@ const s = StyleSheet.create({
   hr: { height: 1, backgroundColor: colors.divider, marginVertical: 16 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 },
   toggleLabel: { fontSize: 14, fontWeight: '600', color: colors.onSurface },
-  rows: { backgroundColor: colors.surface, borderRadius: 22, paddingHorizontal: 14 },
+  rows: { backgroundColor: colors.surface, borderRadius: 22, paddingHorizontal: 14, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 68, borderBottomWidth: 1, borderBottomColor: colors.divider },
   rowLast: { borderBottomWidth: 0 },
   icon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.limeSoft, alignItems: 'center', justifyContent: 'center' },

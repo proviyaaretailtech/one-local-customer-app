@@ -13,6 +13,7 @@ import { VendorNote } from '@/src/components/vendor-note';
 import { useMotionAllowed } from '@/src/motion';
 import { paymentLabel } from '@/src/components/payment-options';
 import { ORDER_TOTAL_S, stageAt, syncOrderActivity, updateOrderWidget } from '@/src/native/ios-extras';
+import { OneLottie } from '@/src/components/one-lottie';
 
 const AnimatedView = Animated.View;
 // Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
@@ -129,6 +130,10 @@ export default function OrderTrackingScreen() {
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
         <Text testID="order-payment-method" style={styles.riderMeta}>{paymentLabel(order.payment_method || 'cod')} · sample order, not charged</Text>
+        {elapsedS < 12 && <View testID="order-placed-moment" style={styles.placed}>
+          <OneLottie name="order-success" size={72} />
+          <View style={{ flex: 1 }}><Text style={styles.placedTitle}>Order placed!</Text><Text style={styles.placedSub}>₹{order.total} · the store has your order</Text></View>
+        </View>}
         <VendorNote items={order.items} status={order.status} />
         {/* ETA hero */}
         <View style={styles.etaCard}>
@@ -236,6 +241,9 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 20, fontWeight: "800", color: colors.onSurface },
   sub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  placed: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: '#050605', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
+  placedTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  placedSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
   etaCard: { backgroundColor: colors.brandPrimary, borderRadius: radius.lg, padding: spacing.lg, flexDirection: "row", alignItems: "center", marginBottom: spacing.md },
   etaLeft: { flex: 1 },
   etaLabel: { color: "#B8B8B8", fontSize: 11, fontWeight: "700", letterSpacing: 1 },
