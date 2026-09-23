@@ -16,6 +16,7 @@ import { CityMotionProvider } from '@/src/motion';
 import { CustomerProvider } from '@/src/customer';
 import { AuthProvider } from '@/src/auth';
 import { IntroSplash } from '@/src/components/intro-splash';
+import { CompareProvider } from '@/src/compare';
 
 LogBox.ignoreAllLogs(true);
 
@@ -43,7 +44,7 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               <Head><title>OneCity</title></Head>
-              <CustomerProvider><AuthProvider><CityMotionProvider><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell><IntroSplash /></CityMotionProvider></AuthProvider></CustomerProvider>
+              <CustomerProvider><AuthProvider><CompareProvider><CityMotionProvider><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell><IntroSplash /></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>

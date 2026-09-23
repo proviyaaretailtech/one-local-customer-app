@@ -1,215 +1,250 @@
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Icon from "@react-native-vector-icons/ionicons";
-import * as Haptics from "expo-haptics";
-import { colors, radius, spacing } from "@/src/theme";
-import { api, Product } from "@/src/api";
-import { useCart } from "@/src/cart";
+// Immersive product page: a blurred, department-tinted backdrop behind a swipeable gallery; "Play
+// images" runs a slow cinematic zoom through the photos; "Watch" plays the product's reel (or its
+// store's film); a white sheet carries price, unit price, store, compare and similar items; the
+// footer echoes the hero image. Data: GET /api/products/:id/story.
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import Icon from '@react-native-vector-icons/ionicons';
+import * as Haptics from 'expo-haptics';
+import { colors, radius, spacing } from '@/src/theme';
+import { apiGet, Product } from '@/src/api';
+import { useCart } from '@/src/cart';
 import { useCustomer } from '@/src/customer';
+import { useCompare, COMPARE_LIMIT } from '@/src/compare';
+import { unitPrice } from '@/src/unit-price';
+import { paletteFor } from '@/src/departments';
+import { nativeDriver, useMotionAllowed } from '@/src/motion';
+import { ProductRail } from '@/src/components/catalog-sections';
+
+type Story = {
+  product: Product; gallery: string[];
+  video: { url: string; web: string; poster: string; label: string } | null;
+  category: { id: string; name: string } | null;
+  store: { id: string; name: string; logo: string; tagline: string; delivery_time: string; rating: number } | null;
+  brand: { id: string; name: string; logo: string; tagline: string } | null;
+  related: Product[];
+};
+const SLIDE_MS = 2600;
+const INK = '#050605';
 
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useWindowDimensions();
   const { add, remove, qtyOf, totalItems, totalPrice } = useCart();
-  const [product, setProduct] = useState<Product | null>(null);
   const { saved, toggleSaved, error: savedError } = useCustomer();
+  const compare = useCompare(); const motion = useMotionAllowed();
+  const [story, setStory] = useState<Story | null>(null); const [failed, setFailed] = useState(false);
+  const [slide, setSlide] = useState(0); const [playing, setPlaying] = useState(false); const [watching, setWatching] = useState(false);
+  const [compareNote, setCompareNote] = useState(''); const [tick, setTick] = useState(0);
+  const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!id) return;
-    api<Product>(`/products/${id}`).then(setProduct).catch(() => {});
+    if (!id) return; setStory(null); setFailed(false); setSlide(0); setPlaying(false); setWatching(false);
+    apiGet<Story>(`/products/${id}/story`).then(setStory).catch(() => setFailed(true));
   }, [id]);
 
-  if (!product) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }}>
-        <Text style={{ color: colors.muted }}>Loading...</Text>
+  // Slideshow: each slide slowly zooms and pans; after SLIDE_MS it moves on (a single photo replays its zoom).
+  useEffect(() => {
+    if (!playing || !story) return;
+    zoom.setValue(0);
+    const anim = Animated.timing(zoom, { toValue: 1, duration: SLIDE_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: nativeDriver });
+    if (motion) anim.start();
+    const t = setTimeout(() => {
+      const next = (slide + 1) % story.gallery.length;
+      if (next !== slide) { setSlide(next); pager.current?.scrollTo({ x: next * width, animated: true }); } else setTick(n => n + 1);
+    }, SLIDE_MS);
+    return () => { clearTimeout(t); anim.stop(); };
+  }, [playing, slide, tick, story, width, zoom, motion]);
+
+  if (failed) return <View testID="product-detail" style={[s.center, { paddingTop: insets.top }]}><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={s.muted}>Couldn’t load this product.</Text><Pressable testID="pd-back-btn" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.retry}><Text style={s.retryText}>Go back</Text></Pressable></View>;
+  if (!story) return <View testID="product-detail" style={s.center}><View style={s.skeletonHero} /><View style={s.skeletonLine} /><View style={[s.skeletonLine, { width: '40%' }]} /></View>;
+
+  const { product, gallery, video } = story;
+  const palette = paletteFor(`/${product.department ?? 'grocery'}`);
+  const qty = qtyOf(product.id); const savings = product.mrp - product.price;
+  const unit = unitPrice(product.price, product.weight);
+  const heroH = Math.min(Math.round(height * 0.56), 500);
+  const shotH = heroH - insets.top - 110; const shotW = Math.min(Math.round(width * 0.78), shotH);
+  const isSaved = saved.includes(product.id); const inCompare = compare.has(product.id);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => { const i = Math.round(e.nativeEvent.contentOffset.x / width); if (i !== slide && i >= 0 && i < gallery.length) setSlide(i); };
+  const toggleCompare = () => {
+    const r = compare.toggle(product); void Haptics.selectionAsync().catch(() => {});
+    setCompareNote(r === 'full' ? `You can compare up to ${COMPARE_LIMIT} items. Remove one first.` : '');
+  };
+  const kenBurns = (i: number) => i === slide && playing ? [
+    { scale: zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) },
+    { translateX: zoom.interpolate({ inputRange: [0, 1], outputRange: [0, i % 2 ? -14 : 14] }) },
+  ] : [];
+
+  return <View style={s.screen} testID="product-detail">
+    <ScrollView contentContainerStyle={{ paddingBottom: 170 }} showsVerticalScrollIndicator={false}>
+      {/* Hero */}
+      <View style={{ height: heroH, overflow: 'hidden' }}>
+        <Image source={product.image} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={Platform.OS === 'web' ? 30 : 60} />
+        <LinearGradient colors={[`${palette.top}E6`, `${palette.mid}B3`, colors.surface]} locations={[0, 0.62, 1]} style={StyleSheet.absoluteFill} />
+        <ScrollView ref={pager} testID="pd-gallery" horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onScroll} onScroll={Platform.OS === 'web' ? onScroll : undefined} scrollEventThrottle={64} style={{ marginTop: insets.top + 56 }}>
+          {gallery.map((uri, i) => <View key={uri} style={{ width, height: shotH, alignItems: 'center', justifyContent: 'center' }}>
+            <Animated.View style={[s.shot, { width: shotW, height: shotH, transform: kenBurns(i) }]}><Image testID={`pd-gallery-${i}`} source={uri} style={{ width: shotW, height: shotH }} contentFit="cover" /></Animated.View>
+          </View>)}
+        </ScrollView>
+        {watching && video && <VideoPreview source={Platform.OS === 'web' ? video.web : video.url} label={video.label} onClose={() => setWatching(false)} top={insets.top} width={width} height={heroH} />}
+        {!watching && <View style={s.heroControls}>
+          <Pressable testID="pd-play-images" accessibilityRole="button" accessibilityLabel={playing ? 'Pause images' : 'Play images'} onPress={() => setPlaying(p => !p)} style={s.glassPill}>
+            <Icon name={playing ? 'pause' : 'play'} size={14} color={colors.onSurface} /><Text style={s.glassText}>{playing ? 'Pause' : 'Play images'}</Text>
+          </Pressable>
+          {gallery.length > 1 && <View style={s.dots}>{gallery.map((_, i) => <View key={i} style={[s.dot, i === slide && s.dotOn]} />)}</View>}
+          {video ? <Pressable testID="pd-watch-video" accessibilityRole="button" accessibilityLabel={video.label} onPress={() => { setPlaying(false); setWatching(true); }} style={[s.glassPill, s.watch]}>
+            <Icon name="videocam" size={14} color={colors.surface} /><Text style={[s.glassText, { color: colors.surface }]}>Watch</Text>
+          </Pressable> : <View style={{ width: 80 }} />}
+        </View>}
       </View>
-    );
-  }
 
-  const qty = qtyOf(product.id);
-  const savings = product.mrp - product.price;
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }} testID="product-detail">
-      <TouchableOpacity
-        style={[styles.backBtn, { top: insets.top + 8 }]}
-        onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
-        testID="pd-back-btn"
-      >
-        <Icon name="chevron-back" size={22} color={colors.onSurface} />
-      </TouchableOpacity>
-
-      <TouchableOpacity testID="pd-save-product" accessibilityLabel={saved.includes(id) ? 'Remove from wishlist' : 'Save to wishlist'} accessibilityState={{ selected: saved.includes(id) }} style={[styles.backBtn, { left: undefined, right: 16, top: insets.top + 8 }]} onPress={() => { void toggleSaved(id).catch(() => {}); }}><Icon name={saved.includes(id) ? 'heart' : 'heart-outline'} size={22} color={colors.shops} /></TouchableOpacity>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-        <View style={[styles.imageWrap, { paddingTop: insets.top + 60 }]}>
-          <Image source={product.image} style={styles.image} contentFit="cover" />
+      {/* Sheet */}
+      <View style={s.sheet}>
+        {!!savedError && <Text testID="pd-save-error" style={{ color: colors.onError }}>{savedError}</Text>}
+        <View style={s.chipsRow}>
+          <View style={s.delivery}><Icon name="flash" size={12} color={colors.onSurface} /><Text style={s.deliveryText}>{product.delivery_min} MINS</Text></View>
+          <View style={s.rating}><Icon name="star" size={11} color={colors.gold} /><Text style={s.ratingText}>{product.rating.toFixed(1)}</Text></View>
+          {!!story.category && <Pressable testID="pd-category-link" onPress={() => router.push(`/category/${story.category!.id}` as any)} style={s.catLink}><Text style={s.catLinkText}>More in {story.category.name}</Text><Icon name="chevron-forward" size={12} color={colors.forest} /></Pressable>}
         </View>
-
-        <View style={styles.content}>
-          {!!savedError && <Text testID="pd-save-error" style={{ color: colors.onError }}>{savedError}</Text>}
-          <View style={styles.deliveryPill}>
-            <Icon name="flash" size={12} color={colors.onSurface} />
-            <Text style={styles.deliveryText}>Delivery in {product.delivery_min} minutes</Text>
-          </View>
-
-          <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.weight}>{product.weight}</Text>
-
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>₹{product.price}</Text>
-            {product.mrp > product.price && (
-              <>
-                <Text style={styles.mrp}>₹{product.mrp}</Text>
-                <View style={styles.savingsPill}>
-                  <Text style={styles.savingsText}>Save ₹{savings}</Text>
-                </View>
-              </>
-            )}
-          </View>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Why you&apos;ll love it</Text>
-          <View style={styles.featureList}>
-            <Feature icon={product.department === 'food' ? 'restaurant-outline' : 'bag-handle-outline'} title={product.department === 'food' ? 'Made for your cravings' : 'An everyday favourite'} text={product.weight} />
-            <Feature icon="storefront-outline" title="Explore the collection" text="Discover more from this sample store" />
-            <Feature icon="flash-outline" title={`${product.delivery_min}-min delivery estimate`} text="Sample estimate, not a live delivery promise" />
-            <Feature icon="information-circle-outline" title="Sample catalogue" text="Illustrative photos, brands and prices" />
-          </View>
+        <Text testID="pd-name" style={s.name}>{product.name}</Text>
+        <Text style={s.weight}>{product.weight}</Text>
+        <View style={s.priceRow}>
+          <Text testID="pd-price" style={s.price}>₹{product.price}</Text>
+          {product.mrp > product.price && <><Text style={s.mrp}>₹{product.mrp}</Text><View style={s.off}><Text style={s.offText}>{Math.round(savings / product.mrp * 100)}% OFF</Text></View></>}
         </View>
-      </ScrollView>
+        <Text testID="pd-unit-price" style={s.unit}>{unit ? `${unit.label} · ` : ''}{product.department === 'food' ? '5% GST added at checkout' : 'Inclusive of all taxes'}</Text>
 
-      {/* Sticky bottom bar */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        {totalItems > 0 && (
-          <View style={styles.cartPreview}>
-            <Text style={styles.cartMeta}>{totalItems} in cart · ₹{totalPrice}</Text>
-            <TouchableOpacity onPress={() => router.push("/cart" as any)} testID="pd-view-cart">
-              <Text style={styles.cartLink}>View cart →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        <View style={styles.actionRow}>
-          {qty === 0 ? (
-            <TouchableOpacity
-              style={styles.addCta}
-              onPress={() => { Haptics.selectionAsync(); add(product); }}
-              testID="pd-add-btn"
-            >
-              <Icon name="cart" size={18} color={colors.onBrandPrimary} />
-              <Text style={styles.addCtaText}>Add to Cart · ₹{product.price}</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.stepperLarge}>
-              <TouchableOpacity onPress={() => remove(product.id)} style={styles.stepBtnLg} testID="pd-dec">
-                <Text style={styles.stepBtnLgText}>−</Text>
-              </TouchableOpacity>
-              <View style={styles.stepQtyWrap}>
-                <Text style={styles.stepQtyLg}>{qty} in cart</Text>
-              </View>
-              <TouchableOpacity onPress={() => add(product)} style={styles.stepBtnLg} testID="pd-inc">
-                <Text style={styles.stepBtnLgText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        <View style={s.actions}>
+          <Pressable testID="pd-compare-toggle" accessibilityRole="button" accessibilityState={{ selected: inCompare }} onPress={toggleCompare} style={[s.action, inCompare && s.actionOn]}>
+            <Icon name={inCompare ? 'checkmark-circle' : 'git-compare-outline'} size={17} color={inCompare ? colors.electricLime : colors.onSurface} /><Text style={[s.actionText, inCompare && s.actionTextOn]}>{inCompare ? 'In compare' : 'Add to compare'}</Text>
+          </Pressable>
+          <Pressable testID="pd-save-product" accessibilityLabel={isSaved ? 'Remove from wishlist' : 'Save to wishlist'} accessibilityState={{ selected: isSaved }} onPress={() => { void toggleSaved(product.id).catch(() => {}); void Haptics.selectionAsync().catch(() => {}); }} style={s.action}>
+            <Icon name={isSaved ? 'heart' : 'heart-outline'} size={17} color={isSaved ? colors.onError : colors.onSurface} /><Text style={s.actionText}>{isSaved ? 'Saved' : 'Save'}</Text>
+          </Pressable>
         </View>
+        {!!compareNote && <Text testID="pd-compare-note" style={s.note}>{compareNote}</Text>}
+        {compare.items.length > 0 && <Pressable testID="pd-open-compare" onPress={() => router.push('/compare' as any)} style={s.compareBar}>
+          <View style={s.compareThumbs}>{compare.items.map(p => <Image key={p.id} source={p.image} style={s.compareThumb} contentFit="cover" />)}</View>
+          <Text style={s.compareBarText}>{compare.items.length === 1 ? 'Add one more to compare' : `Compare ${compare.items.length} items`}</Text>
+          <Icon name="arrow-forward" size={16} color={colors.electricLime} />
+        </Pressable>}
+
+        {!!story.store && <Pressable testID="pd-store-card" onPress={() => router.push(`/store/${story.store!.id}` as any)} style={s.store}>
+          {story.store.logo ? <Image source={story.store.logo} style={s.storeLogo} contentFit="contain" /> : <View style={s.storeLogo} />}
+          <View style={{ flex: 1 }}><Text style={s.storeName}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{story.store.tagline || 'Your neighbourhood store'} · {story.store.delivery_time}</Text></View>
+          <Icon name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>}
       </View>
+
+      {story.related.length > 0 && <View style={s.relatedWrap}><Text style={s.sectionTitle}>More like this</Text><ProductRail products={story.related} scope="pd-related" /></View>}
+
+      {/* Footer echoes the hero */}
+      <View style={s.footer}>
+        <Image source={product.image} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={Platform.OS === 'web' ? 24 : 50} />
+        <LinearGradient colors={[colors.surface, `${palette.mid}CC`, `${palette.color}F2`]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
+        <Image source={product.image} style={s.footerShot} contentFit="contain" />
+        <Text style={s.footerTitle}>{story.brand?.tagline || 'A little closer to your city'}</Text>
+        <Text style={s.footerSub}>{story.brand?.name ?? story.store?.name ?? 'OneCity'} · delivered across Latur</Text>
+      </View>
+    </ScrollView>
+
+    {/* Top bar */}
+    <View style={[s.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+      <Pressable testID="pd-back-btn" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.round}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Pressable>
+      <Pressable testID="pd-open-cart" accessibilityLabel="Open cart" onPress={() => router.push('/cart' as any)} style={s.round}><Icon name="bag-handle-outline" size={20} color={colors.onSurface} />{totalItems > 0 && <View style={s.badge}><Text style={s.badgeText}>{totalItems}</Text></View>}</Pressable>
     </View>
-  );
+
+    {/* Sticky add bar */}
+    <View style={[s.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+      {totalItems > 0 && <View style={s.cartPreview}><Text style={s.cartMeta}>{totalItems} in bag · ₹{totalPrice}</Text><Pressable onPress={() => router.push('/cart' as any)} testID="pd-view-cart" hitSlop={10}><Text style={s.cartLink}>View bag →</Text></Pressable></View>}
+      {qty === 0 ? <Pressable style={s.addCta} onPress={() => { void Haptics.selectionAsync().catch(() => {}); add(product); }} testID="pd-add-btn">
+        <View style={{ flex: 1 }}><Text style={s.addPrice}>₹{product.price}</Text>{product.mrp > product.price && <Text style={s.addMrp}>MRP ₹{product.mrp}</Text>}</View>
+        <View style={s.addPill}><Text style={s.addCtaText}>Add to bag</Text><Icon name="add" size={18} color={INK} /></View>
+      </Pressable> : <View style={s.stepperLarge}>
+        <Pressable onPress={() => remove(product.id)} style={s.stepBtnLg} testID="pd-dec" accessibilityLabel="Remove one"><Text style={s.stepBtnLgText}>−</Text></Pressable>
+        <View style={s.stepQtyWrap}><Text style={s.stepQtyLg}>{qty} in bag · ₹{qty * product.price}</Text></View>
+        <Pressable onPress={() => add(product)} style={s.stepBtnLg} testID="pd-inc" accessibilityLabel="Add one more"><Text style={s.stepBtnLgText}>+</Text></Pressable>
+      </View>}
+    </View>
+  </View>;
 }
 
-function Feature({ icon, title, text }: { icon: string; title: string; text: string }) {
-  return (
-    <View style={styles.feature}>
-      <View style={styles.featIcon}>
-        <Icon name={icon as any} size={20} color={colors.onSurface} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.featTitle}>{title}</Text>
-        <Text style={styles.featText}>{text}</Text>
-      </View>
-    </View>
-  );
+function VideoPreview({ source, label, onClose, top, width, height }: { source: string; label: string; onClose: () => void; top: number; width: number; height: number }) {
+  const player = useVideoPlayer(source, p => { p.loop = true; p.muted = true; p.play(); });
+  return <View testID="pd-video" style={[StyleSheet.absoluteFill, s.videoWrap]}>
+    <VideoView player={player} nativeControls={false} contentFit="cover" style={{ position: 'absolute', top: 0, left: 0, width, height }} />
+    <LinearGradient colors={['rgba(0,0,0,0.45)', 'transparent', 'rgba(0,0,0,0.5)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <View style={[s.videoTop, { top: top + 64 }]}><View style={s.videoLabel}><Icon name="videocam" size={12} color={colors.electricLime} /><Text style={s.videoLabelText}>{label}</Text></View>
+      <Pressable testID="pd-video-close" accessibilityLabel="Close video" onPress={onClose} style={s.videoClose}><Icon name="close" size={20} color={colors.surface} /></Pressable></View>
+  </View>;
 }
 
-const styles = StyleSheet.create({
-  backBtn: {
-    position: "absolute", left: spacing.lg,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.surface,
-    alignItems: "center", justifyContent: "center", zIndex: 10,
-    boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 6, color: colors.border }], elevation: 4,
-  },
-  imageWrap: {
-    backgroundColor: colors.surfaceSecondary,
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-  },
-  image: { width: 240, height: 240, borderRadius: radius.lg, backgroundColor: colors.surface },
-  content: { padding: spacing.lg },
-  deliveryPill: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.pastelYellow,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    marginBottom: spacing.md,
-  },
-  deliveryText: { fontSize: 12, fontWeight: "700", color: colors.onSurface },
-  name: { fontSize: 22, fontWeight: "800", color: colors.onSurface },
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.surface, padding: 24 },
+  muted: { color: colors.muted }, retry: { minHeight: 44, paddingHorizontal: 18, borderRadius: 16, backgroundColor: colors.limeSoft, justifyContent: 'center' }, retryText: { color: colors.forest, fontWeight: '700' },
+  skeletonHero: { width: '100%', height: 320, borderRadius: 28, backgroundColor: colors.surfaceSecondary },
+  skeletonLine: { width: '70%', height: 18, borderRadius: 9, backgroundColor: colors.surfaceSecondary },
+  shot: { borderRadius: 30, overflow: 'hidden', backgroundColor: colors.glassBright, boxShadow: [{ offsetX: 0, offsetY: 18, blurRadius: 40, color: 'rgba(0,0,0,0.18)' }] },
+  heroControls: { position: 'absolute', left: 20, right: 20, bottom: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  glassPill: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.glassBright, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: colors.glassLine },
+  glassText: { fontSize: 12, fontWeight: '700', color: colors.onSurface },
+  watch: { backgroundColor: INK, borderColor: INK },
+  dots: { flexDirection: 'row', gap: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.2)' }, dotOn: { width: 16, backgroundColor: INK },
+  videoWrap: { backgroundColor: INK, overflow: 'hidden' },
+  videoTop: { position: 'absolute', left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  videoLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)' },
+  videoLabelText: { color: colors.surface, fontSize: 11, fontWeight: '700' },
+  videoClose: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  sheet: { marginTop: -26, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: colors.surface, padding: spacing.lg, paddingTop: 22 },
+  chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
+  delivery: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.pastelYellow, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  deliveryText: { fontSize: 11, fontWeight: '800', color: colors.onSurface },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.surfaceSecondary, paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill },
+  ratingText: { fontSize: 11, fontWeight: '800', color: colors.onSurface },
+  catLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginLeft: 'auto' }, catLinkText: { fontSize: 11, fontWeight: '700', color: colors.forest },
+  name: { fontSize: 24, fontWeight: '800', color: colors.onSurface, letterSpacing: -0.5 },
   weight: { fontSize: 14, color: colors.muted, marginTop: 4 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.md },
-  price: { fontSize: 26, fontWeight: "800", color: colors.onSurface },
-  mrp: { fontSize: 16, color: colors.muted, textDecorationLine: "line-through" },
-  savingsPill: { backgroundColor: colors.pastelGreen, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
-  savingsText: { color: colors.onSuccess, fontSize: 12, fontWeight: "800" },
-  divider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.lg },
-  sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.onSurface, marginBottom: spacing.md },
-  featureList: { gap: spacing.md },
-  feature: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  featIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.pastelMint, alignItems: "center", justifyContent: "center" },
-  featTitle: { fontSize: 14, fontWeight: "700", color: colors.onSurface },
-  featText: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  bottomBar: {
-    position: "absolute", left: 0, right: 0, bottom: 0,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  cartPreview: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  cartMeta: { fontSize: 12, color: colors.muted, fontWeight: "600" },
-  cartLink: { fontSize: 13, fontWeight: "800", color: colors.brandPrimary },
-  actionRow: {},
-  addCta: {
-    backgroundColor: colors.brandPrimary,
-    height: 52,
-    borderRadius: radius.md,
-    alignItems: "center", justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  addCtaText: { color: colors.onBrandPrimary, fontSize: 15, fontWeight: "800" },
-  stepperLarge: {
-    height: 52,
-    borderRadius: radius.md,
-    backgroundColor: colors.brandPrimary,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  stepBtnLg: { width: 52, height: 52, alignItems: "center", justifyContent: "center" },
-  stepBtnLgText: { color: colors.onBrandPrimary, fontSize: 22, fontWeight: "800" },
-  stepQtyWrap: { flex: 1, alignItems: "center" },
-  stepQtyLg: { color: colors.onBrandPrimary, fontSize: 15, fontWeight: "800" },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 14 },
+  price: { fontSize: 28, fontWeight: '800', color: colors.onSurface },
+  mrp: { fontSize: 16, color: colors.muted, textDecorationLine: 'line-through' },
+  off: { backgroundColor: colors.pastelGreen, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill }, offText: { color: colors.onSuccess, fontSize: 11, fontWeight: '800' },
+  unit: { fontSize: 12, color: colors.muted, marginTop: 6 },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  action: { flex: 1, minHeight: 46, borderRadius: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  actionOn: { backgroundColor: INK, borderColor: INK },
+  actionText: { fontSize: 13, fontWeight: '700', color: colors.onSurface }, actionTextOn: { color: colors.electricLime },
+  note: { fontSize: 12, color: colors.onError, marginTop: 8 },
+  compareBar: { marginTop: 12, minHeight: 52, borderRadius: 18, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 10 },
+  compareThumbs: { flexDirection: 'row' }, compareThumb: { width: 30, height: 30, borderRadius: 10, marginRight: -8, borderWidth: 2, borderColor: INK, backgroundColor: colors.surface },
+  compareBarText: { flex: 1, color: colors.surface, fontSize: 13, fontWeight: '700', marginLeft: 8 },
+  store: { marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 20, backgroundColor: colors.surfaceSecondary },
+  storeLogo: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.surface },
+  storeName: { fontSize: 14, fontWeight: '800', color: colors.onSurface }, storeMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  relatedWrap: { marginTop: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.onSurface, marginHorizontal: 20, marginBottom: 12, letterSpacing: -0.3 },
+  footer: { marginTop: 28, height: 260, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 30, overflow: 'hidden' },
+  footerShot: { width: 110, height: 110, marginBottom: 16, opacity: 0.95 },
+  footerTitle: { color: colors.surface, fontSize: 20, fontWeight: '800', letterSpacing: -0.4, textAlign: 'center', paddingHorizontal: 24 },
+  footerSub: { color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 6, letterSpacing: 0.5 },
+  topBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 },
+  round: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.glassBright, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.glassLine },
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  badgeText: { color: colors.electricLime, fontSize: 9, fontWeight: '800' },
+  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.glassBright, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  cartPreview: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  cartMeta: { fontSize: 12, color: colors.muted, fontWeight: '600' }, cartLink: { fontSize: 13, fontWeight: '800', color: colors.forest },
+  addCta: { minHeight: 58, borderRadius: 20, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 6 },
+  addPrice: { color: colors.surface, fontSize: 18, fontWeight: '800' }, addMrp: { color: 'rgba(255,255,255,0.55)', fontSize: 10, textDecorationLine: 'line-through', marginTop: 1 },
+  addPill: { minHeight: 46, paddingHorizontal: 18, borderRadius: 16, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addCtaText: { color: INK, fontSize: 15, fontWeight: '800' },
+  stepperLarge: { height: 58, borderRadius: 20, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  stepBtnLg: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' }, stepBtnLgText: { color: colors.electricLime, fontSize: 24, fontWeight: '800' },
+  stepQtyWrap: { flex: 1, alignItems: 'center' }, stepQtyLg: { color: colors.surface, fontSize: 15, fontWeight: '800' },
 });
