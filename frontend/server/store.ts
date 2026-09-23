@@ -7,6 +7,7 @@ import { caller } from './auth';
 import { db, dbConfigured, fromDbError } from './db';
 import { customerKey, HttpError, limit, readBody } from './http';
 import { quote } from './pricing';
+import { features } from './features';
 
 const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -125,7 +126,8 @@ async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?
   if (bill.coupon && !bill.coupon.ok) throw new HttpError(409, bill.coupon.message || 'This coupon can no longer be used.');
   if (typeof body.total === 'number' && Math.abs(body.total - bill.total) > 0.5) throw new HttpError(409, 'Prices have changed. Please review your cart and try again.');
 
-  const method = PAYMENT_METHODS.includes(body.payment_method as PaymentMethod) ? (body.payment_method as PaymentMethod) : 'cod';
+  // Until online payments are live, every order is cash on delivery whatever the app sends.
+  const method = features().online_payments && PAYMENT_METHODS.includes(body.payment_method as PaymentMethod) ? (body.payment_method as PaymentMethod) : 'cod';
   return {
     id: crypto.randomUUID(),
     items: bill.lines.map(l => ({ id: l.id, name: l.name, weight: l.weight, price: l.price, mrp: l.mrp, image: l.image, qty: l.qty })),
