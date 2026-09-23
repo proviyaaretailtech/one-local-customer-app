@@ -1,4 +1,5 @@
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { gridColumns, useAppDimensions } from '../layout';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
@@ -13,7 +14,7 @@ export function ProductRail({ products, scope }: { products: Product[]; scope: s
   return <ScrollView horizontal testID={`${scope}-rail`} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{products.map(p => <ProductCard key={p.id} product={p} scope={scope} />)}</ScrollView>;
 }
 export function ProductGrid({ products, scope }: { products: Product[]; scope: string }) {
-  const { width } = useWindowDimensions(); const cardWidth = (width - 48) / 3;
+  const { width } = useAppDimensions(); const cols = gridColumns(width); const cardWidth = (width - 32 - 8 * (cols - 1)) / cols;
   return <View testID={`${scope}-grid`} style={gridStyles.grid}>{products.map(p => <ProductCard key={p.id} product={p} scope={scope} width={cardWidth} />)}</View>;
 }
 const gridStyles = StyleSheet.create({ grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, rowGap: 16 } });

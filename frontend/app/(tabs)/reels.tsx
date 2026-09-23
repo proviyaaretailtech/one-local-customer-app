@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { useLocalSearchParams, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Reel } from '@/src/api';
@@ -10,7 +11,7 @@ import { ReelCard } from '@/src/components/reel-card';
 export default function Reels() {
   const { data, isError, refetch } = useDiscovery();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const [height, setHeight] = useState(useWindowDimensions().height - 80);
+  const [height, setHeight] = useState(useAppDimensions().height - 80);
   const [index, setIndex] = useState(0);
   const focused = usePathname() === '/reels';
   const list = useRef<FlatList<Reel>>(null);

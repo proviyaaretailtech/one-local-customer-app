@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAppDimensions } from '@/src/layout';
 import { useFeatures } from '@/src/features';
 import { ComingSoon } from '@/src/components/coming-soon';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,7 +15,7 @@ import { VoiceSearchControl } from '@/src/components/voice-search-control';
 import { ProductCard } from '@/src/components/product-card';
 
 function SmartSearchScreen() {
-  const { mode } = useLocalSearchParams<{ mode: string }>(); const voice = mode === 'voice'; const router = useRouter(); const { data } = useCatalog(); const width = useWindowDimensions().width;
+  const { mode } = useLocalSearchParams<{ mode: string }>(); const voice = mode === 'voice'; const router = useRouter(); const { data } = useCatalog(); const width = useAppDimensions().width;
   const [photo, setPhoto] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [result, setResult] = useState<AISearchResult | null>(null);
   const request = useRef<AbortController | null>(null); const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; request.current?.abort(); }; }, []);

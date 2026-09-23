@@ -3,7 +3,8 @@
 // store's film); a white sheet carries price, unit price, store, compare and similar items; the
 // footer echoes the hero image. Data: GET /api/products/:id/story.
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
+import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -34,7 +35,7 @@ const INK = '#050605';
 
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useAppDimensions();
   const { add, remove, qtyOf, totalItems, totalPrice } = useCart();
   const { saved, toggleSaved, error: savedError } = useCustomer();
   const compare = useCompare(); const motion = useMotionAllowed();

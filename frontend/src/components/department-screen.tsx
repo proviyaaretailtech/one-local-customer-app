@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '../layout';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
@@ -10,11 +11,12 @@ import { ProductCard } from './product-card';
 import { BrandSpotlight } from './brand-spotlight';
 import { CityScroll } from '../motion';
 export function DepartmentScreen({ id }: { id: DepartmentId }) {
-  const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useWindowDimensions().width;
+  const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useAppDimensions().width;
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const brands = data.brands.filter(b => inDepartment(b.department, id)); const categories = data.categories.filter(c => inDepartment(c.department, id));
   const products = data.products.filter(p => inDepartment(p.department, id) && (!brand || p.brand_id === brand) && (filter === 'All' || data.categories.find(c => c.id === p.category_id)?.name.toLowerCase().includes(filter.toLowerCase())));
-  const columns = width > 600 ? 3 : 2; const cardWidth = (width - 40 - 12 * (columns - 1)) / columns;
+  // 2 columns on phones, 3 on small tablets, 4 from iPad portrait up.
+  const columns = width >= 760 ? 4 : width > 600 ? 3 : 2; const cardWidth = (width - 40 - 12 * (columns - 1)) / columns;
   return <CityScroll testID={`department-screen-${id}`} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
     <BrandSpotlight variant={id} />
     <View style={styles.sheet}><SectionTitle title={id === 'shops' ? 'A few names you’ll love' : 'Good brands. Lovely finds.'} id={`${id}-brands`} subtitle="Tap a brand to find your favourites" /><BrandRail brands={brands} scope={`${id}-page`} onSelect={value => setBrand(brand === value ? '' : value)} active={brand} />

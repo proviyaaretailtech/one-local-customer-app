@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, useWindowDimensions, KeyboardAvoidingView, Platform } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '@/src/theme';
@@ -15,7 +16,7 @@ export default function Search() {
   useEffect(() => { if (q !== undefined) setQuery(q); }, [q]);
   const [department, setDepartment] = useState('all');
   const router = useRouter();
-  const width = useWindowDimensions().width;
+  const width = useAppDimensions().width;
   const cols = width > 600 ? 3 : 2;
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const collectionIds = collection === 'trending' ? ['f1', 'f5', 'b1', 'f3'] : collection === 'picks' ? ['p3', 'f3', 'b1', 'p4', 'f6'] : null;

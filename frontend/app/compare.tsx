@@ -1,6 +1,7 @@
 // Side-by-side comparison of up to three products. "Best value" goes to the lowest unit price when
 // the packs can be compared (same unit), otherwise to the lowest price.
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -14,7 +15,7 @@ const INK = '#050605';
 
 export default function CompareScreen() {
   const { items, toggle, clear } = useCompare(); const { add, qtyOf } = useCart(); const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width } = useAppDimensions();
   // Two items fit on any phone; three scroll sideways past a comfortable minimum width.
   const col = Math.max(Math.min((width - 32 - 84 - 8 * Math.max(items.length, 1)) / Math.max(items.length, 1), 170), 104);
 

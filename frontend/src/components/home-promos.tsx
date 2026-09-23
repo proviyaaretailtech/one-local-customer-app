@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '../layout';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -14,7 +15,7 @@ const promos = [
 ];
 export function HomePromos() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width } = useAppDimensions();
   const cardWidth = Math.min(width - 40, 500);
   const [active, setActive] = useState(0);
   const scroll = useRef<ScrollView>(null);
@@ -32,7 +33,7 @@ export function HomePromos() {
 }
 export function TrendingCards({ products }: { products: Product[] }) {
   const router = useRouter();
-  const width = Math.min((useWindowDimensions().width - 52) / 2, 230);
+  const width = Math.min((useAppDimensions().width - 52) / 2, 230);
   return <ScrollView testID="trending-rail" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
     {products.map((p, i) => <Pressable key={p.id} testID={`trending-product-${p.id}`} style={[styles.trend, { width }]} onPress={() => router.push(`/product/${p.id}` as any)}>
       <Image source={p.image} style={StyleSheet.absoluteFill} contentFit="cover" /><LinearGradient colors={[colors.transparent, colors.overlayDeep]} style={StyleSheet.absoluteFill} />

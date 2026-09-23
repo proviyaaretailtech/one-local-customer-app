@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, Animated, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '../layout';
+import { View, Text, Animated, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
@@ -11,7 +12,7 @@ import { nativeDriver, useMotionAllowed } from '../motion';
 export function FloatingCart({ bottom, compact = false }: { bottom: number; compact?: boolean }) {
   const colors = usePageColors(); const styles = getStyles(colors);
   const { items, totalItems, totalPrice, totalMrp, lastAdded } = useCart();
-  const router = useRouter(); const motion = useMotionAllowed(); const { height, width } = useWindowDimensions();
+  const router = useRouter(); const motion = useMotionAllowed(); const { height, width } = useAppDimensions();
   const entrance = useRef(new Animated.Value(0)).current; const bump = useRef(new Animated.Value(1)).current; const flight = useRef(new Animated.Value(1)).current;
   useEffect(() => { if (!motion) { entrance.setValue(totalItems ? 1 : 0); return; } const animation = Animated.spring(entrance, { toValue: totalItems ? 1 : 0, friction: 8, useNativeDriver: nativeDriver }); animation.start(); return () => animation.stop(); }, [entrance, totalItems, motion]);
   useEffect(() => {

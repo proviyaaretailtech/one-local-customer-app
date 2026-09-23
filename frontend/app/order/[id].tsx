@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MAX_APP_WIDTH } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -11,9 +12,11 @@ import { api, Order } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { useMotionAllowed } from '@/src/motion';
 import { paymentLabel } from '@/src/components/payment-options';
+import { ORDER_TOTAL_S, stageAt, syncOrderActivity, updateOrderWidget } from '@/src/native/ios-extras';
 
 const AnimatedView = Animated.View;
-const { width: SCREEN_W } = Dimensions.get("window");
+// Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
+const SCREEN_W = Math.min(Dimensions.get("window").width, MAX_APP_WIDTH);
 const MAP_W = SCREEN_W - spacing.lg * 2;
 const MAP_H = 240;
 
@@ -69,10 +72,30 @@ export default function OrderTrackingScreen() {
     // For a delightful preview we animate the rider across the route in 24s (loops after)
     progress.value = 0;
     if (motion) progress.value = withTiming(1, { duration: 24000, easing: Easing.inOut(Easing.ease) });
-    // ETA countdown ticker
-    const t = setInterval(() => setElapsedS((s) => s + 1), 1000);
-    return () => { clearInterval(t); cancelAnimation(progress); };
+    return () => { cancelAnimation(progress); };
   }, [progress, motion]);
+
+  // The sample journey is timed from when the order was placed, so reopening an order (and the
+  // Live Activity, widget and notifications) all agree on where it is.
+  const placedAt = order ? new Date(order.created_at).getTime() : 0;
+  useEffect(() => {
+    if (!placedAt) return;
+    const tick = () => setElapsedS(Math.max(0, Math.floor((Date.now() - placedAt) / 1000)));
+    tick(); const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [placedAt]);
+
+  // iOS add-in layer: keep the Live Activity (lock screen / Dynamic Island) and the home-screen
+  // widget in step with the order. No-ops outside an iOS development build.
+  const stage = stageAt(elapsedS);
+  useEffect(() => {
+    if (!order) return;
+    const count = order.items.reduce((n, i) => n + i.qty, 0);
+    const summary = `${order.items[0]?.name ?? 'Your order'}${order.items.length > 1 ? ` + ${order.items.length - 1} more` : ''} · ₹${order.total}`;
+    syncOrderActivity(order.id, stage, summary, placedAt);
+    updateOrderWidget({ orderId: order.id, step: stage, etaMinutes: Math.max(0, Math.ceil((ORDER_TOTAL_S - elapsedS) / 60)), itemCount: count, total: `₹${order.total}`, firstItem: order.items[0]?.name ?? 'Your order' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id, stage]);
 
   const riderStyle = useAnimatedStyle(() => {
     const p = pointOnRoute(progress.value);
@@ -82,7 +105,7 @@ export default function OrderTrackingScreen() {
   const etaLeft = Math.max(TOTAL_S - elapsedS, 0);
   const mins = Math.floor(etaLeft / 60);
   const secs = etaLeft % 60;
-  const stagePct = elapsedS < 120 ? 0 : elapsedS < 300 ? 1 : elapsedS < TOTAL_S ? 2 : 3;
+  const stagePct = stage;
 
   if (!order) {
     return (

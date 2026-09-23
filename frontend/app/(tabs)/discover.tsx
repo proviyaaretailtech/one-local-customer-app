@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, FlatList, ScrollView, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
+import { View, Text, Pressable, StyleSheet, FlatList, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +13,7 @@ import { OneGlyph } from '@/src/components/one-button';
 
 export default function Discover() {
   const { data, isError, refetch } = useDiscovery(); const [filter, setFilter] = useState('All');
-  const insets = useSafeAreaInsets(); const { width } = useWindowDimensions(); const router = useRouter();
+  const insets = useSafeAreaInsets(); const { width } = useAppDimensions(); const router = useRouter();
   const columns = width > 600 ? 4 : 3; const tileWidth = (width - 8 - (columns - 1) * 3) / columns;
   const filtered = data?.filter(r => filter === 'All' || (filter === 'Reels' ? !!r.video : filter === 'Food' ? r.product.department === 'food' : filter === 'Fresh' ? r.product.department === 'grocery' : ['beauty', 'pharmacy'].includes(r.product.department || '')));
   return <View testID="discover-screen" style={[styles.screen, { paddingTop: insets.top }]}>

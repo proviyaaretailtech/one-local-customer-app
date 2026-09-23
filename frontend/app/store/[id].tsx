@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MAX_APP_WIDTH } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -10,7 +11,8 @@ import { api, Category, Product, Store, StoreMedia } from "@/src/api";
 import { ProductCard } from "@/src/components/product-card";
 import { useFollowedStores } from "@/src/followed";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+// Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
+const SCREEN_W = Math.min(Dimensions.get("window").width, MAX_APP_WIDTH);
 
 function MediaTile({ media, size }: { media: StoreMedia; size: number }) {
   const [playing, setPlaying] = useState(false);

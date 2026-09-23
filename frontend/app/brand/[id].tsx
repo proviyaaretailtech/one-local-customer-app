@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -9,7 +10,7 @@ import { ProductCard } from '@/src/components/product-card';
 import { LoadState } from '@/src/components/catalog-sections';
 import { useFollowedStores } from '@/src/followed';
 export default function BrandCollection() {
-  const { id } = useLocalSearchParams<{ id: string }>(); const { data, isError, refetch } = useCatalog(); const router = useRouter(); const width = useWindowDimensions().width; const { isFollowing, toggle } = useFollowedStores();
+  const { id } = useLocalSearchParams<{ id: string }>(); const { data, isError, refetch } = useCatalog(); const router = useRouter(); const width = useAppDimensions().width; const { isFollowing, toggle } = useFollowedStores();
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const brand = data.brands.find(b => b.id === id); const products = data.products.filter(p => p.brand_id === id || (!p.brand_id && p.store_id === id));
   if (!brand) return <View style={styles.empty}><Text style={styles.title}>Brand not found</Text><Pressable testID="brand-not-found-home" style={styles.link} onPress={() => router.replace('/(tabs)' as any)}><Text style={styles.linkText}>Back to OneCity</Text></Pressable></View>;

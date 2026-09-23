@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { useAppDimensions } from '@/src/layout';
+import { Animated, View, Text, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCustomer } from '@/src/customer';
@@ -18,7 +19,7 @@ export default function CategoryScreen() {
   const [query, setQuery] = useState(''); const [sort, setSort] = useState('recommended'); const [budget, setBudget] = useState(false); const [brand, setBrand] = useState(''); const [pack, setPack] = useState(''); const [offers, setOffers] = useState(false); const [savedOnly, setSavedOnly] = useState(false); const [sheet, setSheet] = useState<Sheet>(null);
   const { saved, toggleSaved } = useCustomer(); const [notice, setNotice] = useState('');
   const sidebar = useRef<ScrollView>(null); const list = useRef<ScrollView>(null); const y = useRef(new Animated.Value(0)).current;
-  const motion = useMotionAllowed(); const { width } = useWindowDimensions(); const railWidth = Math.max(80, Math.min(114, Math.round(width*0.23)));
+  const motion = useMotionAllowed(); const { width } = useAppDimensions(); const railWidth = Math.max(80, Math.min(114, Math.round(width*0.23)));
   const itemWidth = (width-railWidth-32)/2;
   useEffect(() => { setQuery(''); setBrand(''); setPack(''); setSheet(null); setBudget(false); setOffers(false); setSavedOnly(false); setSort('recommended'); y.setValue(0); list.current?.scrollTo({ y: 0, animated: false }); }, [id, y]);
   useEffect(() => { list.current?.scrollTo({ y: 0, animated: false }); y.setValue(0); }, [query, y]);
