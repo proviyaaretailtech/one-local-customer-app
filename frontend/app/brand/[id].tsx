@@ -1,23 +1,49 @@
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useAppDimensions } from '@/src/layout';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Icon from '@react-native-vector-icons/ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/src/theme';
 import { useCatalog } from '@/src/use-catalog';
 import { ProductCard } from '@/src/components/product-card';
 import { LoadState } from '@/src/components/catalog-sections';
 import { useFollowedStores } from '@/src/followed';
+import { GlassPill, ImmersiveHeader } from '@/src/components/immersive-header';
+
+const monogram = (name: string) => name.split(/[\s'’&-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+
 export default function BrandCollection() {
   const { id } = useLocalSearchParams<{ id: string }>(); const { data, isError, refetch } = useCatalog(); const router = useRouter(); const width = useAppDimensions().width; const { isFollowing, toggle } = useFollowedStores();
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const brand = data.brands.find(b => b.id === id); const products = data.products.filter(p => p.brand_id === id || (!p.brand_id && p.store_id === id));
-  if (!brand) return <View style={styles.empty}><Text style={styles.title}>Brand not found</Text><Pressable testID="brand-not-found-home" style={styles.link} onPress={() => router.replace('/(tabs)' as any)}><Text style={styles.linkText}>Back to OneCity</Text></Pressable></View>;
-  const followed = isFollowing(id); const cols = width > 600 ? 3 : 2;
-  return <ScrollView testID={`brand-screen-${id}`} contentContainerStyle={styles.content}><View style={styles.backRow}><Pressable testID="brand-back" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)} style={styles.round}><Icon name="arrow-back" size={18} color={colors.onSurface} /></Pressable><Text style={styles.eyebrow}>THE BRAND EDIT</Text><Pressable testID={`brand-store-${id}`} style={styles.link} onPress={() => router.push(`/store/${id}` as any)}><Text style={styles.linkText}>Store profile</Text></Pressable></View>
-    <LinearGradient colors={[colors.glassBright, colors.glass]} style={styles.hero}><View style={styles.logoWrap}>{brand.logo ? <Image testID={`brand-logo-${id}`} source={brand.logo} style={styles.logo} contentFit="contain" /> : <Text style={styles.logoText}>{brand.name}</Text>}</View><Text testID="brand-collection-title" style={styles.title}>{brand.name}</Text><Text style={styles.tagline}>{brand.tagline}</Text><Pressable testID={`brand-follow-${id}`} onPress={() => toggle(id)} style={[styles.follow, followed && styles.following]}><Icon name={followed ? 'heart' : 'heart-outline'} size={15} color={colors.forest} /><Text style={styles.linkText}>{followed ? 'Following' : 'Follow brand'}</Text></Pressable></LinearGradient>
-    <View style={styles.sheet}><View style={styles.heading}><Text testID="brand-product-count" style={styles.collectionTitle}>More from {brand.name}</Text><Text style={styles.count}>{products.length} little finds</Text></View><View style={styles.grid}>{products.map(p => <ProductCard key={p.id} product={p} width={(width-40-(cols-1)*12)/cols} scope={`brand-${id}`} />)}</View><Text testID="brand-sample-notice" style={styles.notice}>Sample brand collection. Listings, product imagery and prices are for exploring the app, not an official brand partnership.</Text></View>
+  if (!brand) return <View style={styles.empty}><Text style={styles.emptyTitle}>Brand not found</Text><Pressable testID="brand-not-found-home" style={styles.link} onPress={() => router.replace('/(tabs)' as any)}><Text style={styles.linkText}>Back to OneCity</Text></Pressable></View>;
+  const followed = isFollowing(id); const cols = width >= 760 ? 4 : width > 600 ? 3 : 2;
+  const hero = brand.image || products[0]?.image || '';
+  return <ScrollView testID={`brand-screen-${id}`} style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ImmersiveHeader testID="brand-hero" image={hero} eyebrow="THE BRAND EDIT" title={brand.name} subtitle={brand.tagline} logo={brand.logo || undefined} monogram={brand.logo ? undefined : monogram(brand.name)}
+      right={<GlassPill testID={`brand-store-${id}`} label="Store profile" icon="storefront-outline" onPress={() => router.push(`/store/${id}` as any)} />}>
+      <View style={styles.heroActions}>
+        <GlassPill testID={`brand-follow-${id}`} label={followed ? 'Following' : 'Follow brand'} icon={followed ? 'heart' : 'heart-outline'} active={followed} onPress={() => toggle(id)} />
+        <View style={styles.countPill}><Text testID="brand-product-count-pill" style={styles.countText}>{products.length} {products.length === 1 ? 'find' : 'finds'}</Text></View>
+      </View>
+    </ImmersiveHeader>
+    <View style={styles.sheet}>
+      <View style={styles.heading}><Text testID="brand-product-count" style={styles.collectionTitle}>More from {brand.name}</Text><Text style={styles.count}>{products.length} little finds, delivered across Latur</Text></View>
+      <View style={styles.grid}>{products.map(p => <ProductCard key={p.id} product={p} width={(width - 40 - (cols - 1) * 12) / cols} scope={`brand-${id}`} />)}</View>
+      <Text testID="brand-sample-notice" style={styles.notice}>Sample brand collection. Listings, product imagery and prices are for exploring the app, not an official brand partnership.</Text>
+    </View>
   </ScrollView>;
 }
-const styles = StyleSheet.create({ content: { paddingBottom: 30 }, backRow: { flexDirection: 'row', paddingHorizontal: 20, alignItems: 'center', justifyContent: 'space-between' }, round: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.glassBright, alignItems: 'center', justifyContent: 'center' }, eyebrow: { fontSize: 8, letterSpacing: 1.2, color: colors.muted }, link: { minHeight: 44, justifyContent: 'center' }, linkText: { color: colors.forest, fontSize: 10, fontWeight: '600' }, hero: { margin: 20, marginTop: 12, borderRadius: 35, padding: 25, alignItems: 'center' }, logoWrap: { height: 75, width: 110, borderRadius: 28, backgroundColor: colors.glassBright, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }, logo: { width: 83, height: 53 }, logoText: { fontSize: 20, fontWeight: '700', color: colors.onSurface }, title: { fontSize: 25, fontWeight: '600', color: colors.onSurface }, tagline: { fontSize: 11, color: colors.muted, marginTop: 9, textAlign: 'center' }, follow: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, paddingHorizontal: 20, borderRadius: 24, backgroundColor: colors.glassBright, marginTop: 17 }, following: { backgroundColor: colors.limeSoft }, sheet: { borderTopLeftRadius: 34, borderTopRightRadius: 34, backgroundColor: colors.glassBright }, heading: { padding: 20, paddingTop: 25 }, collectionTitle: { fontSize: 18, fontWeight: '600', color: colors.onSurface }, count: { fontSize: 10, color: colors.muted, marginTop: 5 }, grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12 }, notice: { color: colors.muted, fontSize: 9, lineHeight: 15, margin: 24 }, empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 } });
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface }, content: { paddingBottom: 120 },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
+  countPill: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: 'rgba(5,6,5,0.55)', justifyContent: 'center' },
+  countText: { color: colors.electricLime, fontSize: 12, fontWeight: '800' },
+  sheet: { marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: colors.surface },
+  heading: { padding: 20, paddingTop: 26 },
+  collectionTitle: { fontSize: 20, fontWeight: '800', color: colors.onSurface, letterSpacing: -0.4 },
+  count: { fontSize: 12, color: colors.muted, marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12 },
+  notice: { color: colors.muted, fontSize: 10, lineHeight: 15, margin: 24 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }, emptyTitle: { fontSize: 22, fontWeight: '700', color: colors.onSurface },
+  link: { minHeight: 44, justifyContent: 'center' }, linkText: { color: colors.forest, fontSize: 13, fontWeight: '700' },
+});

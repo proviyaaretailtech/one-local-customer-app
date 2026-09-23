@@ -19,6 +19,7 @@ import { DeliveryLocationContext, Point } from '../delivery-location';
 import { useAuth } from '../auth';
 
 const BARE = ['/sign-in'];
+const IMMERSIVE = ['/product/', '/brand/'];
 const WELCOME_KEY = 'onecity.welcome-seen.v1';
 
 // First launch only: after the intro, offer sign-in once. Skipping is remembered, and browsing
@@ -43,6 +44,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const utility = ['/discover', '/reels', '/account', '/enquiries'].includes(path);
   const back = () => router.canGoBack() ? router.back() : router.replace('/(tabs)');
   const isHome = path === '/';
+  // Photo-led pages draw edge to edge under the status bar and place their own buttons below it.
+  const immersive = IMMERSIVE.some(p => path.startsWith(p));
   const { y, headerHeight, setHeaderHeight, scrollRef } = useCityScroll();
   const [compact, setCompact] = useState(false);
   useEffect(() => { const id = y.addListener(({ value }) => setCompact(value > headerHeight - 50)); return () => y.removeListener(id); }, [y, headerHeight]);
@@ -72,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </View><DepartmentStrip /></View>
     </LinearGradient></Animated.View>}
     {scrolling && compact && <View testID="compact-header" style={[styles.compact, { top: insets.top + 6 }]}>{!isHome && <Pressable testID="compact-back" accessibilityLabel="Go back" style={styles.compactButton} onPress={back}><Icon name="arrow-back" size={19} color={palette.color} /></Pressable>}<Pressable testID="compact-expand-header" accessibilityLabel="Show departments" style={styles.compactButton} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}><Icon name="grid-outline" size={17} color={palette.color} /><Text style={[styles.compactText, { color: palette.color }]}>Explore</Text></Pressable><Pressable testID="compact-search" accessibilityLabel="Search products" style={styles.compactButton} onPress={() => router.push('/search' as any)}><Icon name="search-outline" size={17} color={palette.color} /><Text style={[styles.compactText, { color: palette.color }]}>Search OneCity</Text></Pressable></View>}
-    <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0, bottom: 0 }}><View style={[styles.body, reels && { paddingTop: insets.top }]}>{utility && <View style={styles.utility}><Pressable testID="page-back-button" accessibilityLabel="Go back" onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Pressable><Text testID="page-navigation-label" style={styles.compactText}>OneCity</Text><Pressable testID="page-search-button" accessibilityLabel="Search" onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Pressable></View>}{children}</View></SafeAreaInsetsContext.Provider>
+    <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }]}>{utility && <View style={styles.utility}><Pressable testID="page-back-button" accessibilityLabel="Go back" onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Pressable><Text testID="page-navigation-label" style={styles.compactText}>OneCity</Text><Pressable testID="page-search-button" accessibilityLabel="Search" onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Pressable></View>}{children}</View></SafeAreaInsetsContext.Provider>
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
