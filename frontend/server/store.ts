@@ -96,7 +96,26 @@ export async function createOrder(request: Request, city: string): Promise<Order
     }
     fromDbError(error);
   }
+
+  // Normalized lines alongside the jsonb cache on ol_orders.items — the source for refunds,
+  // per-item analytics and reconciliation. Best-effort: the order itself is already committed
+  // above, so a failure here is logged, not surfaced to the customer.
+  const { error: lineError } = await db().from('ol_order_items').insert(
+    order.items.map(i => ({ order_id: order.id, product_id: i.id, name: i.name, weight: i.weight, image: i.image, price: i.price, mrp: i.mrp, qty: i.qty })),
+  );
+  if (lineError) console.error('[store] ol_order_items insert failed for order', order.id, lineError.message);
+
   return order;
+}
+
+// A whole-order or single-line refund. Called from support tooling, not directly by the app yet.
+export async function refundOrder(orderId: string, amount: number, reason: string, actorUserId: string | null, orderItemId?: string, method: 'original' | 'wallet' | 'manual' = 'original') {
+  if (!dbConfigured()) throw new HttpError(503, 'Refunds need the database to be connected.');
+  const { data, error } = await db().rpc('ol_process_refund', {
+    p_order: orderId, p_item: orderItemId ?? null, p_amount: amount, p_reason: reason, p_actor: actorUserId, p_method: method,
+  });
+  if (error) fromDbError(error);
+  return data as { refund_id: string; amount: number; order_payment_status: string; refunded_so_far: number; order_total: number };
 }
 
 async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }, city: string): Promise<Order> {
