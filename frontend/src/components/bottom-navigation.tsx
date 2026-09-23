@@ -19,7 +19,7 @@ export function BottomNavigation() {
   const dark = path === '/reels';
   const selected = (id: string, route: string) => path === route || (id === 'categories' && (path.startsWith('/collection/') || path.startsWith('/category/')));
   // The address flow is full-screen, like a checkout step.
-  if (['/location', '/address-map', '/address-form'].includes(path)) return null;
+  if (['/location', '/address-map', '/address-form', '/sign-in'].includes(path)) return null;
   return <View testID="bottom-navigation" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 9) }, dark && styles.dark]}>
     {tabs.map(t => t.id === 'discover' ? <View key={t.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>Discover</Text></View> : <Pressable key={t.id} testID={`tab-${t.id}`} accessibilityRole="tab" accessibilityLabel={t.label} accessibilityState={{ selected: selected(t.id, t.path) }} onPress={() => router.navigate((t.id === 'home' ? '/(tabs)' : `/(tabs)/${t.id}`) as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
       <Icon name={t.icon as any} size={20} color={selected(t.id, t.path) ? palette.forest : dark ? colors.surface : colors.muted} /><Text testID={`tab-label-${t.id}`} style={[styles.label, selected(t.id, t.path) && styles.active, selected(t.id, t.path) && { color: palette.forest }, dark && styles.light]}>{t.label}</Text>{selected(t.id, t.path) && <View style={[styles.dot, { backgroundColor: palette.forest }]} />}

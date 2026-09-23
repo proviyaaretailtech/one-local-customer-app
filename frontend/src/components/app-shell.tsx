@@ -16,6 +16,24 @@ import { FloatingCart } from './floating-cart';
 import { BottomNavigation } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
 import { DeliveryLocationContext, Point } from '../delivery-location';
+import { useAuth } from '../auth';
+
+const BARE = ['/sign-in'];
+const WELCOME_KEY = 'onecity.welcome-seen.v1';
+
+// First launch only: after the intro, offer sign-in once. Skipping is remembered, and browsing
+// never requires an account.
+function useWelcomeGate() {
+  const { ready, session } = useAuth(); const router = useRouter();
+  useEffect(() => {
+    if (!ready || session) return;
+    AsyncStorage.getItem(WELCOME_KEY).then(seen => {
+      if (seen) return;
+      void AsyncStorage.setItem(WELCOME_KEY, '1');
+      router.push('/sign-in?welcome=1' as never);
+    }).catch(() => {});
+  }, [ready, session, router]);
+}
 
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -40,6 +58,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     AsyncStorage.multiSet([['one-latur-location', value], ['one-latur-location-point', next ? JSON.stringify(next) : '']]).catch(() => {});
   };
   const openLocation = () => router.push('/location' as never);
+  useWelcomeGate();
+  // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
+  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
   return <DeliveryLocationContext.Provider value={{ location, point, setLocation, edit: openLocation }}><View style={styles.container}>
     {!reels && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
