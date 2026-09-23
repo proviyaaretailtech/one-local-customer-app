@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "VINII Partner",
+    "slug": "viniipartner",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "viniipartner",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.emergent.viniipartner.rrvr15",
+      "infoPlist": {
+        "NSCameraUsageDescription": "VINII Partner does not use the camera.",
+        "NSMicrophoneUsageDescription": "VINII Partner does not use the microphone.",
+        "NSLocationWhenInUseUsageDescription": "VINII Partner uses your location only for delivery coordination."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.emergent.viniipartner.rrvr15",
+      "permissions": [
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-image.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-status-bar",
+      "@react-native-vector-icons/ionicons",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#76EC00",
+          "androidMode": "default",
+          "androidCollapsedTitle": "#{unread_notifications} new orders"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
