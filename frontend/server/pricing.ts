@@ -8,8 +8,22 @@
 //   * handling and platform fees are separate bill lines whose amounts are not decided yet;
 //   * GST on the delivery fee is not decided yet.
 // Undecided amounts are 0 here and show nothing on the bill until someone sets them.
-import { applyCoupon, findProduct } from './catalog';
+import { applyCoupon, findProduct, getCatalog, inCity, Product } from './catalog';
 import { HttpError } from './http';
+
+// Smart top-up: when the cart is short of free delivery, pick the items that close the gap best —
+// priced just above the gap (least overshoot), from the departments already in the cart, not
+// already in it, best rated first. The customer sees the honest net cost of each (price minus the
+// delivery fee it saves), so it's a helpful suggestion rather than an upsell.
+async function topUps(city: string, inCart: Set<string>, departments: Set<string>, gap: number): Promise<(Product & { net: number })[]> {
+  const catalog = await getCatalog();
+  return inCity(catalog.products, city)
+    .filter(p => !inCart.has(p.id) && p.price >= gap)
+    .map(p => ({ p, over: p.price - gap, same: departments.has(p.department) ? 0 : 1 }))
+    .sort((a, b) => a.same - b.same || a.over - b.over || b.p.rating - a.p.rating)
+    .slice(0, 3)
+    .map(({ p }) => ({ ...p, net: r2(p.price - PRICING.deliveryFee) }));
+}
 
 export const PRICING = {
   deliveryFee: 15,        // ₹ below the free-delivery threshold
@@ -51,6 +65,7 @@ export type Bill = {
   discount: number;
   total: number;
   total_savings: number;
+  top_ups: (Product & { net: number })[];   // empty once delivery is free
 };
 
 export async function quote(city: string, rawLines: unknown, rawCoupon: unknown): Promise<Bill> {
@@ -99,7 +114,10 @@ export async function quote(city: string, rawLines: unknown, rawCoupon: unknown)
   }
 
   const total = Math.max(r2(item_total + delivery_fee + PRICING.handlingFee + PRICING.platformFee + gst_added.total - discount), 0);
+  const gap = free ? 0 : r2(PRICING.freeDeliveryFrom - item_total);
+  const top_ups = gap > 0 ? await topUps(city, new Set(lines.map(l => l.id)), new Set(lines.map(l => l.department)), gap) : [];
   return {
+    top_ups,
     lines, item_mrp_total, item_total, mrp_savings: r2(item_mrp_total - item_total),
     delivery_fee, delivery_fee_before_waiver: PRICING.deliveryFee, free_delivery_from: PRICING.freeDeliveryFrom,
     amount_to_free_delivery: free ? 0 : r2(PRICING.freeDeliveryFrom - item_total),

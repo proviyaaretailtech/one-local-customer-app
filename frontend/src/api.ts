@@ -128,6 +128,7 @@ export type Bill = {
   gst_added: TaxSplit & { total: number }; gst_included: TaxSplit[];
   coupon: { code: string; label: string; ok: boolean; message: string } | null;
   discount: number; total: number; total_savings: number;
+  top_ups: (Product & { net: number })[];
 };
 
 export type Brand = { id: string; name: string; department: string; logo: string; image: string; tagline: string };

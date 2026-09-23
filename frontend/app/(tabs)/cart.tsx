@@ -140,9 +140,30 @@ export default function CartScreen() {
             </View>
 
             {!!bill && bill.amount_to_free_delivery > 0 && (
-              <View style={styles.freeHint} testID="free-delivery-hint">
-                <Icon name="rocket-outline" size={18} color={colors.onSuccess} />
-                <Text style={styles.freeHintText}>Add {rupees(bill.amount_to_free_delivery)} more for FREE delivery</Text>
+              <View style={styles.topUp} testID="free-delivery-hint">
+                <View style={styles.topUpHead}>
+                  <View style={styles.topUpIcon}><Icon name="rocket" size={16} color="#050605" /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.topUpTitle}>{rupees(bill.amount_to_free_delivery)} away from free delivery</Text>
+                    <Text style={styles.topUpSub}>{bill.top_ups.length ? 'Smart top-up · one tap closes the gap' : `Free on orders above ₹${bill.free_delivery_from}`}</Text>
+                  </View>
+                </View>
+                {bill.top_ups.length > 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topUpRail} testID="smart-top-up">
+                  {bill.top_ups.map(p => <View key={p.id} style={styles.topUpCard} testID={`top-up-${p.id}`}>
+                    <Image source={p.image} style={styles.topUpImg} contentFit="cover" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.topUpName} numberOfLines={1}>{p.name}</Text>
+                      <Text style={styles.topUpPrice}>₹{p.price} <Text style={styles.topUpNet}>· ₹{p.net} net</Text></Text>
+                    </View>
+                    <Pressable testID={`top-up-add-${p.id}`} accessibilityLabel={`Add ${p.name} for ₹${p.price} and unlock free delivery`} onPress={() => { add(p); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }} style={styles.topUpAdd}><Icon name="add" size={18} color={colors.electricLime} /></Pressable>
+                  </View>)}
+                </ScrollView>}
+              </View>
+            )}
+            {!!bill && bill.amount_to_free_delivery === 0 && bill.delivery_fee === 0 && (
+              <View style={styles.freeHint} testID="free-delivery-unlocked">
+                <Icon name="checkmark-circle" size={18} color={colors.onSuccess} />
+                <Text style={styles.freeHintText}>Free delivery unlocked · you save ₹{bill.delivery_fee_before_waiver}</Text>
               </View>
             )}
 
@@ -316,6 +337,18 @@ const styles = StyleSheet.create({
   deliveryTitle: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
   deliverySub: { fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 2 },
   freeHint: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.pastelGreen, padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.md },
+  topUp: { backgroundColor: '#050605', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  topUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  topUpIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.electricLime, alignItems: 'center', justifyContent: 'center' },
+  topUpTitle: { color: colors.surface, fontSize: 14, fontWeight: '800' },
+  topUpSub: { color: colors.electricLime, fontSize: 11, fontWeight: '600', marginTop: 2 },
+  topUpRail: { gap: 8, marginTop: spacing.md },
+  topUpCard: { width: 236, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)' },
+  topUpImg: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface },
+  topUpName: { color: colors.surface, fontSize: 12, fontWeight: '700' },
+  topUpPrice: { color: colors.surface, fontSize: 12, fontWeight: '800', marginTop: 2 },
+  topUpNet: { color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: 11 },
+  topUpAdd: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: colors.electricLime, alignItems: 'center', justifyContent: 'center' },
   freeHintText: { color: colors.onSuccess, fontSize: 13, fontWeight: "700" },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md },
   row: { flexDirection: "row", gap: spacing.md, alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
