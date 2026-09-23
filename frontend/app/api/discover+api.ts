@@ -1,4 +1,4 @@
-import { catalog } from '../../server/catalog';
+import { getCatalog } from '../../server/catalog';
 import { json, route } from '../../server/http';
 
-export const GET = route(() => json(catalog.discover_chips));
+export const GET = route(async () => json((await getCatalog()).discover_chips));

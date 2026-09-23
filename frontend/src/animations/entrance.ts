@@ -2,6 +2,7 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   SlideInRight,
+  SlideInUp,
   SlideInLeft,
   BounceIn,
   FadeOutDown,

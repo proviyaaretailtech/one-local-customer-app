@@ -1,8 +1,9 @@
-import { catalog, inCity, resolveCity } from '../../server/catalog';
+import { getCatalog, inCity, resolveCity } from '../../server/catalog';
 import { json, route } from '../../server/http';
 
-export const GET = route(request => {
+export const GET = route(async request => {
   const city = resolveCity(request);
+  const catalog = await getCatalog();
   return json({
     city,
     brands: inCity(catalog.brands, city),

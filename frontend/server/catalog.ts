@@ -1,16 +1,71 @@
-// Read side of the One Latur catalogue. Today the data is the assembled sample catalogue
-// exported once from the retired Python backend (data/catalog.json); the next step moves it
-// into Supabase tables behind these same functions, so routes do not change.
-import data from './data/catalog.json';
+// Read side of the One Latur catalogue. Loaded from the ol_* Postgres tables (service role,
+// see db.ts) and cached in memory for a short TTL so every request doesn't hit the database.
+// Falls back to the bundled sample (data/catalog.json) when Supabase isn't configured, so the
+// app still runs with `npx expo start` and no .env — see dbConfigured() in db.ts.
+import jsonFallback from './data/catalog.json';
+import { db, dbConfigured } from './db';
 import { HttpError } from './http';
 
-export type Product = (typeof data.products)[number];
-export type Store = (typeof data.stores)[number];
-export type Coupon = (typeof data.coupons)[number];
-export type Brand = (typeof data.brands)[number];
-export type Event = (typeof data.events)[number];
+export type Product = (typeof jsonFallback.products)[number];
+export type Store = (typeof jsonFallback.stores)[number];
+export type Coupon = (typeof jsonFallback.coupons)[number];
+export type Brand = (typeof jsonFallback.brands)[number];
+export type Event = (typeof jsonFallback.events)[number];
+type CatalogData = typeof jsonFallback;
 
-export const catalog = data;
+// ---------- Loading & cache ----------
+const TTL_MS = 30_000;
+let cache: { data: CatalogData; at: number } | null = null;
+let inFlight: Promise<CatalogData> | null = null;
+
+const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
+
+async function loadFromDb(): Promise<CatalogData> {
+  const client = db();
+  const [categories, brands, stores, products, banners, chips, coupons, events, themed, reels] = await Promise.all([
+    client.from('ol_categories').select('*').order('sort_order'),
+    client.from('ol_brands').select('*').order('name'),
+    client.from('ol_stores').select('*').order('sort_order'),
+    client.from('ol_products').select('*').eq('is_available', true).order('sort_order'),
+    client.from('ol_banners').select('*').order('sort_order'),
+    client.from('ol_discover_chips').select('*').order('sort_order'),
+    client.from('ol_coupons').select('*').eq('active', true),
+    client.from('ol_events').select('*').order('sort_order'),
+    client.from('ol_themed_stores').select('*').order('sort_order'),
+    client.from('ol_reels').select('*').order('sort_order'),
+  ]);
+  const first = [categories, brands, stores, products, banners, chips, coupons, events, themed, reels].find(r => r.error);
+  if (first?.error) { console.error('[catalog] load failed:', first.error.message); throw new HttpError(503, 'The catalogue is not available right now.'); }
+
+  return {
+    categories: (categories.data ?? []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji, color: c.color, department: c.department, image: c.image })),
+    discover_chips: (chips.data ?? []).map(c => ({ id: c.id, label: c.label, emoji: c.emoji, color: c.color })),
+    banners: (banners.data ?? []).map(b => ({ id: b.id, title: b.title, subtitle: b.subtitle, image: b.image, bg: b.bg, city_id: b.city_id })),
+    coupons: (coupons.data ?? []).map(c => ({ code: c.code, label: c.label, kind: c.kind, value: num(c.value), min_order: num(c.min_order), description: c.description, city_id: c.city_id })),
+    stores: (stores.data ?? []).map(s => ({ id: s.id, name: s.name, logo: s.logo, tagline: s.tagline, delivery_time: s.delivery_time, rating: num(s.rating), tags: s.tags ?? [], department: s.department, media: s.media ?? [], city_id: s.city_id })),
+    products: (products.data ?? []).map(p => ({
+      id: p.id, name: p.name, weight: p.weight, price: num(p.price), mrp: num(p.mrp), image: p.image,
+      category_id: p.category_id, store_id: p.store_id, delivery_min: p.delivery_min, discount_pct: p.discount_pct,
+      rating: num(p.rating), department: p.department, brand_id: p.brand_id ?? '', city_id: p.city_id,
+    })),
+    brands: (brands.data ?? []).map(b => ({ id: b.id, name: b.name, department: b.department, logo: b.logo, image: b.image, tagline: b.tagline, city_id: b.city_id })),
+    events: (events.data ?? []).map(e => ({ id: e.id, title: e.title, kind: e.kind, subtitle: e.subtitle, venue: e.venue, price: num(e.price), image: e.image, tag: e.tag, slots: e.slots ?? [], city_id: e.city_id })),
+    themed_stores: (themed.data ?? []).map(t => t.data),
+    reels: (reels.data ?? []).map(r => ({ id: r.id, product_id: r.product_id, brand_id: r.brand_id, video: r.video, caption: r.caption, creator: r.creator, likes: r.likes, tag: r.tag, city_id: r.city_id })),
+  } as unknown as CatalogData;
+}
+
+export async function getCatalog(): Promise<CatalogData> {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
+  if (!dbConfigured()) return jsonFallback;
+  if (!inFlight) {
+    inFlight = loadFromDb()
+      .then(data => { cache = { data, at: Date.now() }; return data; })
+      .catch(err => { if (cache) return cache.data; throw err; })
+      .finally(() => { inFlight = null; });
+  }
+  return inFlight;
+}
 
 // ---------- Locality ----------
 // Every listing belongs to one city; viewers only see their own city's listings.
@@ -54,7 +109,8 @@ const INTENTS: Record<string, string[]> = {
 
 export type ProductFilters = { category_id?: string | null; chip?: string | null; department?: string | null; brand_id?: string | null; q?: string | null };
 
-export function filterProducts(city: string, f: ProductFilters): Product[] {
+export async function filterProducts(city: string, f: ProductFilters): Promise<Product[]> {
+  const data = await getCatalog();
   let items = inCity(data.products, city);
   if (f.category_id) items = items.filter(p => p.category_id === f.category_id);
   if (f.department) items = items.filter(p => p.department === f.department || (f.department === 'care' && ['pharmacy', 'beauty'].includes(p.department)));
@@ -89,14 +145,16 @@ export function filterProducts(city: string, f: ProductFilters): Product[] {
   return items;
 }
 
-export function findProduct(city: string, id: string): Product | undefined {
+export async function findProduct(city: string, id: string): Promise<Product | undefined> {
+  const data = await getCatalog();
   return inCity(data.products, city).find(p => p.id === id);
 }
 
 // ---------- Coupons ----------
 export type CouponResult = { ok: boolean; discount: number; coupon: Coupon | null; message: string };
 
-export function applyCoupon(rawCode: string, subtotal: number): CouponResult {
+export async function applyCoupon(rawCode: string, subtotal: number): Promise<CouponResult> {
+  const data = await getCatalog();
   const code = rawCode.trim().toUpperCase();
   const coupon = data.coupons.find(c => c.code === code);
   if (!coupon) return { ok: false, discount: 0, coupon: null, message: 'Invalid coupon code' };
@@ -109,7 +167,8 @@ export function applyCoupon(rawCode: string, subtotal: number): CouponResult {
 export const deliveryFee = (subtotal: number) => (subtotal >= 199 || subtotal === 0 ? 0 : 15);
 
 // ---------- Reels ----------
-export function reelsFor(city: string) {
+export async function reelsFor(city: string) {
+  const data = await getCatalog();
   return inCity(data.reels, city).map(r => ({
     ...r,
     video_web: `${r.video}-webm`,

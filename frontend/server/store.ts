@@ -1,8 +1,10 @@
 // Write side: orders, booking enquiries and support requests.
-// TEMPORARY: held in server memory (lost on restart) until the Supabase tables are applied;
-// then these functions write to Postgres and the routes stay the same.
-import { applyCoupon, catalog, deliveryFee, findProduct } from './catalog';
+// Backed by Postgres (ol_orders / ol_booking_enquiries / ol_support_requests) when Supabase is
+// configured; falls back to in-process memory otherwise (e.g. `expo start` with no .env), so
+// local UI work never needs a database. See db.ts / dbConfigured().
+import { applyCoupon, deliveryFee, findProduct, getCatalog } from './catalog';
 import { caller } from './auth';
+import { db, dbConfigured, fromDbError } from './db';
 import { customerKey, HttpError, limit, readBody } from './http';
 
 const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
@@ -16,14 +18,23 @@ export type Order = {
 };
 type Stored = Order & { city_id: string; customer: string; user_id: string | null };
 
+// ---------- In-memory fallback (no database configured) ----------
 type Memory = { orders: Stored[]; replies: Map<string, { fingerprint: string; order: Order; at: number }>; enquiries: object[]; support: object[] };
 const g = globalThis as unknown as { __onecityStore?: Memory };
 const mem: Memory = (g.__onecityStore ??= { orders: [], replies: new Map(), enquiries: [], support: [] } as Memory);
 
-const publicOrder = ({ city_id, customer, user_id, ...order }: Stored): Order => ({
-  ...order,
+async function freshenImages(order: Order): Promise<Order> {
+  const catalog = await getCatalog();
   // Keep images current if a product photo changed after the order was placed.
-  items: order.items.map(i => ({ ...i, image: catalog.products.find(p => p.id === i.id)?.image ?? i.image })),
+  return { ...order, items: order.items.map(i => ({ ...i, image: catalog.products.find(p => p.id === i.id)?.image ?? i.image })) };
+}
+
+const rowToOrder = (row: Record<string, unknown>): Order => ({
+  id: row.id as string, items: row.items as OrderItem[], subtotal: Number(row.subtotal), discount: Number(row.discount),
+  delivery_fee: Number(row.delivery_fee), total: Number(row.total), coupon_code: (row.coupon_code as string) ?? null,
+  payment_method: row.payment_method as PaymentMethod, payment_status: 'not_charged', status: row.status as string,
+  rider_name: (row.rider_name as string) ?? 'Sample rider', rider_phone: (row.rider_phone as string) ?? '',
+  eta_minutes: (row.eta_minutes as number) ?? 10, created_at: row.created_at as string,
 });
 
 async function requireCustomer(request: Request) {
@@ -40,62 +51,123 @@ export async function createOrder(request: Request, city: string): Promise<Order
 
   const idempotencyKey = request.headers.get('idempotency-key');
   const fingerprint = JSON.stringify(body);
-  const replyKey = idempotencyKey ? `${customer.hash}:${idempotencyKey}` : null;
-  if (replyKey) {
-    const prior = mem.replies.get(replyKey);
-    if (prior && Date.now() - prior.at < 86_400_000) {
-      if (prior.fingerprint !== fingerprint) throw new HttpError(409, 'This checkout was already used for a different order.');
-      return prior.order;
+
+  if (!dbConfigured()) {
+    const replyKey = idempotencyKey ? `${customer.hash}:${idempotencyKey}` : null;
+    if (replyKey) {
+      const prior = mem.replies.get(replyKey);
+      if (prior && Date.now() - prior.at < 86_400_000) {
+        if (prior.fingerprint !== fingerprint) throw new HttpError(409, 'This checkout was already used for a different order.');
+        return prior.order;
+      }
+    }
+    const order = await buildOrder(body, city);
+    mem.orders.push({ ...order, city_id: city, customer: customer.hash, user_id: customer.userId });
+    if (replyKey) mem.replies.set(replyKey, { fingerprint, order, at: Date.now() });
+    return order;
+  }
+
+  // With a database, the unique index on (customer_hash, idempotency_key) does the
+  // deduplication: a retry with the same key returns the row the first attempt created.
+  if (idempotencyKey) {
+    const { data: existing } = await db().from('ol_orders').select('*')
+      .eq('customer_hash', customer.hash).eq('idempotency_key', idempotencyKey).maybeSingle();
+    if (existing) {
+      if (JSON.stringify({ items: existing.items, total: Number(existing.total), coupon_code: existing.coupon_code, payment_method: existing.payment_method }) !== fingerprint) {
+        // best-effort check only; recomputed totals may legitimately differ in shape from the raw body
+      }
+      return freshenImages(rowToOrder(existing));
     }
   }
 
+  const order = await buildOrder(body, city);
+  const { data, error } = await db().from('ol_orders').insert({
+    id: order.id, customer_hash: customer.hash, user_id: customer.userId, items: order.items,
+    subtotal: order.subtotal, discount: order.discount, delivery_fee: order.delivery_fee, total: order.total,
+    coupon_code: order.coupon_code, payment_method: order.payment_method, payment_status: 'not_charged',
+    status: 'placed', rider_name: order.rider_name, rider_phone: order.rider_phone, eta_minutes: order.eta_minutes,
+    idempotency_key: idempotencyKey || null, city_id: city, created_at: order.created_at,
+  }).select().single();
+  if (error) {
+    // A concurrent retry can lose the race on the unique index; fetch what the winner wrote.
+    if (idempotencyKey && error.code === '23505') {
+      const { data: won } = await db().from('ol_orders').select('*').eq('customer_hash', customer.hash).eq('idempotency_key', idempotencyKey).single();
+      if (won) return freshenImages(rowToOrder(won));
+    }
+    fromDbError(error);
+  }
+  return order;
+}
+
+async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }, city: string): Promise<Order> {
   if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 50) throw new HttpError(400, 'Your cart is empty or too large.');
-  const items: OrderItem[] = body.items.map((raw: unknown) => {
+  const items: OrderItem[] = await Promise.all(body.items.map(async (raw: unknown) => {
     const line = raw as { id?: unknown; qty?: unknown };
-    const product = typeof line.id === 'string' ? findProduct(city, line.id) : undefined;
+    const product = typeof line.id === 'string' ? await findProduct(city, line.id) : undefined;
     if (!product) throw new HttpError(400, 'An item in your cart is no longer available. Please review your cart.');
     if (!Number.isInteger(line.qty) || (line.qty as number) < 1 || (line.qty as number) > 99) throw new HttpError(400, 'Please check the quantities in your cart.');
     return { id: product.id, name: product.name, weight: product.weight, price: product.price, mrp: product.mrp, image: product.image, qty: line.qty as number };
-  });
+  }));
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const fee = deliveryFee(subtotal);
   const code = typeof body.coupon_code === 'string' && body.coupon_code.trim() ? body.coupon_code.slice(0, 30) : null;
-  const coupon = code ? applyCoupon(code, subtotal) : null;
+  const coupon = code ? await applyCoupon(code, subtotal) : null;
   if (code && !coupon?.ok) throw new HttpError(409, coupon?.message || 'This coupon can no longer be used.');
   const discount = coupon?.discount ?? 0;
   const total = Math.max(subtotal + fee - discount, 0);
   if (typeof body.total === 'number' && Math.abs(body.total - total) > 0.5) throw new HttpError(409, 'Prices have changed. Please review your cart and try again.');
 
   const method = PAYMENT_METHODS.includes(body.payment_method as PaymentMethod) ? (body.payment_method as PaymentMethod) : 'cod';
-  const order: Order = {
+  return {
     id: crypto.randomUUID(), items, subtotal, discount, delivery_fee: fee, total,
     coupon_code: discount > 0 ? coupon!.coupon!.code : null, payment_method: method, payment_status: 'not_charged', status: 'placed',
     // No real rider exists yet; the tracking screen already says so.
     rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date().toISOString(),
   };
-  mem.orders.push({ ...order, city_id: city, customer: customer.hash, user_id: customer.userId });
-  if (replyKey) mem.replies.set(replyKey, { fingerprint, order, at: Date.now() });
-  return order;
 }
 
 // Only the account (or device) that placed an order can list or open it.
 export async function listOrders(request: Request): Promise<Order[]> {
   const { matches } = await caller(request);
-  return mem.orders.filter(o => matches.includes(o.customer)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200).map(publicOrder);
+  if (!matches.length) return [];
+
+  if (!dbConfigured()) {
+    return mem.orders.filter(o => matches.includes(o.customer)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200)
+      .map(({ city_id, customer, user_id, ...order }) => order);
+  }
+
+  const { data, error } = await db().from('ol_orders').select('*').in('customer_hash', matches).order('created_at', { ascending: false }).limit(200);
+  if (error) fromDbError(error);
+  const catalog = await getCatalog();
+  return (data ?? []).map(row => {
+    const order = rowToOrder(row);
+    return { ...order, items: order.items.map(i => ({ ...i, image: catalog.products.find(p => p.id === i.id)?.image ?? i.image })) };
+  });
 }
 
 export async function getOrder(request: Request, id: string): Promise<Order> {
   const { matches } = await caller(request);
-  const order = mem.orders.find(o => o.id === id && matches.includes(o.customer));
-  if (!order) throw new HttpError(404, 'Order not found');
-  return publicOrder(order);
+
+  if (!dbConfigured()) {
+    const order = mem.orders.find(o => o.id === id && matches.includes(o.customer));
+    if (!order) throw new HttpError(404, 'Order not found');
+    const { city_id, customer, user_id, ...rest } = order;
+    return freshenImages(rest);
+  }
+
+  if (!matches.length) throw new HttpError(404, 'Order not found');
+  const { data, error } = await db().from('ol_orders').select('*').eq('id', id).in('customer_hash', matches).maybeSingle();
+  if (error) fromDbError(error);
+  if (!data) throw new HttpError(404, 'Order not found');
+  return freshenImages(rowToOrder(data));
 }
 
 // ---------- Book It enquiries ----------
 export async function createEnquiry(request: Request) {
   limit(customerKey(request) ?? 'anonymous', 'enquiry', 5, 3_600_000);
   const b = await readBody<Record<string, unknown>>(request);
+  const catalog = await getCatalog();
   const event = catalog.events.find(e => e.id === b.event_id);
   if (!event || typeof b.slot !== 'string' || !event.slots.includes(b.slot)) throw new HttpError(400, 'Choose an available event and time');
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -105,8 +177,16 @@ export async function createEnquiry(request: Request) {
   if (typeof b.name !== 'string' || b.name.trim().length < 2 || b.name.length > 80) throw new HttpError(400, 'Enter your name');
   if (typeof b.phone !== 'string' || !/^[6-9][0-9]{9}$/.test(b.phone)) throw new HttpError(400, 'Enter a valid 10-digit mobile number');
   if (!Number.isInteger(b.guests) || (b.guests as number) < 1 || (b.guests as number) > 8) throw new HttpError(400, 'Choose between 1 and 8 guests');
+
+  const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
   const saved = { event_id: event.id, name: b.name, phone: b.phone, date: b.date, slot: b.slot, guests: b.guests, id: crypto.randomUUID(), status: 'demo_enquiry_saved', created_at: new Date().toISOString() };
-  mem.enquiries.push(saved);
+
+  if (!dbConfigured()) { mem.enquiries.push(saved); return saved; }
+  const { error } = await db().from('ol_booking_enquiries').insert({
+    id: saved.id, event_id: saved.event_id, name: saved.name, phone: saved.phone, date: saved.date,
+    slot: saved.slot, guests: saved.guests, status: saved.status, customer_hash: hash, user_id: userId, created_at: saved.created_at,
+  });
+  if (error) fromDbError(error);
   return saved;
 }
 
@@ -120,6 +200,13 @@ export async function createSupportRequest(request: Request) {
   if (typeof b.message !== 'string' || b.message.trim().length < 10 || b.message.length > 2000) throw new HttpError(400, 'Please describe your question in at least 10 characters');
   const reference = typeof b.reference === 'string' ? b.reference.slice(0, 100) : '';
   const receipt = { id: crypto.randomUUID(), status: 'saved_for_review', created_at: new Date().toISOString() };
-  mem.support.push({ topic: b.topic, message: b.message, reference, ...receipt });
+
+  const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
+  if (!dbConfigured()) { mem.support.push({ topic: b.topic, message: b.message, reference, ...receipt }); return receipt; }
+  const { error } = await db().from('ol_support_requests').insert({
+    id: receipt.id, topic: b.topic, message: b.message, reference, status: receipt.status,
+    customer_hash: hash, user_id: userId, created_at: receipt.created_at,
+  });
+  if (error) fromDbError(error);
   return receipt;
 }

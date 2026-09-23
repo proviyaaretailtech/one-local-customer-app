@@ -189,7 +189,7 @@ const makeStyles = (colors: any) =>
       zIndex: 1000,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: colors.overlay,
     },
     card: {

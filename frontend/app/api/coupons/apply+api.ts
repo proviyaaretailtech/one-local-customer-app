@@ -6,5 +6,5 @@ export const POST = route(async request => {
   limit(customerKey(request) ?? 'anonymous', 'coupon', 10, 60_000);
   const body = await readBody<{ code?: unknown; subtotal?: unknown }>(request);
   if (typeof body.code !== 'string' || body.code.length > 30 || typeof body.subtotal !== 'number' || body.subtotal < 0) throw new HttpError(400, 'Enter a coupon code');
-  return json(applyCoupon(body.code, body.subtotal));
+  return json(await applyCoupon(body.code, body.subtotal));
 });
