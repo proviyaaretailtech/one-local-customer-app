@@ -1,86 +1,108 @@
-// First-launch intro: the neon "1" drops in on black, lime speed-streaks race past, the wordmark
-// slides in beside it, and then the "1" zooms through the screen to reveal the app.
-// Plays once per app launch (~2 s). With Reduce Motion it is a short, still fade.
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
+// First-launch intro, tuned to feel calm and expensive rather than busy:
+//   1. a soft lime light blooms out of the black,
+//   2. the neon "1" settles in (scale + fade, one gentle overshoot — no drop, no bounce),
+//   3. "neCity" unfolds from behind the "1" while a light sweep glides across the lockup,
+//   4. the tagline rises, then everything eases forward and dissolves into the app.
+// Runs entirely on the UI thread (Reanimated), so the app loading behind it can't make it stutter.
+// Plays once per launch (~1.9 s). With Reduce Motion it is a short, still fade.
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { nativeDriver, useMotionAllowed } from '../motion';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useMotionAllowed } from '../motion';
 import { OneGlyph } from './one-button';
 import { colors } from '../theme';
 
 const launch = globalThis as unknown as { __onecityIntroPlayed?: boolean };
 const INK = '#050605';
-const STREAKS = [0.18, 0.31, 0.42, 0.58, 0.69, 0.82];
+const outExpo = Easing.bezier(0.16, 1, 0.3, 1);     // long, silky settle
+const inOut = Easing.bezier(0.65, 0, 0.35, 1);
+const overshoot = Easing.bezier(0.34, 1.36, 0.64, 1); // one soft overshoot, no wobble
+
+// Keep the native splash (same ink colour) up until the intro's first frame, so there is no flash.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export function IntroSplash() {
   const [visible, setVisible] = useState(!launch.__onecityIntroPlayed);
   const motion = useMotionAllowed();
-  const { width, height } = useWindowDimensions();
-  const drop = useRef(new Animated.Value(0)).current;      // glyph falls in and settles
-  const streak = useRef(new Animated.Value(0)).current;    // speed lines race across
-  const word = useRef(new Animated.Value(0)).current;      // wordmark + tagline
-  const bar = useRef(new Animated.Value(0)).current;       // progress line
-  const exit = useRef(new Animated.Value(0)).current;      // zoom-through reveal
+  const bloom = useSharedValue(0);  // lime light
+  const glyph = useSharedValue(0);  // the "1"
+  const word = useSharedValue(0);   // wordmark unfold
+  const sweep = useSharedValue(0);  // light band across the lockup
+  const tag = useSharedValue(0);    // tagline
+  const exit = useSharedValue(0);   // ease forward + dissolve
 
   useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => {});
     if (!visible) return;
     launch.__onecityIntroPlayed = true;
+    const done = () => setVisible(false);
     if (!motion) {
-      drop.setValue(1); word.setValue(1); bar.setValue(1);
-      const t = setTimeout(() => Animated.timing(exit, { toValue: 1, duration: 260, useNativeDriver: nativeDriver }).start(() => setVisible(false)), 700);
-      return () => clearTimeout(t);
+      glyph.value = 1; word.value = 1; tag.value = 1; bloom.value = 0.6;
+      exit.value = withDelay(650, withTiming(1, { duration: 260 }, f => { if (f) runOnJS(done)(); }));
+      return;
     }
-    const run = Animated.sequence([
-      Animated.parallel([
-        Animated.spring(drop, { toValue: 1, friction: 5, tension: 70, useNativeDriver: nativeDriver }),
-        Animated.timing(streak, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: nativeDriver }),
-        Animated.timing(bar, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-        Animated.sequence([Animated.delay(320), Animated.spring(word, { toValue: 1, friction: 8, tension: 60, useNativeDriver: nativeDriver })]),
-      ]),
-      Animated.delay(150),
-      Animated.timing(exit, { toValue: 1, duration: 480, easing: Easing.in(Easing.cubic), useNativeDriver: nativeDriver }),
-    ]);
-    run.start(() => setVisible(false));
-    return () => run.stop();
-  }, [visible, motion, drop, streak, word, bar, exit]);
+    bloom.value = withTiming(1, { duration: 900, easing: outExpo });
+    glyph.value = withDelay(80, withTiming(1, { duration: 620, easing: overshoot }));
+    word.value = withDelay(420, withTiming(1, { duration: 620, easing: outExpo }));
+    sweep.value = withDelay(620, withTiming(1, { duration: 700, easing: inOut }));
+    tag.value = withDelay(820, withTiming(1, { duration: 500, easing: outExpo }));
+    exit.value = withDelay(1450, withSequence(withTiming(1, { duration: 450, easing: Easing.bezier(0.4, 0, 0.2, 1) }, f => { if (f) runOnJS(done)(); })));
+  }, [visible, motion, bloom, glyph, word, sweep, tag, exit]);
+
+  const screen = useAnimatedStyle(() => ({ opacity: interpolate(exit.value, [0, 1], [1, 0]) }));
+  const stage = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(exit.value, [0, 1], [1, 1.12]) }] }));
+  const halo = useAnimatedStyle(() => ({
+    opacity: interpolate(bloom.value, [0, 1], [0, 0.5]),
+    transform: [{ scale: interpolate(bloom.value, [0, 1], [0.5, 1]) }],
+  }));
+  const one = useAnimatedStyle(() => ({
+    opacity: interpolate(glyph.value, [0, 0.4], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(glyph.value, [0, 1], [0.82, 1]) }],
+  }));
+  const wordmark = useAnimatedStyle(() => ({
+    opacity: word.value,
+    transform: [{ translateX: interpolate(word.value, [0, 1], [-28, 0]) }],
+  }));
+  const band = useAnimatedStyle(() => ({
+    opacity: interpolate(sweep.value, [0, 0.15, 0.85, 1], [0, 1, 1, 0]),
+    transform: [{ translateX: interpolate(sweep.value, [0, 1], [-160, 320]) }, { skewX: '-18deg' }],
+  }));
+  const tagline = useAnimatedStyle(() => ({
+    opacity: tag.value,
+    transform: [{ translateY: interpolate(tag.value, [0, 1], [10, 0]) }],
+  }));
 
   if (!visible) return null;
-  const glyphScale = exit.interpolate({ inputRange: [0, 1], outputRange: [1, 14] });
-  // Wordmark, tagline and progress clear out first, so the zoom-through is just the "1".
-  const textOut = exit.interpolate({ inputRange: [0, 0.25], outputRange: [1, 0], extrapolate: 'clamp' });
-  const wordIn = Animated.multiply(word, textOut);
-  return <Animated.View testID="intro-splash" accessibilityLabel="OneCity is loading" style={[s.screen, { opacity: exit.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 1, 0] }) }]} pointerEvents="none">
+  return <Animated.View testID="intro-splash" accessibilityLabel="OneCity is loading" style={[s.screen, screen]} pointerEvents="none">
     <StatusBar style="light" />
-    {STREAKS.map((y, i) => <Animated.View key={y} style={[s.streak, {
-      top: height * y, width: width * (0.35 + (i % 3) * 0.15), opacity: streak.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.5, 0] }),
-      transform: [{ translateX: streak.interpolate({ inputRange: [0, 1], outputRange: [-width, width * (1.1 + (i % 2) * 0.3)] }) }],
-    }]} />)}
-    <View style={s.center}>
-      <Animated.View style={[s.halo, { opacity: drop.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }), transform: [{ scale: drop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />
+    <Animated.View style={[s.center, stage]}>
+      <Animated.View style={[s.halo, halo]}>
+        <Svg width={420} height={420}><Defs><RadialGradient id="introHalo" cx="50%" cy="50%" r="50%">
+          <Stop offset="0" stopColor={colors.lime} stopOpacity={0.9} /><Stop offset="0.35" stopColor={colors.lime} stopOpacity={0.35} /><Stop offset="1" stopColor={colors.lime} stopOpacity={0} />
+        </RadialGradient></Defs><Rect width={420} height={420} fill="url(#introHalo)" /></Svg>
+      </Animated.View>
       <View style={s.lockup}>
-        <Animated.View style={{ transform: [
-          { translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [-height * 0.45, 0] }) },
-          { rotate: drop.interpolate({ inputRange: [0, 1], outputRange: ['-18deg', '0deg'] }) },
-          { scale: glyphScale },
-        ] }}><OneGlyph size={96} /></Animated.View>
-        <Animated.Text style={[s.word, { opacity: wordIn, transform: [{ translateX: word.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }]}>neCity</Animated.Text>
+        <Animated.View style={one}><OneGlyph size={92} /></Animated.View>
+        <View style={s.wordClip}><Animated.Text style={[s.word, wordmark]}>neCity</Animated.Text></View>
+        <Animated.View style={[s.band, band]} />
       </View>
-      <Animated.Text style={[s.tagline, { opacity: wordIn, transform: [{ translateY: word.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>YOUR CITY · AT YOUR DOORSTEP</Animated.Text>
-    </View>
-    <Animated.View style={[s.track, { opacity: textOut }]}><Animated.View style={[s.fill, { width: bar.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} /></Animated.View>
-    <Animated.Text style={[s.made, { opacity: textOut }]}>Made in Latur</Animated.Text>
+      <Animated.Text style={[s.tagline, tagline]}>YOUR CITY · AT YOUR DOORSTEP</Animated.Text>
+    </Animated.View>
+    <Animated.Text style={[s.made, tagline]}>Made in Latur</Animated.Text>
   </Animated.View>;
 }
 
 const s = StyleSheet.create({
   screen: { ...StyleSheet.absoluteFill, zIndex: 1000, backgroundColor: INK, alignItems: 'center', justifyContent: 'center' },
-  streak: { position: 'absolute', left: 0, height: 2, borderRadius: 2, backgroundColor: colors.electricLime },
   center: { alignItems: 'center' },
-  halo: { position: 'absolute', top: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: colors.lime, boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 80, color: colors.lime }] },
-  lockup: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  halo: { position: 'absolute', top: -170, width: 420, height: 420 },
+  lockup: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, overflow: 'hidden', paddingHorizontal: 6 },
+  wordClip: { overflow: 'hidden' },
   word: { color: '#FFFFFF', fontSize: 46, fontWeight: '800', letterSpacing: -1.5, marginBottom: 6 },
-  tagline: { color: colors.electricLime, fontSize: 11, fontWeight: '700', letterSpacing: 3, marginTop: 22 },
-  track: { position: 'absolute', bottom: 92, width: 120, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
-  fill: { height: 3, backgroundColor: colors.electricLime },
-  made: { position: 'absolute', bottom: 58, color: 'rgba(255,255,255,0.45)', fontSize: 10, letterSpacing: 1.5 },
+  band: { position: 'absolute', top: -20, bottom: -20, left: 0, width: 46, backgroundColor: 'rgba(255,255,255,0.16)' },
+  tagline: { color: colors.electricLime, fontSize: 11, fontWeight: '700', letterSpacing: 3.2, marginTop: 24 },
+  made: { position: 'absolute', bottom: 58, color: 'rgba(255,255,255,0.42)', fontSize: 10, letterSpacing: 1.6 },
 });

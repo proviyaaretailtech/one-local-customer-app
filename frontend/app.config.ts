@@ -34,6 +34,8 @@ export default {
     ['expo-notifications', { color: '#B3F400' }],
     '@bacons/apple-targets',
     'expo-dev-client',
+    // Native launch screen in the intro's ink colour, so launch → intro has no white flash.
+    ['expo-splash-screen', { backgroundColor: '#050605', dark: { backgroundColor: '#050605' } }],
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
   ],
