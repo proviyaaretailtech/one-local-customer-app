@@ -49,9 +49,6 @@ function MediaTile({ media, size }: { media: StoreMedia; size: number }) {
               <Icon name="play" size={22} color={colors.onBrandPrimary} />
             </View>
           </View>
-          <View style={mediaStyles.videoBadge}>
-            <Text style={mediaStyles.videoBadgeText}>VIDEO</Text>
-          </View>
         </>
       )}
     </TouchableOpacity>
@@ -73,6 +70,7 @@ export default function StoreProfileScreen() {
   const router = useRouter();
   const { isFollowing, toggle } = useFollowedStores();
   const [store, setStore] = useState<Store | null>(null);
+  const [slide, setSlide] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
@@ -92,7 +90,7 @@ export default function StoreProfileScreen() {
     );
   }
 
-  const tileSize = (SCREEN_W - spacing.lg * 2 - spacing.md) / 2;
+  const slideW = Math.min(SCREEN_W * 0.72, 340);
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c]));
   const cats = ["all", ...Array.from(new Set(products.map((p) => p.category_id)))];
 
@@ -110,18 +108,14 @@ export default function StoreProfileScreen() {
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={{ paddingBottom: spacing["3xl"] }} showsVerticalScrollIndicator={false}>
-        {/* Top: 2 videos + 2 images grid */}
-        <View style={[styles.mediaSection, { paddingTop: insets.top + 56 }]}>
-          <View style={styles.mediaRow}>
-            {store.media.slice(0, 2).map((m, i) => (
-              <MediaTile key={i} media={m} size={tileSize} />
-            ))}
-          </View>
-          <View style={[styles.mediaRow, { marginTop: spacing.md }]}>
-            {store.media.slice(2, 4).map((m, i) => (
-              <MediaTile key={i + 2} media={m} size={tileSize} />
-            ))}
-          </View>
+        {/* Top: swipeable carousel of the store's photos and videos */}
+        <View style={[styles.mediaSection, { paddingHorizontal: 0, paddingTop: insets.top + 56 }]}>
+          <ScrollView testID="store-media-carousel" horizontal pagingEnabled={false} snapToInterval={slideW + spacing.md} decelerationRate="fast" showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
+            onScroll={e => setSlide(Math.round(e.nativeEvent.contentOffset.x / (slideW + spacing.md)))} scrollEventThrottle={64}>
+            {store.media.map((m, i) => <MediaTile key={i} media={m} size={slideW} />)}
+          </ScrollView>
+          {store.media.length > 1 && <View style={styles.carouselDots}>{store.media.map((_, i) => <View key={i} style={[styles.carouselDot, i === slide && styles.carouselDotOn]} />)}</View>}
         </View>
 
         {/* Overlapping centered logo + store info */}
@@ -218,6 +212,9 @@ export default function StoreProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  carouselDots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: spacing.md },
+  carouselDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
+  carouselDotOn: { width: 18, backgroundColor: colors.onSurface },
   loader: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
   backBtn: {
     position: "absolute",
