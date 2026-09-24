@@ -17,6 +17,7 @@ import { BottomNavigation } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
 import { DeliveryLocationContext, Point } from '../delivery-location';
 import { useAuth } from '../auth';
+import { OneGlyph } from './one-button';
 
 const BARE = ['/sign-in'];
 const IMMERSIVE = ['/product/', '/brand/'];
@@ -48,7 +49,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const immersive = IMMERSIVE.some(p => path.startsWith(p));
   const { y, headerHeight, setHeaderHeight, scrollRef } = useCityScroll();
   const [compact, setCompact] = useState(false);
-  useEffect(() => { const id = y.addListener(({ value }) => setCompact(value > headerHeight - 50)); return () => y.removeListener(id); }, [y, headerHeight]);
+  // Only once the real header is measured and its search bar has scrolled away; before layout the
+  // height is 0, which used to show both search bars at the top of the page.
+  const compactFrom = headerHeight - 70;
+  useEffect(() => { const id = y.addListener(({ value }) => setCompact(headerHeight > 0 && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom]);
   const [location, setLocationText] = useState('Latur, Maharashtra'); const [point, setPoint] = useState<Point | null>(null);
   useEffect(() => {
     AsyncStorage.multiGet(['one-latur-location', 'one-latur-location-point']).then(([[, text], [, saved]]) => {
@@ -74,7 +78,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <View style={styles.searchRow}><Pressable testID="header-search-button" accessibilityLabel="Search products" onPress={() => router.navigate('/search' as any)} style={styles.searchText}><Icon name="search-outline" size={18} color={colors.onSurface} /><Text style={styles.placeholder}>A little search. A lovely find.</Text></Pressable><Pressable testID="header-voice-search" accessibilityLabel="Search with voice" onPress={() => router.push('/smart-search?mode=voice' as any)} style={styles.searchIcon}><Icon name="mic-outline" size={18} color={colors.onSurface} /></Pressable><View style={styles.searchDivider} /><Pressable testID="header-camera-search" accessibilityLabel="Search with a photo" onPress={() => router.push('/smart-search?mode=image' as any)} style={styles.searchIcon}><Icon name="camera-outline" size={19} color={colors.onSurface} /></Pressable></View>
       </View><DepartmentStrip /></View>
     </LinearGradient></Animated.View>}
-    {scrolling && compact && <View testID="compact-header" style={[styles.compact, { top: insets.top + 6 }]}>{!isHome && <Pressable testID="compact-back" accessibilityLabel="Go back" style={styles.compactButton} onPress={back}><Icon name="arrow-back" size={19} color={palette.color} /></Pressable>}<Pressable testID="compact-expand-header" accessibilityLabel="Show departments" style={styles.compactButton} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}><Icon name="grid-outline" size={17} color={palette.color} /><Text style={[styles.compactText, { color: palette.color }]}>Explore</Text></Pressable><Pressable testID="compact-search" accessibilityLabel="Search products" style={styles.compactButton} onPress={() => router.push('/search' as any)}><Icon name="search-outline" size={17} color={palette.color} /><Text style={[styles.compactText, { color: palette.color }]}>Search OneCity</Text></Pressable></View>}
+    {scrolling && headerHeight > 0 && <Animated.View pointerEvents="none" style={[styles.scrim, { height: insets.top + 40, opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }) }]}><LinearGradient colors={[colors.surface, colors.surface, 'rgba(255,255,255,0)']} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} /></Animated.View>}
+    {scrolling && headerHeight > 0 && <Animated.View testID="compact-header" pointerEvents={compact ? 'auto' : 'none'} style={[styles.compact, { top: insets.top + 6,
+      opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }),
+      transform: [{ translateY: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [-14, 0], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0.96, 1], extrapolate: 'clamp' }) }] }]}>
+      {isHome
+        ? <Pressable testID="compact-expand-header" accessibilityLabel="Back to top" hitSlop={6} style={styles.compactGlyph} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}><OneGlyph size={22} /></Pressable>
+        : <Pressable testID="compact-back" accessibilityLabel="Go back" hitSlop={6} style={styles.compactGlyph} onPress={back}><Icon name="arrow-back" size={19} color="#FFFFFF" /></Pressable>}
+      <Pressable testID="compact-search" accessibilityRole="search" accessibilityLabel="Search products" style={styles.compactSearch} onPress={() => router.push('/search' as any)}>
+        <Icon name="search-outline" size={18} color={colors.forest} /><Text numberOfLines={1} style={styles.compactPlaceholder}>Search food, groceries, shops…</Text>
+      </Pressable>
+      <Pressable testID="compact-voice" accessibilityLabel="Search by voice" hitSlop={6} style={styles.compactIcon} onPress={() => router.push('/smart-search?mode=voice' as any)}><Icon name="mic-outline" size={19} color={colors.forest} /></Pressable>
+    </Animated.View>}
     <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }]}>{utility && <View style={styles.utility}><Pressable testID="page-back-button" accessibilityLabel="Go back" onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Pressable><Text testID="page-navigation-label" style={styles.compactText}>OneCity</Text><Pressable testID="page-search-button" accessibilityLabel="Search" onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Pressable></View>}{children}</View></SafeAreaInsetsContext.Provider>
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
@@ -83,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 const styles = StyleSheet.create({
   utility: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, paddingHorizontal: 14, height: 44 },
-  scrollingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }, compact: { position: 'absolute', left: 20, right: 20, zIndex: 25, flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: 25, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, boxShadow: [{ offsetX: 0, offsetY: 3, blurRadius: 10, color: colors.shadow }] }, compactButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, compactText: { color: colors.forest, fontSize: 11, fontWeight: '600' },
+  scrollingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }, compact: { position: 'absolute', left: 16, right: 16, zIndex: 25, height: 52, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 26, paddingLeft: 6, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(5,6,5,0.16)' }, { offsetX: 0, offsetY: 1, blurRadius: 3, color: 'rgba(5,6,5,0.08)' }] }, scrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 24 }, compactGlyph: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#050605', alignItems: 'center', justifyContent: 'center' }, compactSearch: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }, compactPlaceholder: { flex: 1, color: 'rgba(5,6,5,0.55)', fontSize: 15, fontWeight: '500' }, compactIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(179,244,0,0.28)', alignItems: 'center', justifyContent: 'center' }, compactButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, compactText: { color: colors.forest, fontSize: 11, fontWeight: '600' },
   container: { flex: 1, backgroundColor: colors.surface }, body: { flex: 1 }, background: { position: 'absolute', top: 0, left: 0, right: 0, height: 525 }, header: { paddingHorizontal: 20, paddingTop: 9 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, topActions: { flexDirection: 'row', gap: 4 },
   brand: { minHeight: 44, justifyContent: 'center' }, logo: { width: 76, height: 22 }, location: { minHeight: 28, alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: -5 }, address: { color: colors.onSurface, fontSize: 10, fontWeight: '500', flexShrink: 1 },
