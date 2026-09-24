@@ -44,7 +44,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <CartProvider>
               <StatusBar style="dark" />
-              <Head><title>OneCity</title></Head>
+              {Platform.OS === "web" && <Head><title>OneCity</title></Head>}
               <CustomerProvider><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell><IntroSplash /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>

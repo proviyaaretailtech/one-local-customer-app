@@ -167,7 +167,7 @@ export async function getOrder(request: Request, id: string): Promise<Order> {
     return freshenImages(rest);
   }
 
-  if (!matches.length) throw new HttpError(404, 'Order not found');
+  if (!matches.length || !/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(404, 'Order not found');
   const { data, error } = await db().from('ol_orders').select('*').eq('id', id).in('customer_hash', matches).maybeSingle();
   if (error) fromDbError(error);
   if (!data) throw new HttpError(404, 'Order not found');

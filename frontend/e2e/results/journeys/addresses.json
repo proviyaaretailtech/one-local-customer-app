@@ -1,0 +1,47 @@
+{
+  "journey": "addresses",
+  "title": "Saved addresses: add, edit, deliver here, remove",
+  "passed": true,
+  "steps": [
+    {
+      "name": "open Saved Addresses from the profile",
+      "ok": true,
+      "ms": 2399,
+      "shot": "journey-addresses-01.png"
+    },
+    {
+      "name": "invalid details are rejected",
+      "ok": true,
+      "ms": 228,
+      "shot": "journey-addresses-02.png"
+    },
+    {
+      "name": "add a Home address",
+      "ok": true,
+      "ms": 202,
+      "shot": "journey-addresses-03.png"
+    },
+    {
+      "name": "edit it to Work and change the area",
+      "ok": true,
+      "ms": 294,
+      "shot": "journey-addresses-04.png"
+    },
+    {
+      "name": "deliver here updates the delivery location",
+      "ok": true,
+      "ms": 72,
+      "shot": "journey-addresses-05.png"
+    },
+    {
+      "name": "remove it (with confirmation)",
+      "ok": true,
+      "ms": 167,
+      "shot": "journey-addresses-06.png"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "apiFailures": [],
+  "apiBlocked": []
+}

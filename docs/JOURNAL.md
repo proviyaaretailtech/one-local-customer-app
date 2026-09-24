@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-24 — One Local: Demo-ready polish, native iPhone build with widget and Live Activity, OTA updates, Master Admin plan
+
+**The customer app now runs as a real iPhone app (with a home-screen widget, Dynamic Island order tracking and notifications), every screen was tested automatically, and the plan for how the Master Admin controls the apps is written.**
+
+- **Why:** The founder is demoing tomorrow and needs the app to feel premium and dependable on a real phone, and needs a clear plan for the control panel that runs the business.
+- **Structural decisions:** The iPhone widget and Live Activity use our own small native module instead of a third-party package, because the package clashed with the widget tooling. Over-the-air updates use Expo's "fingerprint" rule, so a phone only ever receives updates made for the exact build it has. The Master Admin will change data in the shared database, never the app code; apps keep calling the same addresses, so admin changes need no app update.
+- **What works now:** The OneCity iPhone app builds and opens in the simulator. An automated test visited 60 screens and 11 customer journeys — all journeys passed. Fixed from that test: a missing order now says "not found" instead of a server error, and "Skip for now" on sign-in responds anywhere on the button. Brand pages have a full-width header image, touch glow and corner gradients across the app, and branded Lottie animations. Documents added: `docs/OTA_UPDATES.md` and `docs/MASTER_ADMIN_HANDSHAKE.md`.
+- **Left undone:** Widget, Dynamic Island and notifications were built but not yet tried on the simulator (the founder said to skip). Smaller test findings remain: some buttons slightly under the 44-point touch size, a few long names cut off, some images not filling their frames, and pages for missing items lacking a back button. Over-the-air updates need an Expo account (`eas init`). Production database changes 0021–0024 still await approval.
+- **Open questions for the founder:** Approve production migrations 0021–0024? Handling fee, platform fee and GST on delivery amounts? GST rates per category (CA)? Is the Master Admin a separate web app or part of the existing OS? Keys still needed: Google Maps, AI, Razorpay, Apple team id.
+
 ## 2026-09-22 — One Local: Live database mapped and backed up; delivery partner app (OnLatur Rider) PRD written
 
 **We can now see inside the production database, a backup was taken, and there is a PRD for the delivery partner app whose first goal is to prove a rider's phone rings for an incoming order, Swiggy-style.**

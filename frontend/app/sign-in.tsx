@@ -66,7 +66,7 @@ export default function SignIn() {
       </View>
 
       <View style={s.hero}>
-        <View style={s.glow} />
+        <View pointerEvents="none" style={s.glow} />
         <Text style={s.eyebrow}>{mode === 'signin' ? 'WELCOME BACK' : 'NEW HERE?'}</Text>
         <Text style={s.title}>{mode === 'signin' ? 'Your whole city,\none sign-in away.' : 'Make OneCity\nfeel like yours.'}</Text>
         <Text style={s.sub}>Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive.</Text>
@@ -118,7 +118,7 @@ const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
   brandWord: { color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.6, marginBottom: 1 },
-  skip: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end' },
+  skip: { zIndex: 5, position: 'relative', minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end' },
   skipText: { color: SOFT, fontSize: 13, fontWeight: '600' },
   hero: { marginTop: 34, marginBottom: 26 },
   glow: { position: 'absolute', right: -40, top: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: colors.lime, opacity: 0.16, boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 90, color: colors.lime }] },

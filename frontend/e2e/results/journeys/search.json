@@ -1,0 +1,47 @@
+{
+  "journey": "search",
+  "title": "search by text from the home header",
+  "passed": true,
+  "steps": [
+    {
+      "name": "open home",
+      "ok": true,
+      "ms": 3029,
+      "shot": "journey-search-01.png"
+    },
+    {
+      "name": "tap the search bar",
+      "ok": true,
+      "ms": 487,
+      "shot": "journey-search-02.png"
+    },
+    {
+      "name": "type \"milk\" and get results",
+      "ok": true,
+      "ms": 60,
+      "shot": "journey-search-03.png"
+    },
+    {
+      "name": "open the first result",
+      "ok": true,
+      "ms": 127,
+      "shot": "journey-search-04.png"
+    },
+    {
+      "name": "back returns to the results with the query kept",
+      "ok": true,
+      "ms": 471,
+      "shot": "journey-search-05.png"
+    },
+    {
+      "name": "a nonsense query shows the empty state",
+      "ok": true,
+      "ms": 34,
+      "shot": "journey-search-06.png"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "apiFailures": [],
+  "apiBlocked": []
+}
