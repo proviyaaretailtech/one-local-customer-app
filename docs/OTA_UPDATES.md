@@ -27,13 +27,13 @@ cd frontend && eas init
 ```
 
 Put the printed project id into `.env.local` as `EAS_PROJECT_ID=...`, then make one build per
-channel (`eas build --profile preview`, later `production`). That build is the one that can receive
+channel (`eas build --profile pilot`, later `stable`). That build is the one that can receive
 updates.
 
 ## Every UI change after that
 
 ```bash
-cd frontend && eas update --channel preview --message "Brand page header"
+cd frontend && eas update --channel pilot --message "Brand page header"
 ```
 
 Phones pick it up on next launch (downloaded in the background, applied on the following open).
@@ -42,5 +42,5 @@ Roll back with `eas update:republish` of the previous group, or in the EAS dashb
 ## Rules
 
 - Test on web/simulator first; an update reaches every phone on that channel.
-- Use `preview` for the demo/testers, `production` for the store app.
+- Channels: `internal` (team) → `pilot` (demo phones, test merchants) → `stable` (store app). See `PLATFORM_FOUNDATIONS.md` §3 for rollouts, the minimum-version gate and server-driven screens.
 - Never put secrets in the app bundle — updates ship the bundle to every phone.

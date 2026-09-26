@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-26 — One Local: Rules for sharing one database across apps, and how apps update without rebuilds
+
+**The founder handed product decisions to the assistant; the first ones are written down: one login per person across all apps, access through memberships, data owned by business and city (never by app), and three lanes for changing the apps.**
+
+- **Why:** One Local, VINII POS, the restaurant phone app, the rider app and the Master all share one database. Without rules, the same person becomes several strangers, one app's change breaks another, and every small change to a phone app waits days for store review.
+- **Structural decisions:** (1) One person, one login; what they may do comes from memberships (customer, restaurant staff, rider, our own team), so a restaurant owner can also order dinner with the same account. The alternative, a user table per app, lost because Supabase has one login pool per project and the same phone would become three strangers. (2) Data belongs to a business and a city; the app is only a label. Scoping data by app lost because an order must be the same order in One Local, the POS and the rider app. (3) Changes travel in three lanes: data through the Master (instant), screen code over the air (minutes), native builds through the stores (days, planned every 2–4 weeks). The home and department pages will be assembled by the server from a library of section types, so campaigns need no release. (4) Channel names follow the founder's release plan: internal → pilot → stable. Full detail: `docs/PLATFORM_FOUNDATIONS.md`.
+- **What works now:** Nothing new for customers; this is the foundation the Master will be built on. Checked in production (read only): all 19 One Local tables are closed to phones as intended.
+- **Left undone:** Found that One Local's four database changes are live but not recorded in the shared migration history; recording them needs a small production write. The build steps (new identity tables, config, server-driven home, Expo account setup, crash reporting, staging database) are listed in order in the document and not started. The notebook could not be read: its Google login has expired.
+- **Open questions for the founder:** None on direction. Needed from you when we reach those steps: approval for the two production writes, an Expo account, the Apple Developer team id, a Sentry account, and approval to create a staging database. Please re-sign the NotebookLM connection.
+
 ## 2026-09-26 — One Local: The app now runs on the live database
 
 **The customer app now reads its catalogue from, and saves orders to, the production Supabase database instead of a copy on the founder's Mac.**
