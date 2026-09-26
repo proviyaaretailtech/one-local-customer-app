@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-26 — One Local: Rider app end-to-end V1 specification from the Figma design
+
+**The rider app's roughly 60 designed screens are now one specification: every screen mapped to a route, the API it calls, the database tables behind it and the delivery states it moves through, with state, city and locality scoping and GPS rules for accurate navigation.**
+
+- **Why:** The founder shared the rider app design and asked for an end-to-end V1 document to build from, modelled on Swiggy's delivery app.
+- **Structural decisions:** V1 covers Store and Solo riders; taxi and vehicle rental stay "coming soon" (taxi carries passengers, a different licence and product). Riders sign in by phone number and one-time code, as designed, replacing the earlier Google-only plan. Geography becomes state → city → zone → hub, stored as map shapes, so dispatch, surge and rider supply work per locality. Every pickup and drop is a map coordinate first; navigation opens Google Maps on the coordinate, and arrival is checked against distance. The design's 12-step delivery engine, each step with one exception path, is the single source of truth. Earnings rates are settings per city, not code. Payout details are collected and verified now; money is paid manually each week until a payout provider is chosen.
+- **What works now:** Nothing new runs yet. The specification is `docs/RIDER_APP_E2E_V1.md` and its PDF.
+- **Left undone:** Building starts at milestone M0 (the phone rings for an offer). The Figma connector could not be used (its desktop server is off), so the design was read in the browser. The screenshots are not embedded in the document.
+- **Open questions for the founder:** None on direction. Needed when we reach them: SMS provider and DLT registration, a Google Maps key with the Routes API, a Firebase project and an Expo account, DigiLocker partner onboarding, and approval of the database changes in the OS repository.
+
 ## 2026-09-26 — One Local: Rules for sharing one database across apps, and how apps update without rebuilds
 
 **The founder handed product decisions to the assistant; the first ones are written down: one login per person across all apps, access through memberships, data owned by business and city (never by app), and three lanes for changing the apps.**

@@ -1,5 +1,7 @@
 # PRD — OnLatur Rider V1 (delivery partner app)
 
+> **2026-09-26:** screens, sign-in (now phone OTP), rider types and geography are superseded by `RIDER_APP_E2E_V1.md` (built from the Figma design). Dispatch, alert and cash rules below still apply.
+
 **Status:** draft for founder approval · **Date:** 2026-09-22 · **Product:** OnLatur (delivery and fulfilment: rider app, dispatch and delivery engine — POS decision D07)
 **Platform:** React Native with Expo (same SDK 57, Expo Router and toolchain as the One Local app), in this repository as a second app, `OL-ui/rider/`, sharing One Local's API and design tokens.
 **First goal:** prove that a rider's phone reliably **receives an incoming order alert** — Swiggy-style: it rings, shows the job, counts down, and the rider accepts or rejects — then run one real order end to end from one restaurant.
