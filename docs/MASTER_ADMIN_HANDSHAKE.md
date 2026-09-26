@@ -45,7 +45,7 @@ Master Admin UI ──write──▶ Supabase (ol_* tables) ──▶ API (/api/
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `ol_feature_flags` | Switch features per city without a deploy (replaces env logic in `server/features.ts`) | `key`, `city_id`, `enabled`, `rollout_pct`, `note`, `updated_by`, `updated_at` |
+| `feature_flags` | Switch features per city without a deploy (replaces env logic in `server/features.ts`) | `key`, `city_id`, `enabled`, `rollout_pct`, `note`, `updated_by`, `updated_at` |
 | `ol_pricing_rules` | Everything in `PRICING` (`server/pricing.ts`): delivery fee, free-delivery threshold, handling/platform fee, food GST, delivery GST | `city_id`, `key`, `value`, `valid_from`, `valid_to` |
 | `ol_tax_rates` | GST by category or HSN (today sample rates in code, to confirm with CA) | `category_id` / `hsn`, `rate_pct` |
 | `ol_discounts` | Automatic discounts (store-wide %, category sale, BOGO) beyond codes | `scope`, `scope_id`, `type`, `value`, `min_cart`, `starts_at`, `ends_at`, `max_uses`, `active` |
@@ -53,7 +53,7 @@ Master Admin UI ──write──▶ Supabase (ol_* tables) ──▶ API (/api/
 | `ol_audit_log` | Every admin write | `actor`, `table`, `row_id`, `action`, `before jsonb`, `after jsonb`, `at` |
 | `ol_admin_users` | Who may use the admin, and at what level | `user_id`, `role` (owner/ops/catalog/support/finance), `city_ids` |
 | `ol_notifications` | Push campaigns & templates | `title`, `body`, `audience`, `send_at`, `status` |
-| `ol_customer_profiles`, `ol_addresses` | Move profile/addresses from the phone to the DB | per customer |
+| `shoppers`, `ol_addresses` | Move profile/addresses from the phone to the DB | per customer |
 | `ol_coins_ledger` | OneLocal Coins (see `ONELOCAL_COINS_PLAN.md`) | `customer`, `delta`, `reason`, `order_id`, `expires_at` |
 
 All new tables: `city_id`, `created_at`, `updated_at`, RLS on, writes only through the service role
@@ -99,11 +99,11 @@ All new tables: `city_id`, `created_at`, `updated_at`, RLS on, writes only throu
 - Handling fee, platform fee, GST on delivery — amounts (today 0).
 - GST rates per category (CA to confirm).
 - Who gets which admin role; is refund approval one step or two?
-- Will the Master Admin be a separate web app or a section of the existing OS?
+- ~~Will the Master Admin be a separate web app or a section of the existing OS?~~ Decided 2026-09-26: workspaces inside the existing Proviyaa console in Repo-1- (`/admin`), calling One Latur's `/api/admin/*` — see `PLATFORM_FOUNDATIONS.md` D13–D14.
 
 ---
 
-## 7. Entire app config through the Master Admin — `ol_app_config`
+## 7. Entire app config through the Master Admin — `app_config`
 
 Anything a customer sees that is not code must be a row the admin can edit. One table holds the
 app-wide settings as typed keys per city (and per app: `customer` / `rider` / `merchant`):
@@ -125,7 +125,7 @@ app-wide settings as typed keys per city (and per app: `customer` / `rider` / `m
 | `copy.*` | text | Headlines, search placeholder ("A little search. A lovely find."), empty states |
 
 ```sql
-create table public.ol_app_config (
+create table public.app_config (
   app text not null default 'customer' check (app in ('customer','rider','merchant')),
   city_id text not null default 'latur' references public.ol_service_areas(city_id),
   key text not null, value jsonb not null,
@@ -154,7 +154,7 @@ production). All responses are JSON. Errors: `{ "detail": "message" }` with an H
 | Method | Route | Purpose | Reads |
 | --- | --- | --- | --- |
 | GET | `/api/health` | Liveness check | — |
-| GET | `/api/features` | Which features are live vs "coming soon" | env → `ol_feature_flags` (planned) |
+| GET | `/api/features` | Which features are live vs "coming soon" | env → `feature_flags` (planned) |
 | GET | `/api/catalog` | Whole catalogue in one call (categories, stores, products, brands) | `ol_categories`, `ol_stores`, `ol_products`, `ol_brands` |
 | GET | `/api/categories` | Category list | `ol_categories` |
 | GET | `/api/products?q=&kind=&tab=` | Product list / filter | `ol_products` |

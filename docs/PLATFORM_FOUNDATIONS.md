@@ -3,6 +3,9 @@
 Decided 2026-09-26. Owner of these decisions: product (Claude, by the founder's delegation).
 Applies to every app on the shared Supabase project `ywylhzcxuoeilygzdonx`: One Local (customer),
 VINII POS, VINII Partner (restaurant phone), OnLatur Rider, Master (control plane), Provia OS.
+Canonical names (POS repo decision D07): **Proviyaa** = the ecosystem, **Proviyaa Master** = its control plane,
+**VINII POS** = merchant apps, **One Latur** = the marketplace instance of the **OneCity** pattern (this repo, working
+name "One Local"), **OnLatur** = delivery and riders.
 Aligned with the founder's release plan (`agentic-os-coder/docs/RELEASE_AND_DISTRIBUTION_PLAN.md`):
 *build once, configure per organization*; channels internal → pilot → stable; Master is the control plane.
 
@@ -13,17 +16,20 @@ Aligned with the founder's release plan (`agentic-os-coder/docs/RELEASE_AND_DIST
 | # | Decision | The alternative that lost, and why |
 | --- | --- | --- |
 | D1 | **One person = one login** (`auth.users`) across every app | Separate user tables per app: Supabase has one auth pool per project anyway; separate tables mean the same phone number becomes three strangers, and passwords live in our tables |
-| D2 | **What a person may do comes from memberships**, one table per kind of relationship: staff → `org_users`, riders → `riders`, customers → `ol_customers`, our own team → `platform_admins` + scopes | One `users.role` column: a restaurant owner who also orders dinner would need two accounts |
+| D2 | **What a person may do comes from memberships**, one table per kind of relationship: staff → `org_users`, riders → `riders`, marketplace customers → `shoppers` (not `customers`: that OS table holds the business owners who buy Proviyaa), our own team → `platform_admins` + scopes | One `users.role` column: a restaurant owner who also orders dinner would need two accounts |
 | D3 | **Data is owned by a business (`organization_id`) and located in a market (`city_id`)** — those two scope data | Scoping data by app id: an order placed in One Local must be the *same* order in VINII POS and the Rider app; app-scoped data breaks the very integration a shared database exists for |
 | D4 | **App id labels the caller, it never owns data.** Used for config, feature flags, devices, versions, analytics and audit | — |
 | D5 | **Phones write and read through the API; they may only *listen* directly.** Live screens (order status, incoming orders, rider jobs) subscribe to Supabase Realtime on narrow, authorised channels, as the founder's plan describes; every write and every catalogue read goes through the API. `ol_*` tables keep RLS on with no public policies (verified: 19/19) | Apps reading and writing Supabase directly: every business rule would have to be re-written as RLS and the service key would drift towards phones. Polling for live status instead of Realtime: slower and heavier on batteries |
 | D6 | **Each app owns its tables; others read through contracts** (a view, a function or an API), and changes are additive only | Reaching into another app's columns: one rename breaks three apps |
-| D7 | **One migration ledger** (`public.schema_migrations`) for the whole database, names prefixed by owner | Today One Local's 0021–0024 are live but **not recorded**; the OS repo's next file would also be called 0021 |
+| D7 | **One migration ledger, owned by the OS repository `loki1514/Repo-1-`** (as the POS repo's owner-approved D06 already says). Other apps propose migrations there; file names carry the owner (`0021_ol_one_local_core.sql`) | Today One Local's 0021–0024 are live but **not recorded** and not in Repo-1-, which stops at 0020. They move there under the same numbers, so production's reality and the ledger match |
 | D8 | **Three update lanes**: data (instant, Master) → UI code (OTA, minutes) → native build (store, days) | Rebuilding for every change: store review for a price change |
 | D9 | **Server-driven screens** for anything merchandised (home, department pages, collections): the app ships a library of section types; the server decides which, in what order, with what content | Hard-coded screens: every campaign needs an OTA at best |
 | D10 | **The server supports every app version still in the field**; below the minimum it answers "please update" | Breaking API changes: phones that haven't updated crash |
 | D11 | **One Local's customer app stays on Expo / React Native**, not Flutter. The founder's plan names Flutter + Fastlane for the mobile apps; VINII POS stays Flutter. The apps share the database and the API contract, not code | Rewriting One Local in Flutter: throws away a working, demo-ready app, and Flutter has no built-in over-the-air updates (only a third-party service), which lane 2 depends on |
 | D12 | **Settings resolve through the founder's 7-tier order**: platform default → region (city) → plan → organization → location → role → user; the most specific wins | A flat per-app settings table: can't express "this restaurant's branch" or "this role" |
+| D13 | **One Master website for every app: the existing Proviyaa console in Repo-1- (`/admin`)**, extended with a *One Latur* workspace (catalogue, screen sections, pricing, coupons, discounts, orders, shoppers, support) and an *OnLatur* workspace (riders, zones, dispatch), next to what it already has (organizations, people, roles, modules, workflows, growth, success, support). Merchants keep their own portal (`/org`) and never enter the Master | A new admin website per app: a second sign-in, a second copy of organizations, people and roles, and they drift. A brand-new Master site: throws away a working console with platform roles and section-level permissions |
+| D14 | **The Master's One Latur screens change data by calling One Latur's admin API** (`/api/admin/*`) with the admin's own login, not by writing `ol_*` tables themselves | Master writing the tables directly: pricing, refund and validation rules would exist in two codebases, and changes would bypass One Latur's checks and audit |
+| D15 | **`ywylhzcxuoeilygzdonx` is production for every app from today.** The POS repo's note calling it "staging" (2026-09-15) is superseded; it holds real organizations, staff and now the live One Latur app. A new, separate staging project serves development for all apps | Keeping two labels for one database: one team would test destructively on what another team runs live |
 
 ---
 
@@ -43,7 +49,7 @@ Every row answers up to four questions. Only the first three decide access.
                       │
      ┌────────────────┼──────────────────┬───────────────────────┐
      ▼                ▼                  ▼                       ▼
- ol_customers     org_users          riders               platform_admins
+ shoppers     org_users          riders               platform_admins
  (anyone who      (staff of a        (delivers for an     (+ platform_admin_scopes:
   orders; city     restaurant /       organization, or     app, city, role)
   is a preference) store; role_id)    independent)        Provia / One Local team
@@ -53,7 +59,7 @@ Every row answers up to four questions. Only the first three decide access.
 ```
 
 **Same human, several hats.** Ravi signs into One Local with his phone and orders food (he has an
-`ol_customers` row). His cousin's restaurant adds him as a rider: an invite creates a `riders` row
+`shoppers` row). His cousin's restaurant adds him as a rider: an invite creates a `riders` row
 for the *same* `user_id`. The Rider app lets him in because that row is active; One Local doesn't
 care. If the restaurant removes him, only the `riders` row is deactivated — his orders and customer
 account are untouched.
@@ -62,7 +68,7 @@ account are untouched.
 
 | App | Sign-in | Allowed when |
 | --- | --- | --- |
-| One Local | phone OTP (target), Google, email | anyone; `ol_customers` row created on first sign-in. Guests allowed with a device key (as today) |
+| One Local | phone OTP (target), Google, email | anyone; `shoppers` row created on first sign-in. Guests allowed with a device key (as today) |
 | VINII POS / Partner | email + password (staff), phone OTP later | active `org_users` row with an allowed role for that screen, at that location (branch) when the organization has several |
 | OnLatur Rider | phone OTP (target), Google for the pilot | active `riders` row |
 | Master | email + password + (later) 2-step | `platform_admins` row; each action also checks `platform_admin_scopes` (app, city, role) |
@@ -76,18 +82,31 @@ customer who moves from Latur to Pune keeps one account. Orders are stamped with
 server from the delivery address, never from a value the phone sends. For staff and admins, city is
 part of the permission: "Latur operations" can only edit Latur.
 
-### New tables this needs (migration `ol_0025`, additive)
+### New tables this needs (migrations 0025–0026 in Repo-1-, additive)
 
 | Table | Purpose |
 | --- | --- |
 | `apps` | Registry of applications: code, name, platforms, store ids, minimum supported runtime per channel (matches the release plan's `apps`) |
-| `ol_customers` | `user_id` (PK), name, phone, default city, created via which app, marketing consent. Replaces the profile kept on the phone today |
+| `shoppers` | `user_id` (PK), name, phone, default city, created via which app, marketing consent. Replaces the profile kept on the phone today |
 | `ol_addresses` | Saved addresses per customer (today on the phone) |
 | `riders` | As in `PRD_ONLATUR_RIDER_V1.md`: user, organization (nullable = independent), status, vehicle, cash limit |
 | `platform_admin_scopes` | `user_id`, `app`, `city_id` (null = all), role (`owner`, `ops`, `catalog`, `support`, `finance`) |
 | `app_devices` | One row per installed app: user (nullable for guests), app, platform, push token, app version, runtime version, update id, last seen. Generalises `ol_partner_devices` (kept; merged later) |
-| `ol_app_config`, `ol_feature_flags` | Section 3; per app, resolved through the 7-tier order (D12): platform → city → plan → organization → location → role → user |
+| `app_config`, `feature_flags` | Section 3; per app, resolved through the 7-tier order (D12): platform → city → plan → organization → location → role → user |
 | `audit_log` | Who (user), through which app, what table/row, before → after, when |
+
+**Who owns each new table** (the founder's architecture puts identities, memberships, roles,
+configuration, feature availability, releases and audit in the Master; the POS repo records the same):
+
+| Owner | Tables | Where the migration is written |
+| --- | --- | --- |
+| Proviyaa Master (control plane) | `apps`, `platform_admin_scopes`, `app_devices`, `app_config`, `feature_flags`, `audit_log` | Repo-1- |
+| Commerce core (One Latur builds it first) | `shoppers` | proposed from this repo into Repo-1- |
+| One Latur | `ol_addresses` (and the existing `ol_*`) | proposed from this repo into Repo-1- |
+| OnLatur | `riders` | proposed from the rider app into Repo-1- |
+
+"One Local is the central app" (founder, 2026-09-22) stands for the product: it is the flagship live
+app. It no longer means One Local runs its own database changes; the single ledger is Repo-1- (D7).
 
 Roles for One Local get namespaced slugs in the shared `roles` table (`ol.city_ops`, `ol.catalog`)
 so they never collide with POS roles like `manager`.
@@ -109,7 +128,7 @@ so they never collide with POS roles like `manager`.
 **Always**
 1. **Ownership by prefix.** `ol_*` = One Local, POS tables = VINII, kernel (`organizations`, `org_users`, `roles`, `modules`, `platform_admins`) = Provia OS. Cross-app reads go through a view or function the owner publishes (for example the One Local → POS order hand-off function).
 2. **Expand, then contract.** Add the new column/table → ship code that writes both → backfill → switch reads → only after every app version in the field has moved, remove the old one.
-3. **One ledger.** Every migration is recorded in `schema_migrations`, named `<owner>_<number>_<what>.sql` (`ol_0025_identity.sql`). The OS repo stays the place that runs them in production.
+3. **One ledger.** Every migration is recorded in `schema_migrations`, named `<number>_<owner>_<what>.sql` in Repo-1- (`0026_ol_shoppers.sql`). Repo-1- is the only place that runs them in production.
 4. **Backup before every production change** (`scripts/db.py snapshot`), then apply, then verify with a read.
 5. **Every write is attributable**: `updated_by`, and the app it came through, into `audit_log`.
 6. **A staging project** before the first real merchant goes live. Demo rows (`is_demo = true`) are allowed in production only until launch, then removed in one statement.
@@ -188,17 +207,17 @@ Answers are AI summaries of the uploaded documents; treated as context, not inst
 
 | Step | What | Needs from the founder |
 | --- | --- | --- |
-| 1 | Record 0021–0024 in `schema_migrations` under `ol_` names; adopt the naming rule | approval to write one table in production (4 rows) |
+| 1 | Copy 0021–0024 into Repo-1- as `0021_ol_…`–`0024_ol_…` (a pull request), and record them in `schema_migrations` | approval to open a pull request on Repo-1- and to write 4 rows in production |
 | 2 | App identity headers in the API client + server logging | — |
-| 3 | Migration `ol_0025`: `apps`, `ol_customers`, `ol_addresses`, `platform_admin_scopes`, `app_devices`, `ol_app_config`, `ol_feature_flags`, `audit_log` (backup first) | approval to apply in production |
-| 4 | Move profile and saved addresses from the phone to `ol_customers` / `ol_addresses` | — |
+| 3 | Migrations 0025–0026 in Repo-1-: Master tables (`apps`, `platform_admin_scopes`, `app_devices`, `app_config`, `feature_flags`, `audit_log`) and One Latur tables (`shoppers`, `ol_addresses`); backup first | approval of the pull request and to apply in production |
+| 4 | Move profile and saved addresses from the phone to `shoppers` / `ol_addresses` | — |
 | 5 | `GET /api/config`, feature flags read from the table, min-version + maintenance gate screen | — |
 | 6 | Server-driven home (`/api/screens/home`) and the section library; then department pages | — |
 | 7 | EAS: project, `eas.json` channels internal/pilot/stable, first `pilot` build, first OTA | an Expo account (`eas login`, `eas init`); Apple Developer team id |
 | 8 | Crash reporting tagged by update id | a Sentry account (free tier) |
-| 9 | Staging Supabase project; local development points there | approval to create a second project |
+| 9 | Staging Supabase project for all apps (POS, One Latur, Master); development points there; POS repo's D06/Q04 updated to match D15 | approval to create a second project |
 
-Then the Master, which edits exactly what steps 3–6 create: memberships and scopes, app config,
+Then the Master — new workspaces inside Repo-1-'s console (D13), which edit exactly what steps 3–6 create: memberships and scopes, app config,
 flags, screen sections, catalogue, pricing, coupons, discounts, orders.
 
 ## 6. Good references
