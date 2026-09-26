@@ -29,21 +29,30 @@ function loadEnv(file) {
 }
 
 const envLocalPath = path.join(FRONTEND, '.env.local');
-const env = { ...loadEnv(path.join(FRONTEND, '..', '.env')), ...loadEnv(envLocalPath) };
+// --production seeds the online database from frontend/.env (founder-approved 2026-09-26, after a
+// `scripts/db.py snapshot`). Without the flag it only ever touches the LOCAL database.
+const PRODUCTION = process.argv.includes('--production');
+const env = PRODUCTION
+  ? loadEnv(path.join(FRONTEND, '.env'))
+  : { ...loadEnv(path.join(FRONTEND, '..', '.env')), ...loadEnv(envLocalPath) };
 
-if (!existsSync(envLocalPath)) {
-  console.error('❌ frontend/.env.local not found. This script only seeds the LOCAL database.');
-  console.error('   Run: python3 scripts/db.py local-env');
-  process.exit(1);
-}
-if (env.ONELOCAL_DB_TARGET !== 'local') {
-  console.error('❌ frontend/.env.local does not point at the local database (ONELOCAL_DB_TARGET != local). Refusing to run.');
-  process.exit(1);
+if (PRODUCTION) {
+  console.log(`⚠️  Seeding PRODUCTION (${env.SUPABASE_URL}). Demo rows only (is_demo = true), upserted.`);
+} else {
+  if (!existsSync(envLocalPath)) {
+    console.error('❌ frontend/.env.local not found. Without --production this script only seeds the LOCAL database.');
+    console.error('   Run: python3 scripts/db.py local-env');
+    process.exit(1);
+  }
+  if (env.ONELOCAL_DB_TARGET !== 'local') {
+    console.error('❌ frontend/.env.local does not point at the local database (ONELOCAL_DB_TARGET != local). Refusing to run.');
+    process.exit(1);
+  }
 }
 
 const url = env.SUPABASE_URL;
 const key = env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) { console.error('❌ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing in .env.local'); process.exit(1); }
+if (!url || !key) { console.error('❌ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing'); process.exit(1); }
 
 const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const catalog = JSON.parse(readFileSync(path.join(FRONTEND, 'server', 'data', 'catalog.json'), 'utf8'));
@@ -112,7 +121,7 @@ async function main() {
     city_id: 'latur', is_demo: true, sort_order: i,
   })));
 
-  console.log('\n✅ Local catalogue seeded from server/data/catalog.json');
+  console.log(`\n✅ ${PRODUCTION ? 'Production' : 'Local'} catalogue seeded from server/data/catalog.json`);
 }
 
 main().catch(e => { console.error('❌', e.message); process.exit(1); });

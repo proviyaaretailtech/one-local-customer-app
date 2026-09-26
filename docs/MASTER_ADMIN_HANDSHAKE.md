@@ -27,7 +27,7 @@ Master Admin UI ──write──▶ Supabase (ol_* tables) ──▶ API (/api/
 
 ## 2. Tables
 
-### Already exist (0021–0023 applied to production; 0024 applied locally, production PENDING)
+### Already exist (0021–0024 all live in production; sample catalogue seeded 2026-09-26)
 
 | Table | Admin edits | Used by |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ All new tables: `city_id`, `created_at`, `updated_at`, RLS on, writes only throu
 
 ## 5. Order of work
 
-1. Founder approves production migration 0024 (0021–0023 already applied; backup first).
+1. ~~Production migrations 0021–0024~~ — done; the app runs on production since 2026-09-26.
 2. Migration 0025 with the tables above; seed from current code values so nothing changes on day one.
 3. Point `features()` and `PRICING` at the tables (with code values as fallback).
 4. Build admin: flags → pricing → catalogue + bulk upload → orders/refunds → rest.

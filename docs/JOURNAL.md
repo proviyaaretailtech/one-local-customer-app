@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-26 — One Local: The app now runs on the live database
+
+**The customer app now reads its catalogue from, and saves orders to, the production Supabase database instead of a copy on the founder's Mac.**
+
+- **Why:** The demo showed "Couldn't load this right now" whenever the Mac's local database was off. Running on the live database removes that dependency and is the first step to a real launch.
+- **Structural decisions:** A fresh backup of production was taken first (77 tables, 774 rows, kept on the Mac, not in git). The sample catalogue was added to production as demo rows only, so real rows added later are never touched and the demo rows can be removed in one step. The seed script only writes to production when run with an explicit `--production` switch; the founder ran it. The local-database settings file was set aside (not deleted), so switching back is one rename.
+- **What works now:** Home, stores, products, banners and the bill load from production (84 products, 49 stores, 32 categories, 46 brands). Migrations 0021–0024 are confirmed live in production, so checkout, order items and refunds have their tables.
+- **Left undone:** No test order was placed on production yet; the first demo order will be the first real row. Images are still served by this Mac's server, so the app still needs the Mac running until images move to Supabase Storage.
+- **Open questions for the founder:** When should demo rows be removed from production? Should images move to Supabase Storage before the public launch?
+
 ## 2026-09-24 — One Local: Demo-ready polish, native iPhone build with widget and Live Activity, OTA updates, Master Admin plan
 
 **The customer app now runs as a real iPhone app (with a home-screen widget, Dynamic Island order tracking and notifications), every screen was tested automatically, and the plan for how the Master Admin controls the apps is written.**
