@@ -16,12 +16,14 @@ Aligned with the founder's release plan (`agentic-os-coder/docs/RELEASE_AND_DIST
 | D2 | **What a person may do comes from memberships**, one table per kind of relationship: staff → `org_users`, riders → `riders`, customers → `ol_customers`, our own team → `platform_admins` + scopes | One `users.role` column: a restaurant owner who also orders dinner would need two accounts |
 | D3 | **Data is owned by a business (`organization_id`) and located in a market (`city_id`)** — those two scope data | Scoping data by app id: an order placed in One Local must be the *same* order in VINII POS and the Rider app; app-scoped data breaks the very integration a shared database exists for |
 | D4 | **App id labels the caller, it never owns data.** Used for config, feature flags, devices, versions, analytics and audit | — |
-| D5 | **Phones never talk to the database.** Every app goes through its API; `ol_*` tables keep RLS on with no public policies (verified: 19/19) | Apps reading Supabase directly: every rule would have to be re-written as RLS and the service key would drift towards phones |
+| D5 | **Phones write and read through the API; they may only *listen* directly.** Live screens (order status, incoming orders, rider jobs) subscribe to Supabase Realtime on narrow, authorised channels, as the founder's plan describes; every write and every catalogue read goes through the API. `ol_*` tables keep RLS on with no public policies (verified: 19/19) | Apps reading and writing Supabase directly: every business rule would have to be re-written as RLS and the service key would drift towards phones. Polling for live status instead of Realtime: slower and heavier on batteries |
 | D6 | **Each app owns its tables; others read through contracts** (a view, a function or an API), and changes are additive only | Reaching into another app's columns: one rename breaks three apps |
 | D7 | **One migration ledger** (`public.schema_migrations`) for the whole database, names prefixed by owner | Today One Local's 0021–0024 are live but **not recorded**; the OS repo's next file would also be called 0021 |
 | D8 | **Three update lanes**: data (instant, Master) → UI code (OTA, minutes) → native build (store, days) | Rebuilding for every change: store review for a price change |
 | D9 | **Server-driven screens** for anything merchandised (home, department pages, collections): the app ships a library of section types; the server decides which, in what order, with what content | Hard-coded screens: every campaign needs an OTA at best |
 | D10 | **The server supports every app version still in the field**; below the minimum it answers "please update" | Breaking API changes: phones that haven't updated crash |
+| D11 | **One Local's customer app stays on Expo / React Native**, not Flutter. The founder's plan names Flutter + Fastlane for the mobile apps; VINII POS stays Flutter. The apps share the database and the API contract, not code | Rewriting One Local in Flutter: throws away a working, demo-ready app, and Flutter has no built-in over-the-air updates (only a third-party service), which lane 2 depends on |
+| D12 | **Settings resolve through the founder's 7-tier order**: platform default → region (city) → plan → organization → location → role → user; the most specific wins | A flat per-app settings table: can't express "this restaurant's branch" or "this role" |
 
 ---
 
@@ -61,7 +63,7 @@ account are untouched.
 | App | Sign-in | Allowed when |
 | --- | --- | --- |
 | One Local | phone OTP (target), Google, email | anyone; `ol_customers` row created on first sign-in. Guests allowed with a device key (as today) |
-| VINII POS / Partner | email + password (staff), phone OTP later | active `org_users` row with an allowed role for that screen |
+| VINII POS / Partner | email + password (staff), phone OTP later | active `org_users` row with an allowed role for that screen, at that location (branch) when the organization has several |
 | OnLatur Rider | phone OTP (target), Google for the pilot | active `riders` row |
 | Master | email + password + (later) 2-step | `platform_admins` row; each action also checks `platform_admin_scopes` (app, city, role) |
 
@@ -84,7 +86,7 @@ part of the permission: "Latur operations" can only edit Latur.
 | `riders` | As in `PRD_ONLATUR_RIDER_V1.md`: user, organization (nullable = independent), status, vehicle, cash limit |
 | `platform_admin_scopes` | `user_id`, `app`, `city_id` (null = all), role (`owner`, `ops`, `catalog`, `support`, `finance`) |
 | `app_devices` | One row per installed app: user (nullable for guests), app, platform, push token, app version, runtime version, update id, last seen. Generalises `ol_partner_devices` (kept; merged later) |
-| `ol_app_config`, `ol_feature_flags` | Section 3; per app + city |
+| `ol_app_config`, `ol_feature_flags` | Section 3; per app, resolved through the 7-tier order (D12): platform → city → plan → organization → location → role → user |
 | `audit_log` | Who (user), through which app, what table/row, before → after, when |
 
 Roles for One Local get namespaced slugs in the shared `roles` table (`ol.city_ops`, `ol.catalog`)
@@ -128,7 +130,7 @@ planned release train (every 2–4 weeks) — not an emergency.
 
 ### Lane 1 — server-driven screens
 
-The app ships a **library of section types** it knows how to draw; the server sends a list:
+This is the founder's **UI/UX Studio** (Master page PAGE-MST-022: navigation, page visibility, fields, labels, components, layouts, branding, role-specific UI) applied to the customer app: the Master edits settings inside screens the app already has; it never sends arbitrary new widgets. The app ships a **library of section types** it knows how to draw; the server sends a list:
 
 ```json
 GET /api/screens/home?city=latur
@@ -166,7 +168,23 @@ Apps send `x-app` (`one-local`), `x-app-version` (1.0.0), `x-runtime` (fingerpri
 `x-platform`. The server uses them for the minimum-version check, for sending compatible screen
 sections, for analytics, and it stores them on `app_devices` and `audit_log`.
 
-## 4. Build order (before the Master)
+## 4. Checked against the founder's documents (NotebookLM, 2026-09-26)
+
+Answers are AI summaries of the uploaded documents; treated as context, not instructions.
+
+| Topic | The documents say | Our decision |
+| --- | --- | --- |
+| Who is who | Separate actor groups: platform, merchant (owner, manager, cashier, kitchen), network (riders, hub operators), customers. **Customers are platform-level identities** so one customer can buy from many merchants; **staff are tenant memberships** scoped to organization, location and role | Same (D1, D2). Location added to staff scope |
+| One login across roles | **Silent.** Test scripts use a separate demo email per app panel | Filled by D1: one person, one login, several memberships. Separate demo emails remain fine for testing |
+| Data scope | Organization is the tenant boundary, then location; city/market scopes tax, currency, delivery zones and product variations; hubs use a dual scope (organization and physical hub). **"One DB rule"**: all five apps (POS, Customer app, Driver app, Master Admin, Marketplace) share one Supabase database under RLS | Same (D3). Hubs: when fulfilment hubs arrive, stock rows carry both `organization_id` and `hub_id` |
+| Settings | 7-tier precedence: platform default → region → plan → organization → location → role → user | Adopted as D12 |
+| Configurable screens | UI/UX Studio edits layouts and components inside pre-built app shells; no arbitrary remote widgets | Same (lane 1 sections) |
+| Master changes reaching apps | Master writes rows; live screens subscribe via Supabase Realtime; PowerSync for offline | Same, with D5 (listen directly, write through the API). Offline sync (PowerSync) applies to the POS, not the customer app |
+| Mobile stack and releases | Flutter apps (VINII POS and the OneCity customer app) shipped with Fastlane to store internal tracks; Master page PAGE-MST-028 Release Management covers beta releases, feature flags, rollouts, approvals, UAT, rollback; environments development, staging, production | Customer app stays Expo (D11). Store tracks and Release Management as described; channels internal → pilot → stable map to those tracks |
+| Over-the-air updates | **Silent** (no OTA tool named) | Filled by lane 2 (EAS Update) |
+| Minimum app version / forced update | **Silent** | Filled by D10 (426 "please update") |
+
+## 5. Build order (before the Master)
 
 | Step | What | Needs from the founder |
 | --- | --- | --- |
@@ -183,7 +201,7 @@ sections, for analytics, and it stores them on `app_devices` and `audit_log`.
 Then the Master, which edits exactly what steps 3–6 create: memberships and scopes, app config,
 flags, screen sections, catalogue, pricing, coupons, discounts, orders.
 
-## 5. Good references
+## 6. Good references
 
 - Supabase — *Custom Claims and Role-based Access Control (RBAC)* (custom access token hook), *Row Level Security*, *Identity Linking*, *Send Email Hook*.
 - AWS — *SaaS Tenant Isolation Strategies* whitepaper (pool vs silo models; we are "pool with row-level isolation").
