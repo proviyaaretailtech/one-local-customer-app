@@ -26,7 +26,7 @@ cd frontend && eas login
 cd frontend && eas init
 ```
 
-Put the printed project id into `.env.local` as `EAS_PROJECT_ID=...`, then make one build per
+Put the printed project id into `frontend/.env` as `EAS_PROJECT_ID=...`, then make one build per
 channel (`eas build --profile pilot`, later `stable`). That build is the one that can receive
 updates.
 
