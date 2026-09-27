@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: Clean slate in production; Master and One Local joined up
+
+**One Local's demo catalogue is gone from production and the app now waits for real businesses from the Master. Payments, carts, sign-in, all-India location, the admin API and DPDP work are merged on one branch.**
+
+- **Why:** The founder wanted a fresh slate built the right way: every store and item comes from the Master portal and the POS Item Master, not from demo rows.
+- **Structural decisions:** No new ones beyond the entries below. The four agent branches (payments, carts/sign-in, DPDP, admin API) were merged into `feat/expo-router-api`; journal conflicts were resolved by keeping every entry.
+- **What works now:** Production has 0 One Local demo rows (the cleanup script was run; Latur's delivery area was kept). Latur's home says "Stores in Latur are joining One Local" and shows real nearby places. The admin API answers on the running app (401 without a Master login). 194 automated checks pass: admin 96, checkout 42, privacy 56.
+- **Left undone:** The full loop (list a business in the Master → approve → see it in One Local) has not been clicked through with a real Master login; it needs migration 0028 applied and a platform admin to sign in. Orders for Master-approved restaurants are not yet sent on to the POS or the VINII Partner app, so no real store should go live before that is connected. The POS/OS demo businesses (9 organizations) are untouched.
+- **Open questions for the founder:** Which of the 9 organizations are real? Approve migrations 0025–0028 for the OS ledger? Connect Master-listed restaurants' orders to the POS before the first store goes live (recommended)?
+
 ## 2026-09-27 — One Local: Admin API for the Master and a catalogue read from the Item Master
 
 **The Master portal can now put a merchant on One Local: it creates a store listing, previews it, approves it, pauses it, uploads its logo and cover, finds and blocks shoppers, and sees which towns are asking for One Local. An approved store shows up in the customer app with the merchant's own POS items and prices, with no app update needed.**
