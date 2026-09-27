@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: District teardown and plan to cover all of India
+
+**District's app was studied screen by screen on the founder's iPhone (Mumbai, Latur and the village of Killari), and there is now a plan to move One Local from Latur-only to any place in India.**
+
+- **Why:** One Local only works inside a 15 km circle around Latur, and "Latur" is written into the code and the on-screen text. The founder wants any city or small place in India to be choosable, the way District does it.
+- **Structural decisions (proposed, not built):** (1) Our own list of every place in India (state → district → sub-district → town or village) from the government's LGD codes and the India Post PIN directory, with Google used only for street-level search. (2) Each place gets a status per service (live, discover, coming soon), stored as data and edited from the Master, so the home grid and tab bar are built for that place. The alternative, keeping a list of "launched cities" in code, lost because every new town would need an app release. (3) Guests can browse anywhere without signing in or sharing location; sign-in is asked for only at checkout, booking or saving. (4) UI patterns to adopt: a floating tab bar that shrinks on scroll, tapping the active tab to open a service switcher, "Service / City ▾" headers, and a screenshot-to-share sheet.
+- **What works now:** Nothing new runs. The report is published privately at https://claude.ai/artifact/4VuNQ167GB5WiFzM8cgF9n.
+- **Left undone:** District's true guest flow was not seen, because the phone is signed in and the assistant did not sign out. On the phone, District's location was left on "Anywhere in Mumbai" and location permission on "Don't Allow".
+- **Open questions for the founder:** Show "discover" listings in towns we can't deliver to yet? Which six popular cities go on the tiles? Keep "Made in Latur" as the brand line? Allow every village from day one, or towns first?
+
 ## 2026-09-26 — One Local: Rider app end-to-end V1 specification from the Figma design
 
 **The rider app's roughly 60 designed screens are now one specification: every screen mapped to a route, the API it calls, the database tables behind it and the delivery states it moves through, with state, city and locality scoping and GPS rules for accurate navigation.**
