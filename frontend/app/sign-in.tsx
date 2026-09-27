@@ -13,6 +13,8 @@ import * as Haptics from 'expo-haptics';
 import { mobileDigits, useAuth } from '@/src/auth';
 import { OneGlyph } from '@/src/components/one-button';
 import { colors } from '@/src/theme';
+import { recordChoices, usePrivacyChoices } from '@/src/privacy';
+import { PRIVACY } from '@/constants/privacy';
 
 const INK = '#050605';
 const CARD = '#101210';
@@ -35,6 +37,24 @@ export default function SignIn() {
   const [wait, setWait] = useState(0);
   useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
 
+  // DPDP Act: a short notice with a link to the full one; accounts are for adults (s.9: a child's
+  // data needs a parent's verifiable consent, so a parent uses their own account); marketing is an
+  // optional, unticked extra. Only what an order needs is required. Choices are recorded on the
+  // phone with the notice version and reach the account once signed in (src/privacy.ts).
+  const privacy = usePrivacyChoices();
+  // Never pre-ticked, even for someone who confirmed on this phone before (a phone can be shared).
+  const [adult, setAdult] = useState(false); const [marketing, setMarketing] = useState(false); const [minor, setMinor] = useState(false);
+  const confirmedAdult = () => {
+    if (adult) return true;
+    setError(`Please confirm you are ${PRIVACY.minimumAge} or older to continue.`);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    return false;
+  };
+  const recordConsent = () => recordChoices([
+    { purpose: 'notice_acknowledged', granted: true }, { purpose: 'age_18_plus', granted: true },
+    ...(marketing ? [{ purpose: 'marketing' as const, granted: true }] : []),
+  ], 'sign_in').catch(() => {});
+
   const leave = () => {
     // From the cart's Pay button: back to the cart, which carries on paying once signed in.
     if (checkout) { if (router.canGoBack()) router.back(); else router.replace('/cart' as never); }
@@ -52,6 +72,7 @@ export default function SignIn() {
     setError(''); setNotice('');
     const digits = mobileDigits(mobile);
     if (!/^[6-9]\d{9}$/.test(digits)) return setError('Enter a valid 10-digit mobile number.');
+    if (!confirmedAdult()) return;
     setBusy('phone');
     try {
       await sendPhoneCode(digits);
@@ -62,8 +83,9 @@ export default function SignIn() {
   const verifyCode = async () => {
     setError('');
     if (code.length < 6) return setError('Enter the 6-digit code from the SMS.');
+    if (!confirmedAdult()) return;
     setBusy('phone');
-    try { await verifyPhoneCode(sentTo, code); signedIn(); } catch (e) { failed(e); } finally { setBusy(''); }
+    try { await recordConsent(); await verifyPhoneCode(sentTo, code); signedIn(); } catch (e) { failed(e); } finally { setBusy(''); }
   };
 
   const submit = async () => {
@@ -71,8 +93,10 @@ export default function SignIn() {
     if (mode === 'signup' && name.trim().length < 2) return setError('Tell us your name (at least two letters).');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Enter a valid email address.');
     if (password.length < 6) return setError('Your password needs at least 6 characters.');
+    if (!confirmedAdult()) return;
     setBusy('email');
     try {
+      await recordConsent();
       if (mode === 'signin') await signInWithEmail(email, password);
       else {
         const { needsConfirmation } = await signUpWithEmail(name, email, password);
@@ -83,8 +107,11 @@ export default function SignIn() {
   };
 
   const google = async () => {
-    setError(''); setBusy('google');
-    try { await signInWithGoogle(); } catch (e) { setError(e instanceof Error ? e.message : 'Google sign-in did not finish.'); } finally { setBusy(''); }
+    setError('');
+    if (!confirmedAdult()) return;
+    setBusy('google');
+    // On the web Google leaves this page; the choices are already saved and go once signed in.
+    try { await recordConsent(); await signInWithGoogle(); } catch (e) { setError(e instanceof Error ? e.message : 'Google sign-in did not finish.'); } finally { setBusy(''); }
   };
 
   return <KeyboardAvoidingView testID="sign-in-screen" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.screen}>
@@ -106,6 +133,22 @@ export default function SignIn() {
           <Text style={s.title}>{mode === 'signin' ? 'Your whole city,\none sign-in away.' : 'Make OneCity\nfeel like yours.'}</Text>
           <Text style={s.sub}>Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive.</Text>
         </>}
+      </View>
+
+      <View testID="sign-in-consent" style={s.consent}>
+        <Text testID="sign-in-notice-line" style={s.noticeLine}>We use your name, number, email and address only to run your account and deliver your orders.{' '}
+          <Text testID="sign-in-privacy-link" accessibilityRole="link" onPress={() => router.push('/privacy-notice' as never)} style={s.inlineLink}>Read the privacy notice</Text>
+        </Text>
+        <Check id="sign-in-age" checked={adult} onPress={() => { setAdult(a => !a); setError(''); }} label={`I am ${PRIVACY.minimumAge} or older`} />
+        {privacy.current.marketing
+          ? <Text testID="sign-in-marketing-on" style={s.consentNote}>You get offers and updates. Change this any time in Privacy & your data.</Text>
+          : <Check id="sign-in-marketing" checked={marketing} onPress={() => setMarketing(m => !m)} label="Send me offers and updates (optional)" hint="You can switch this off any time." />}
+        <Pressable testID="sign-in-under-18" accessibilityRole="button" onPress={() => setMinor(m => !m)} style={s.minorLink}><Text style={s.minorLinkText}>Under {PRIVACY.minimumAge}?</Text></Pressable>
+        {minor && <View testID="sign-in-minor" style={s.minor}>
+          <Text style={s.minorTitle}>Ask a parent or guardian</Text>
+          <Text style={s.consentNote}>One Local accounts are for adults. A parent or guardian can sign in with their own account and order for you. We don’t track children or show them targeted ads. You can keep browsing without an account.</Text>
+          <Pressable testID="sign-in-minor-browse" accessibilityRole="button" onPress={leave} style={s.minorButton}><Text style={s.minorButtonText}>Keep browsing</Text></Pressable>
+        </View>}
       </View>
 
       {phoneAvailable && <View testID="sign-in-method" accessibilityRole="tablist" style={[s.segment, { marginBottom: 12 }]}>
@@ -158,9 +201,19 @@ export default function SignIn() {
       </Pressable>
       {!googleAvailable && <Text style={s.hint}>Google sign-in switches on as soon as its keys are added.</Text>}
 
-      <Text style={s.legal}>By continuing you agree to OneCity’s terms and privacy policy. We never share your details with stores beyond what an order needs.</Text>
+      <Text style={s.legal}>We never share your details with stores beyond what an order needs.{' '}
+        <Text accessibilityRole="link" onPress={() => router.push('/privacy-notice' as never)} style={s.legalLink}>Privacy notice</Text> · version {PRIVACY.noticeVersion}
+      </Text>
     </ScrollView>
   </KeyboardAvoidingView>;
+}
+
+// A plain, unticked-by-default checkbox (never pre-ticked for consent).
+function Check({ id, checked, onPress, label, hint }: { id: string; checked: boolean; onPress: () => void; label: string; hint?: string }) {
+  return <Pressable testID={id} accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={label} onPress={onPress} style={s.check}>
+    <View style={[s.box, checked && s.boxOn]}>{checked && <Icon name="checkmark" size={15} color={INK} />}</View>
+    <View style={{ flex: 1 }}><Text style={s.checkLabel}>{label}</Text>{!!hint && <Text style={s.consentNote}>{hint}</Text>}</View>
+  </Pressable>;
 }
 
 function Field({ icon, prefix, trailing, testID, ...input }: React.ComponentProps<typeof TextInput> & { icon: string; prefix?: string; trailing?: React.ReactNode }) {
@@ -213,4 +266,19 @@ const s = StyleSheet.create({
   soonText: { color: colors.electricLime, fontSize: 9, fontWeight: '800', letterSpacing: 1 },
   hint: { color: SOFT, fontSize: 11, textAlign: 'center', marginTop: 8 },
   legal: { color: 'rgba(255,255,255,0.4)', fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: 'auto', paddingTop: 28 },
+  legalLink: { color: SOFT, textDecorationLine: 'underline' },
+  consent: { gap: 10, marginBottom: 18, padding: 14, borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: LINE },
+  noticeLine: { color: SOFT, fontSize: 12, lineHeight: 18 },
+  inlineLink: { color: colors.electricLime, fontWeight: '700', textDecorationLine: 'underline' },
+  check: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  box: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)', alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: colors.electricLime, borderColor: colors.electricLime },
+  checkLabel: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  consentNote: { color: SOFT, fontSize: 11, lineHeight: 16 },
+  minorLink: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
+  minorLinkText: { color: SOFT, fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
+  minor: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)' },
+  minorTitle: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  minorButton: { alignSelf: 'flex-start', minHeight: 40, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: LINE, justifyContent: 'center' },
+  minorButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });
