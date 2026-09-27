@@ -41,6 +41,12 @@ function pointOnRoute(t: number) {
   return { x: p0.x + (p1.x - p0.x) * localT, y: p0.y + (p1.y - p0.y) * localT };
 }
 
+// Cash orders keep the old wording; online orders say what Razorpay confirmed (server/payments.ts).
+const PAYMENT_NOTE: Record<string, string> = {
+  not_charged: 'sample order, not charged', paid: 'paid online', pending: 'payment being confirmed',
+  failed: 'payment did not go through', refunded: 'refunded',
+};
+
 const TIMELINE = [
   { key: "placed", label: "Order placed", icon: "checkmark-circle" as const },
   { key: "packed", label: "Packed at store", icon: "cube" as const },
@@ -129,7 +135,7 @@ export default function OrderTrackingScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
-        <Text testID="order-payment-method" style={styles.riderMeta}>{paymentLabel(order.payment_method || 'cod')} · sample order, not charged</Text>
+        <Text testID="order-payment-method" style={styles.riderMeta}>{paymentLabel(order.payment_method || 'cod')} · {PAYMENT_NOTE[order.payment_status ?? 'not_charged'] ?? PAYMENT_NOTE.not_charged}</Text>
         {elapsedS < 12 && <View testID="order-placed-moment" style={styles.placed}>
           <OneLottie name="order-success" size={72} />
           <View style={{ flex: 1 }}><Text style={styles.placedTitle}>Order placed!</Text><Text style={styles.placedSub}>₹{order.total} · the store has your order</Text></View>

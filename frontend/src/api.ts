@@ -39,7 +39,8 @@ function getCustomerKey(): Promise<string> {
 }
 
 // Every call says which device it is and, when signed in, who the customer is.
-async function identity(): Promise<Record<string, string>> {
+// Exported for the payment WebView, which loads its page with these same headers.
+export async function identity(): Promise<Record<string, string>> {
   const [key, token] = await Promise.all([getCustomerKey(), accessToken().catch(() => null)]);
   return token ? { 'X-Customer-Key': key, Authorization: `Bearer ${token}` } : { 'X-Customer-Key': key };
 }
@@ -99,14 +100,28 @@ export type Order = {
   gst?: number;
   total: number;
   coupon_code?: string | null;
-  payment_method?: 'cod' | 'upi' | 'card' | 'netbanking';
-  payment_status?: 'not_charged';
+  // Online methods are what Razorpay reported for the payment (server/payments.ts).
+  payment_method?: 'cod' | 'upi' | 'card' | 'netbanking' | 'wallet' | 'paylater' | 'emi' | 'cardless_emi';
+  payment_status?: 'not_charged' | 'pending' | 'paid' | 'failed' | 'refunded';
   status: string;
   rider_name: string;
   rider_phone: string;
   eta_minutes: number;
   created_at: string;
 };
+
+// POST /api/payments/order: our order (payment pending) plus what Razorpay Checkout opens on.
+// `checkout` holds no secrets — key_id is Razorpay's public key; the secret never leaves the server.
+export type PaymentStart = {
+  order_id: string; payment_status: NonNullable<Order['payment_status']>;
+  razorpay_order_id: string; key_id: string; amount: number; currency: 'INR';
+  prefill: { name: string; email: string; contact: string };
+  checkout: Record<string, unknown>;
+};
+export type PaymentResult =
+  | { type: 'success'; razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }
+  | { type: 'dismiss' }
+  | { type: 'failed'; reason?: string };
 
 export async function apiPost<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   const r = await fetch(`${API}${path}`, {

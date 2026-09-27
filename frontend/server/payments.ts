@@ -261,7 +261,7 @@ export async function checkoutPage(request: Request) {
   limit(customerKey(request) ?? 'anonymous', 'pay-page', 20, 60_000);
   const url = new URL(request.url);
   const record = await ownedOrder(request, url.searchParams.get('order'));
-  if (!record.razorpay_order_id || record.payment_status === 'paid') throw new HttpError(409, 'This order has nothing left to pay.');
+  if (!record.razorpay_order_id || record.payment_status === 'paid' || record.payment_method === 'cod') throw new HttpError(409, 'This order has nothing left to pay.');
   const options = checkoutOptions(record, k.id, text(url.searchParams.get('method'), 20), text(url.searchParams.get('app'), 20));
   const safe = JSON.stringify(options).replace(/</g, '\\u003c');
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

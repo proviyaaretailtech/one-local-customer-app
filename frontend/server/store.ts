@@ -62,7 +62,9 @@ export async function createOrder(request: Request, city: string, online = false
   const body = await readBody<{ items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }>(request);
 
   const idempotencyKey = request.headers.get('idempotency-key');
-  const fingerprint = JSON.stringify(body);
+  // Retrying a payment with a different method (UPI failed, now card) is the same checkout, so the
+  // online fingerprint covers only what was bought.
+  const fingerprint = JSON.stringify(online ? { items: body.items, total: body.total, coupon_code: body.coupon_code } : body);
 
   if (!dbConfigured()) {
     const replyKey = idempotencyKey ? `${customer.hash}:${idempotencyKey}` : null;

@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type PaymentMethod = 'cod' | 'upi' | 'card' | 'netbanking';
+export type PaymentMethod = 'cod' | 'upi' | 'card' | 'netbanking' | 'wallet' | 'paylater';
+// The UPI app picked on the Payment Options screen ('id' = pay with a UPI ID instead of an app).
+export type UpiApp = 'google_pay' | 'phonepe' | 'paytm' | 'bhim' | 'whatsapp' | 'id';
 export type Address = {
   id: string; label: string; name: string; phone: string; line: string; area: string; pin: string;
   // Added with the map flow; older saved addresses do not have them.
@@ -19,7 +21,8 @@ export type Profile = {
   language: Language;            // Marathi/Hindi are coming soon
   notifications: { orders: boolean; offers: boolean; bookings: boolean };
 };
-type CustomerData = { profile: Profile; addresses: Address[]; payment: PaymentMethod; referral: string };
+// payment + upiApp = the last way this customer paid; checkout offers it first next time.
+type CustomerData = { profile: Profile; addresses: Address[]; payment: PaymentMethod; upiApp?: UpiApp; referral: string };
 const KEY = 'onecity.customer.v1';
 const SAVED_KEY = 'onecity.saved-products.v1';
 const defaults: CustomerData = {

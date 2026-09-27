@@ -7,10 +7,14 @@ import Icon from "@react-native-vector-icons/ionicons";
 import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
 import { useCart } from "@/src/cart";
-import { apiPost, Bill, Coupon, CouponResult, Order, randomId } from "@/src/api";
+import { apiGet, apiPost, Bill, Coupon, CouponResult, Order, PaymentResult, PaymentStart, randomId } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { OneSaver } from '@/src/components/one-saver';
 import { CheckoutPayment } from '@/src/components/checkout-payment';
+import { PaymentChoice, PaymentSheet } from '@/src/components/payment-sheet';
+import { RazorpayCheckout } from '@/src/components/razorpay-checkout';
+import { paymentLabel } from '@/src/components/payment-options';
+import { useFeatures } from '@/src/features';
 import { useCustomer } from '@/src/customer';
 import { scheduleOrderJourney } from '@/src/native/ios-extras';
 import { CornerGlow } from '@/src/components/corner-glow';
@@ -20,7 +24,15 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { items, add, remove, clear, totalItems, totalPrice, totalMrp } = useCart();
-  const { payment } = useCustomer();
+  const { payment, upiApp, profile, update } = useCustomer();
+  const { online_payments } = useFeatures();
+  // With online payments off, everything below the `online` checks is skipped and checkout is
+  // cash on delivery exactly as before.
+  const choice: PaymentChoice = { method: online_payments ? payment : 'cod', app: upiApp };
+  const [sheet, setSheet] = useState(false);
+  type Attempt = { start: PaymentStart; choice: PaymentChoice; basket: string };
+  const [session, setSession] = useState<Attempt | null>(null);  // Razorpay Checkout is open
+  const [unpaid, setUnpaid] = useState<Attempt | null>(null);    // the last online attempt did not go through
 
   const [couponCode, setCouponCode] = useState("");
   const [applied, setApplied] = useState<Coupon | null>(null);
@@ -48,6 +60,10 @@ export default function CartScreen() {
     return () => { live = false; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartKey, applied?.code]);
+  // A changed cart is a new checkout: the old attempt is forgotten (an unpaid one never becomes an order).
+  const basket = `${cartKey}|${applied?.code ?? ''}`;
+  const checkoutFor = useRef(basket);
+  const failed = unpaid?.basket === basket ? unpaid : null;
   const couponDiscount = bill?.discount ?? 0;
   const deliveryFee = bill?.delivery_fee ?? 0;
   const grand = bill?.total ?? totalPrice;
@@ -83,35 +99,85 @@ export default function CartScreen() {
     setCouponMsg(null);
   };
 
-  const handleCheckout = async () => {
+  const orderBody = (method: string) => ({
+    items: items.map((i) => ({
+      id: i.id, name: i.name, weight: i.weight, price: i.price, mrp: i.mrp, image: i.image, qty: i.qty,
+    })),
+    subtotal: totalPrice,
+    discount: couponDiscount,
+    delivery_fee: deliveryFee,
+    total: grand,
+    coupon_code: couponDiscount > 0 ? applied?.code ?? null : null,
+    payment_method: method,
+  });
+  const done = (orderId: string, placedAt = Date.now()) => {
+    checkoutKey.current = null;
+    setUnpaid(null);
+    // Order updates as notifications (asks permission here, in context). No-op on the web.
+    void scheduleOrderJourney(orderId, placedAt);
+    clear();
+    setApplied(null);
+    setCouponCode("");
+    setCouponMsg(null);
+    router.replace(`/order/${orderId}` as any);
+  };
+  const say = (e: unknown, fallback: string) => setCheckoutError(e instanceof Error && !e.message.startsWith('API ') ? e.message : fallback);
+
+  const handleCheckout = async (pick: PaymentChoice = choice) => {
     if (placing || items.length === 0 || !bill) return;
     setPlacing(true);
     setCheckoutError('');
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Remember the way they paid, so it is the Preferred Payment next time.
+      if (online_payments && (pick.method !== payment || pick.app !== upiApp)) void update({ payment: pick.method, upiApp: pick.app }).catch(() => {});
+      setSheet(false);
       // One key per checkout attempt: a retry or double-tap returns the same order.
+      if (checkoutFor.current !== basket) { checkoutKey.current = null; checkoutFor.current = basket; }
       checkoutKey.current ??= randomId(16);
-      const order = await apiPost<Order>("/orders", {
-        items: items.map((i) => ({
-          id: i.id, name: i.name, weight: i.weight, price: i.price, mrp: i.mrp, image: i.image, qty: i.qty,
-        })),
-        subtotal: totalPrice,
-        discount: couponDiscount,
-        delivery_fee: deliveryFee,
-        total: grand,
-        coupon_code: couponDiscount > 0 ? applied?.code ?? null : null,
-        payment_method: payment,
-      }, { "Idempotency-Key": checkoutKey.current });
-      checkoutKey.current = null;
-      // Order updates as notifications (asks permission here, in context). No-op on the web.
-      void scheduleOrderJourney(order.id, new Date(order.created_at).getTime());
-      clear();
-      setApplied(null);
-      setCouponCode("");
-      setCouponMsg(null);
-      router.replace(`/order/${order.id}` as any);
+      if (online_payments && pick.method !== 'cod') {
+        // Online: the server saves the order as unpaid and opens a Razorpay order for its own total.
+        const start = await apiPost<PaymentStart>('/payments/order', {
+          ...orderBody(pick.method), upi_app: pick.method === 'upi' ? pick.app ?? null : null,
+          prefill: { name: profile.name, email: profile.email, contact: profile.phone },
+        }, { "Idempotency-Key": checkoutKey.current });
+        if (start.payment_status === 'paid') return done(start.order_id);
+        setUnpaid(null);
+        setSession({ start, choice: pick, basket });
+        return;
+      }
+      if (online_payments && failed) {
+        // "Choose another way to pay" after a failed attempt: the same order becomes cash on delivery.
+        const r = await apiPost<{ order_id: string }>('/payments/cod', { order_id: failed.start.order_id });
+        return done(r.order_id);
+      }
+      const order = await apiPost<Order>("/orders", orderBody(payment), { "Idempotency-Key": checkoutKey.current });
+      done(order.id, new Date(order.created_at).getTime());
     } catch (e) {
-      setCheckoutError(e instanceof Error && !e.message.startsWith('API ') ? e.message : 'Could not place your order. Please try again.');
+      say(e, 'Could not place your order. Please try again.');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  // Razorpay answered. Success is only trusted after the server checks Razorpay's signature.
+  const onPaymentResult = async (result: PaymentResult) => {
+    const current = session;
+    setSession(null);
+    if (!current) return;
+    setPlacing(true);
+    setCheckoutError('');
+    try {
+      if (result.type === 'success') {
+        await apiPost('/payments/verify', { order_id: current.start.order_id, ...result });
+        return done(current.start.order_id);
+      }
+      // Closed or failed — but a slow UPI payment may still have landed (the webhook marks it paid).
+      const order = await apiGet<Order>(`/orders/${current.start.order_id}`).catch(() => null);
+      if (order?.payment_status === 'paid') return done(order.id);
+      setUnpaid(current);
+    } catch (e) {
+      say(e, 'We could not confirm your payment. If money was taken, it will be matched to your order or refunded.');
     } finally {
       setPlacing(false);
     }
@@ -245,7 +311,7 @@ export default function CartScreen() {
               </View>
             </View>
 
-            <CheckoutPayment />
+            {!online_payments && <CheckoutPayment />}
             {/* Bill details — straight from the server's quote (server/pricing.ts) */}
             <View style={[styles.card, { marginTop: spacing.md, overflow: 'hidden' }]} testID="bill-details">
               <CornerGlow color={colors.lime} corner="top-right" size={240} strength={0.2} />
@@ -285,17 +351,43 @@ export default function CartScreen() {
           </ScrollView>
 
           {!!checkoutError && <Text testID="checkout-error" style={{ color: colors.onError, padding: 12 }}>{checkoutError}</Text>}
-          <VendorNote items={items} />
-          <View testID="checkout-footer" style={[styles.checkoutBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>
+          {!!failed && !placing && <View testID="payment-retry" style={styles.retry}>
+            <Icon name="alert-circle" size={20} color={colors.onError} />
             <View style={{ flex: 1 }}>
-              <Text testID="checkout-total" style={styles.checkoutTotal}>₹{grand}</Text>
-              <Text testID="checkout-payment-notice" style={styles.checkoutMeta}>Sample order · no charge</Text>
+              <Text style={styles.retryText}>Payment didn’t go through. No money was taken. Try again or choose another way to pay.</Text>
+              <View style={styles.retryActions}>
+                <TouchableOpacity testID="payment-retry-again" onPress={() => handleCheckout(failed.choice)} style={styles.retryBtn}><Text style={styles.retryBtnText}>Try again</Text></TouchableOpacity>
+                <TouchableOpacity testID="payment-retry-other" onPress={() => setSheet(true)} style={[styles.retryBtn, styles.retryBtnGhost]}><Text style={[styles.retryBtnText, { color: colors.forest }]}>Another way to pay</Text></TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout} testID="checkout-btn" disabled={placing}>
-              {placing && <ActivityIndicator color={colors.forest} />}<Text style={styles.checkoutText}>{placing ? "Placing..." : "Place sample order"}</Text>
-              {!placing && <Icon name="arrow-forward" size={16} color={colors.onBrandSecondary} />}
-            </TouchableOpacity>
-          </View>
+          </View>}
+          <VendorNote items={items} />
+          {online_payments ? (
+            // Online payments live: "PAY USING" opens Payment Options; the big button pays with it.
+            <View testID="checkout-footer" style={[styles.payBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>
+              <Pressable testID="checkout-pay-using" accessibilityRole="button" accessibilityLabel="Choose how to pay" onPress={() => setSheet(true)} style={{ flex: 1, minHeight: 44, justifyContent: 'center' }}>
+                <Text style={styles.payUsing}>PAY USING <Icon name="caret-up" size={10} color={colors.muted} /></Text>
+                <Text testID="checkout-selected-payment" numberOfLines={1} style={styles.payMethod}>{paymentLabel(choice.method, choice.method === 'upi' ? choice.app : undefined)}</Text>
+              </Pressable>
+              <TouchableOpacity style={styles.payNow} onPress={() => handleCheckout()} testID="checkout-btn" disabled={placing || !bill || !!session}>
+                {placing ? <ActivityIndicator color={colors.onBrandSecondary} /> : <Text style={styles.payNowText}>{choice.method === 'cod' ? `Place order · ₹${grand}` : `Pay ₹${grand}`}</Text>}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View testID="checkout-footer" style={[styles.checkoutBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>
+              <View style={{ flex: 1 }}>
+                <Text testID="checkout-total" style={styles.checkoutTotal}>₹{grand}</Text>
+                <Text testID="checkout-payment-notice" style={styles.checkoutMeta}>Sample order · no charge</Text>
+              </View>
+              <TouchableOpacity style={styles.checkoutBtn} onPress={() => handleCheckout()} testID="checkout-btn" disabled={placing}>
+                {placing && <ActivityIndicator color={colors.forest} />}<Text style={styles.checkoutText}>{placing ? "Placing..." : "Place sample order"}</Text>
+                {!placing && <Icon name="arrow-forward" size={16} color={colors.onBrandSecondary} />}
+              </TouchableOpacity>
+            </View>
+          )}
+          {online_payments && sheet && <PaymentSheet onClose={() => setSheet(false)} choice={choice} onPay={pick => handleCheckout(pick)} paying={placing}
+            itemCount={totalItems} total={grand} savings={bill?.total_savings ?? 0} />}
+          {!!session && <RazorpayCheckout session={session.start} method={session.choice.method} app={session.choice.app} onResult={onPaymentResult} />}
         </>
       )}
     </KeyboardAvoidingView>
@@ -387,4 +479,15 @@ const styles = StyleSheet.create({
   checkoutMeta: { color: colors.onSurfaceInverse, fontSize: 8, marginTop: 2 },
   checkoutBtn: { backgroundColor: colors.brandSecondary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", gap: 6 },
   checkoutText: { color: colors.onBrandSecondary, fontWeight: "700", fontSize: 11 },
+  payBar: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, paddingLeft: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.border },
+  payUsing: { fontSize: 10, fontWeight: "800", color: colors.muted, letterSpacing: 0.8 },
+  payMethod: { fontSize: 14, fontWeight: "800", color: colors.onSurface, marginTop: 2 },
+  payNow: { flex: 1.3, minHeight: 52, backgroundColor: colors.brandSecondary, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
+  payNowText: { color: colors.onBrandSecondary, fontWeight: "800", fontSize: 16 },
+  retry: { flexDirection: "row", gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.error },
+  retryText: { color: colors.onSurface, fontSize: 13, fontWeight: "600", lineHeight: 19 },
+  retryActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  retryBtn: { minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: colors.forest, alignItems: "center", justifyContent: "center" },
+  retryBtnGhost: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.forest },
+  retryBtnText: { color: colors.surface, fontWeight: "700", fontSize: 12 },
 });
