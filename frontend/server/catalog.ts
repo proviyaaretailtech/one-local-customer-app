@@ -41,7 +41,8 @@ async function loadFromDb(): Promise<CatalogData> {
     categories: (categories.data ?? []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji, color: c.color, department: c.department, image: c.image })),
     discover_chips: (chips.data ?? []).map(c => ({ id: c.id, label: c.label, emoji: c.emoji, color: c.color })),
     banners: (banners.data ?? []).map(b => ({ id: b.id, title: b.title, subtitle: b.subtitle, image: b.image, bg: b.bg, city_id: b.city_id })),
-    coupons: (coupons.data ?? []).map(c => ({ code: c.code, label: c.label, kind: c.kind, value: num(c.value), min_order: num(c.min_order), description: c.description, city_id: c.city_id })),
+    // store_id (draft migration 0026): a coupon for one store only; absent until that is applied.
+    coupons: (coupons.data ?? []).map(c => ({ code: c.code, label: c.label, kind: c.kind, value: num(c.value), min_order: num(c.min_order), description: c.description, city_id: c.city_id, store_id: c.store_id ?? null })),
     stores: (stores.data ?? []).map(s => ({ id: s.id, name: s.name, logo: s.logo, tagline: s.tagline, delivery_time: s.delivery_time, rating: num(s.rating), tags: s.tags ?? [], department: s.department, media: s.media ?? [], city_id: s.city_id })),
     products: (products.data ?? []).map(p => ({
       id: p.id, name: p.name, weight: p.weight, price: num(p.price), mrp: num(p.mrp), image: p.image,
