@@ -1,53 +1,81 @@
-// Choose where to deliver: search, current location, a new pinned address, saved addresses
-// and recent searches.
+// Choose where you are: any city, town or village in India (our own list — free, instant), the
+// current location, popular cities, a state-by-state browser, saved delivery addresses and recent
+// places. Street-level address search (Google) joins in once the Maps key is set. On first launch
+// this screen asks "Where are you?" and can be skipped (Latur).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
 import { randomId } from '@/src/api';
 import { Address, useCustomer } from '@/src/customer';
 import { Point, useDeliveryLocation } from '@/src/delivery-location';
-import { addressText, CITY_CENTER, currentPoint, distanceKm, knownPoint, placeDetails, Recent, recentPlaces, rememberPlace, searchPlaces, Suggestion } from '@/src/places';
+import { useFeatures } from '@/src/features';
+import {
+  addressText, CITY_CENTER, coverageAt, currentPoint, distanceKm, IndiaPlace, knownPoint, LocationOffError, placeDetails, placeLine, popularCities,
+  Recent, recentPlaces, rememberPlace, searchIndia, searchPlaces, Suggestion,
+} from '@/src/places';
 import { colors } from '@/src/theme';
 
 const kindIcon = (a: Address) => (a.kind === 'work' || a.label === 'Work' ? 'briefcase-outline' : a.kind === 'other' || a.label === 'Other' ? 'location-outline' : 'home-outline');
 const mapHref = (p?: Point | null, extra = '') => `/address-map?${p ? `lat=${p.lat}&lng=${p.lng}` : ''}${extra}` as never;
+const KIND_LABEL = { city: 'City', town: 'Town', locality: 'Area', village: 'Village' } as const;
 
 export default function LocationPicker() {
-  const router = useRouter(); const insets = useSafeAreaInsets();
-  const { addresses, update } = useCustomer(); const delivery = useDeliveryLocation();
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { first } = useLocalSearchParams<{ first?: string }>();
+  const { addresses, update } = useCustomer(); const delivery = useDeliveryLocation(); const { maps } = useFeatures();
   const session = useRef(randomId(16)).current;
-  const [query, setQuery] = useState(''); const [results, setResults] = useState<Suggestion[]>([]);
+  const [query, setQuery] = useState(''); const [places, setPlaces] = useState<IndiaPlace[]>([]); const [streets, setStreets] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false); const [error, setError] = useState(''); const [locating, setLocating] = useState(false);
   const [here, setHere] = useState<Point | null>(null); const [recent, setRecent] = useState<Recent[]>([]); const [menu, setMenu] = useState('');
+  const [settings, setSettings] = useState(false); // location refused for good: offer the way to Settings
+  const { data: popular = [] } = useQuery({ queryKey: ['popular-cities'], queryFn: popularCities, staleTime: Infinity });
 
   useEffect(() => { knownPoint().then(setHere); recentPlaces().then(setRecent); }, []);
 
-  // Debounced search; each visit to this screen is one billing session with Google.
+  // Debounced search: towns and villages from our own list always; street addresses from Google
+  // only when Maps is switched on (each visit to this screen is one billing session there).
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setResults([]); setSearching(false); return; }
+    if (q.length < 2) { setPlaces([]); setStreets([]); setSearching(false); return; }
     setSearching(true);
     const t = setTimeout(() => {
-      searchPlaces(q, session, here ?? delivery.point).then(r => { setResults(r); setError(''); })
-        .catch(e => { setResults([]); setError(e.message); }).finally(() => setSearching(false));
-    }, 350);
+      const around = here ?? delivery.point;
+      Promise.all([
+        searchIndia(q, around).catch(e => { setError(e.message); return [] as IndiaPlace[]; }),
+        maps ? searchPlaces(q, session, around).catch(() => [] as Suggestion[]) : Promise.resolve([] as Suggestion[]),
+      ]).then(([p, s]) => { setPlaces(p); setStreets(s); if (p.length || s.length) setError(''); }).finally(() => setSearching(false));
+    }, 250);
     return () => clearTimeout(t);
-  }, [query, session, here, delivery.point]);
+  }, [query, session, here, delivery.point, maps]);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as never));
-  const pickSuggestion = async (s: Suggestion) => {
+  const choosePlace = (p: Pick<IndiaPlace, 'name' | 'district' | 'state' | 'lat' | 'lng'>) => {
+    const line = placeLine(p);
+    delivery.setLocation(line ? `${p.name}, ${line}` : p.name, { lat: p.lat, lng: p.lng });
+    void rememberPlace({ title: p.name, subtitle: line, lat: p.lat, lng: p.lng });
+    router.replace('/(tabs)' as never);
+  };
+  const pickStreet = async (s: Suggestion) => {
     try {
       const place = await placeDetails(s.place_id, session);
       await rememberPlace({ title: s.title, subtitle: s.subtitle, lat: place.lat, lng: place.lng });
       router.push(mapHref(place));
     } catch (e) { setError((e as Error).message); }
   };
+  // Current location names the town it falls in (no Google needed), and browsing starts there.
   const useCurrent = async () => {
-    setLocating(true); setError('');
-    try { const p = await currentPoint(); setHere(p); router.push(mapHref(p)); }
-    catch (e) { setError((e as Error).message); }
+    setLocating(true); setError(''); setSettings(false);
+    try {
+      const p = await currentPoint(); setHere(p);
+      const c = await coverageAt(p);
+      if (c.place) choosePlace({ ...c.place, lat: p.lat, lng: p.lng });
+      else { delivery.setLocation('Current location', p); router.replace('/(tabs)' as never); }
+    } catch (e) {
+      setError(Platform.OS === 'web' && e instanceof LocationOffError ? 'Location access is off for this site. Allow it in your browser’s site settings, or search for your town above.' : (e as Error).message);
+      setSettings(e instanceof LocationOffError && !e.canAskAgain && Platform.OS !== 'web');
+    }
     finally { setLocating(false); }
   };
   const choose = (a: Address) => {
@@ -56,30 +84,48 @@ export default function LocationPicker() {
   };
   const remove = async (a: Address) => { setMenu(''); await update({ addresses: addresses.filter(x => x.id !== a.id) }); };
   const selected = useMemo(() => addresses.find(a => addressText(a) === delivery.location)?.id, [addresses, delivery.location]);
+  const searchingNow = query.trim().length >= 2;
 
   return (
     <View testID="location-screen" style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable testID="location-back" accessibilityLabel="Go back" onPress={close} style={styles.back}><Icon name="arrow-back" size={21} color={colors.onSurface} /></Pressable>
-        <Text style={styles.title}>Where should we deliver?</Text>
+        {!first && <Pressable testID="location-back" accessibilityLabel="Go back" onPress={close} style={styles.back}><Icon name="arrow-back" size={21} color={colors.onSurface} /></Pressable>}
+        <Text style={[styles.title, !!first && styles.firstTitle]}>{first ? 'Where are you?' : 'Choose a location'}</Text>
+        {!!first && <Pressable testID="location-skip" onPress={() => choosePlace({ name: 'Latur', district: 'Latur', state: 'Maharashtra', ...CITY_CENTER })} style={styles.skip}><Text style={styles.skipText}>Skip</Text></Pressable>}
       </View>
+      {!!first && <Text style={styles.lede}>One Local works across India. Pick your city, town or village to see what’s near you.</Text>}
       <View style={styles.search}>
         <Icon name="search-outline" size={18} color={colors.muted} />
-        <TextInput testID="location-search" value={query} onChangeText={setQuery} placeholder="Search your area, street or landmark" placeholderTextColor={colors.muted} style={styles.input} autoCorrect={false} returnKeyType="search" />
+        <TextInput testID="location-search" value={query} onChangeText={setQuery} placeholder={maps ? 'Search city, village, area or street' : 'Search city, town or village'} placeholderTextColor={colors.muted} style={styles.input} autoCorrect={false} returnKeyType="search" />
         {searching ? <ActivityIndicator size="small" color={colors.forest} /> : !!query && <Pressable accessibilityLabel="Clear search" onPress={() => setQuery('')} hitSlop={10}><Icon name="close-circle" size={18} color={colors.muted} /></Pressable>}
       </View>
       {!!error && <Text testID="location-error" style={styles.error}>{error}</Text>}
+      {settings && <Pressable testID="location-open-settings" onPress={() => Linking.openSettings().catch(() => {})} style={styles.settings}><Icon name="settings-outline" size={15} color={colors.forest} /><Text style={styles.settingsText}>Open Settings</Text></Pressable>}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]} keyboardShouldPersistTaps="handled">
-        {query.trim().length >= 2 ? (
-          <View style={styles.card}>
-            {!searching && !results.length && !error && <Text style={styles.muted}>No places found. Try a nearby landmark.</Text>}
-            {results.map((r, i) => (
-              <Pressable key={r.place_id} testID={`place-result-${i}`} onPress={() => pickSuggestion(r)} style={[styles.row, i > 0 && styles.divider]}>
-                <View style={styles.rowIcon}><Icon name="location-outline" size={17} color={colors.onSurface} /></View>
-                <View style={styles.flex}><Text style={styles.rowTitle} numberOfLines={1}>{r.title}</Text><Text style={styles.rowSub} numberOfLines={2}>{r.subtitle}</Text></View>
-              </Pressable>
-            ))}
-          </View>
+        {searchingNow ? (
+          <>
+            <View style={styles.card}>
+              {!searching && !places.length && !streets.length && <Text style={styles.muted}>No places found. Check the spelling, or try the nearest town.</Text>}
+              {places.map((p, i) => (
+                <Pressable key={p.id} testID={`india-result-${i}`} onPress={() => choosePlace(p)} style={[styles.row, i > 0 && styles.divider]}>
+                  <View style={styles.rowIcon}><Icon name={p.kind === 'village' ? 'leaf-outline' : p.kind === 'locality' ? 'navigate-circle-outline' : 'business-outline'} size={17} color={colors.onSurface} /></View>
+                  <View style={styles.flex}>
+                    <Text style={styles.rowTitle} numberOfLines={1}>{p.name}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>{KIND_LABEL[p.kind]} · {placeLine(p)}{p.distance_km != null ? ` · ${Math.round(p.distance_km)} km` : ''}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+            {!!streets.length && <Text style={styles.section}>ADDRESSES & LANDMARKS</Text>}
+            {!!streets.length && <View style={styles.card}>
+              {streets.map((r, i) => (
+                <Pressable key={r.place_id} testID={`place-result-${i}`} onPress={() => pickStreet(r)} style={[styles.row, i > 0 && styles.divider]}>
+                  <View style={styles.rowIcon}><Icon name="location-outline" size={17} color={colors.onSurface} /></View>
+                  <View style={styles.flex}><Text style={styles.rowTitle} numberOfLines={1}>{r.title}</Text><Text style={styles.rowSub} numberOfLines={2}>{r.subtitle}</Text></View>
+                </Pressable>
+              ))}
+            </View>}
+          </>
         ) : (
           <>
             <View style={styles.actions}>
@@ -89,7 +135,7 @@ export default function LocationPicker() {
               </Pressable>
               <Pressable testID="add-new-address" onPress={() => router.push(mapHref(here ?? delivery.point ?? CITY_CENTER))} style={styles.action}>
                 <Icon name="add-circle-outline" size={20} color={colors.forest} />
-                <Text style={styles.actionText}>Add new address</Text>
+                <Text style={styles.actionText}>Add delivery address</Text>
               </Pressable>
             </View>
 
@@ -111,7 +157,7 @@ export default function LocationPicker() {
                       {menu === a.id && (
                         <View style={styles.menu}>
                           <Pressable testID={`edit-address-${a.id}`} onPress={() => { setMenu(''); router.push(a.lat != null && a.lng != null ? mapHref({ lat: a.lat, lng: a.lng }, `&id=${a.id}`) : (`/address-form?id=${a.id}&manual=1` as never)); }} style={styles.menuItem}><Text style={styles.menuText}>Edit</Text></Pressable>
-                          <Pressable testID={`delete-address-${a.id}`} onPress={() => remove(a)} style={styles.menuItem}><Text style={[styles.menuText, { color: colors.error }]}>Delete</Text></Pressable>
+                          <Pressable testID={`delete-address-${a.id}`} onPress={() => remove(a)} style={styles.menuItem}><Text style={[styles.menuText, { color: colors.onError }]}>Delete</Text></Pressable>
                         </View>
                       )}
                     </View>
@@ -120,17 +166,32 @@ export default function LocationPicker() {
               </View>
             )}
 
-            {!!recent.length && <Text style={styles.section}>RECENTLY SEARCHED</Text>}
-            {!!recent.length && (
-              <View style={styles.card}>
-                {recent.map((r, i) => (
-                  <Pressable key={`${r.title}-${i}`} testID={`recent-place-${i}`} onPress={() => router.push(mapHref(r))} style={[styles.row, i > 0 && styles.divider]}>
-                    <View style={styles.rowIcon}><Icon name="time-outline" size={17} color={colors.onSurface} /></View>
-                    <View style={styles.flex}><Text style={styles.rowTitle} numberOfLines={1}>{r.title}</Text><Text style={styles.rowSub} numberOfLines={2}>{r.subtitle}</Text></View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            {!!recent.length && <Text style={styles.section}>RECENT PLACES</Text>}
+            {!!recent.length && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+              {recent.map((r, i) => <Pressable key={`${r.title}-${i}`} testID={`recent-place-${i}`} onPress={() => choosePlace({ name: r.title, district: null, state: r.subtitle, lat: r.lat, lng: r.lng })} style={styles.chip}><Icon name="time-outline" size={14} color={colors.muted} /><Text style={styles.chipText}>{r.title}</Text></Pressable>)}
+            </ScrollView>}
+
+            <Text style={styles.section}>WE DELIVER IN</Text>
+            <Pressable testID="live-city-latur" onPress={() => choosePlace({ name: 'Latur', district: 'Latur', state: 'Maharashtra', ...CITY_CENTER })} style={styles.live}>
+              <View style={styles.liveMark}><Icon name="bicycle" size={20} color={colors.forest} /></View>
+              <View style={styles.flex}><Text style={styles.rowTitle}>Latur</Text><Text style={styles.rowSub}>Food, groceries, shops and care, delivered</Text></View>
+              <Icon name="chevron-forward" size={18} color={colors.forest} />
+            </Pressable>
+
+            {!!popular.length && <Text style={styles.section}>POPULAR CITIES</Text>}
+            <View style={styles.tiles}>
+              {popular.map(p => <Pressable key={p.id} testID={`popular-${p.name.toLowerCase()}`} onPress={() => choosePlace(p)} style={styles.tile}>
+                <Text style={styles.tileMark}>{p.name.slice(0, 1)}</Text>
+                <Text style={styles.tileName} numberOfLines={1}>{p.name}</Text>
+                <Text style={styles.tileState} numberOfLines={1}>{p.state}</Text>
+              </Pressable>)}
+            </View>
+
+            <Pressable testID="browse-india" onPress={() => router.push('/india' as never)} style={styles.browse}>
+              <Icon name="map-outline" size={20} color={colors.forest} />
+              <View style={styles.flex}><Text style={styles.rowTitle}>Browse all of India</Text><Text style={styles.rowSub}>By state and district, down to every village</Text></View>
+              <Icon name="chevron-forward" size={18} color={colors.muted} />
+            </Pressable>
           </>
         )}
       </ScrollView>
@@ -140,12 +201,18 @@ export default function LocationPicker() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surfaceSecondary },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 54 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, minHeight: 54 },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: colors.onSurface },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.onSurface },
+  firstTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6, paddingLeft: 6, paddingTop: 8 },
+  skip: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
+  skipText: { fontSize: 14, fontWeight: '700', color: colors.forest },
+  lede: { marginHorizontal: 18, marginBottom: 12, fontSize: 14, lineHeight: 20, color: colors.muted },
   search: { marginHorizontal: 16, height: 50, borderRadius: 16, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  input: { flex: 1, fontSize: 14, color: colors.onSurface, height: 48 },
-  error: { marginHorizontal: 18, marginTop: 10, fontSize: 12, color: colors.error },
+  input: { flex: 1, fontSize: 15, color: colors.onSurface, height: 48 },
+  error: { marginHorizontal: 18, marginTop: 10, fontSize: 13, lineHeight: 18, color: colors.onError },
+  settings: { marginHorizontal: 18, marginTop: 6, minHeight: 40, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  settingsText: { fontSize: 13, fontWeight: '700', color: colors.forest },
   content: { padding: 16, gap: 10 },
   actions: { flexDirection: 'row', gap: 10 },
   action: { flex: 1, minHeight: 78, borderRadius: 18, padding: 14, gap: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
@@ -154,17 +221,28 @@ const styles = StyleSheet.create({
   card: { borderRadius: 18, backgroundColor: colors.surface, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14 },
   rowMain: { flex: 1, flexDirection: 'row', gap: 12 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderStrong },
   rowIcon: { width: 42, minHeight: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSecondary, paddingVertical: 4 },
-  km: { fontSize: 9, color: colors.muted, marginTop: 2 },
+  km: { fontSize: 11, color: colors.muted, marginTop: 2 },
   flex: { flex: 1 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rowTitle: { fontSize: 15, fontWeight: '700', color: colors.onSurface },
   rowSub: { marginTop: 3, fontSize: 12, lineHeight: 17, color: colors.muted },
-  badge: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6, color: colors.forest, backgroundColor: colors.limeSoft, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' },
-  more: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  badge: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, color: colors.forest, backgroundColor: colors.limeSoft, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' },
+  more: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   menu: { position: 'absolute', right: 30, top: 12, zIndex: 5, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 4, boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: colors.shadow }] },
-  menuItem: { paddingHorizontal: 16, paddingVertical: 10, minWidth: 110 },
+  menuItem: { paddingHorizontal: 16, paddingVertical: 12, minWidth: 110 },
   menuText: { fontSize: 13, fontWeight: '600', color: colors.onSurface },
   muted: { paddingVertical: 16, fontSize: 13, color: colors.muted },
+  chips: { gap: 8 },
+  chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.onSurface },
+  live: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: colors.limeSoft, borderWidth: 1, borderColor: colors.lime },
+  liveMark: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: { width: '30%', flexGrow: 1, minHeight: 84, borderRadius: 18, padding: 12, justifyContent: 'flex-end', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  tileMark: { position: 'absolute', top: 6, right: 10, fontSize: 34, fontWeight: '800', color: colors.cityMid },
+  tileName: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
+  tileState: { fontSize: 11, color: colors.muted },
+  browse: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
 });

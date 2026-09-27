@@ -143,7 +143,7 @@ export function listPlaces(state: string, district: string) {
 }
 
 // The picker's city tiles, in the founder's order (27 Sep 2026: metros first).
-const POPULAR = ['Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad'];
+const POPULAR = ['Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur'];
 export function popularCities() {
   const ix = load();
   return POPULAR.map(name => {

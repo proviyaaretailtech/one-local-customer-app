@@ -10,7 +10,16 @@ import { BrandRail, CategoryRail, LoadState, SectionTitle } from './catalog-sect
 import { ProductCard } from './product-card';
 import { BrandSpotlight } from './brand-spotlight';
 import { CityScroll } from '../motion';
+import { ExploreTown } from './explore-town';
+import { useDeliveryLocation } from '../delivery-location';
 export function DepartmentScreen({ id }: { id: DepartmentId }) {
+  // Outside our delivery cities a department shows that town's real local places of its kind.
+  const { coverage } = useDeliveryLocation();
+  if (coverage && coverage.level !== 'live' && id !== 'book-it') return <ExploreTown initial={id} />;
+  return <LiveDepartment id={id} />;
+}
+
+function LiveDepartment({ id }: { id: DepartmentId }) {
   const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useAppDimensions().width;
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const brands = data.brands.filter(b => inDepartment(b.department, id)); const categories = data.categories.filter(c => inDepartment(c.department, id));

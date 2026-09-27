@@ -13,7 +13,7 @@ Output (committed, rebuilt only when refreshing the data):
             l = locality inside a city, v = village
   server/data/india-admin.json     state and district names by code
 """
-import gzip, json, os, sys
+import gzip, json, os, re, sys
 
 src = sys.argv[1] if len(sys.argv) > 1 else '.'
 out = os.path.join(os.path.dirname(__file__), '..', 'server', 'data')
@@ -26,7 +26,8 @@ for line in open(os.path.join(src, 'admin2Codes.txt'), encoding='utf8'):
     code, name, ascii_name, _ = line.rstrip('\n').split('\t')
     if code.startswith('IN.'):
         _, a1, a2 = code.split('.')
-        districts[f'{a1}.{a2}'] = ascii_name
+        # "Pune Division", "District Rampur", "Lucknow District" → "Pune", "Rampur", "Lucknow"
+        districts[f'{a1}.{a2}'] = re.sub(r'^District\s+|\s+(District|Division)$', '', ascii_name.strip())
 
 # Official renames newer than the source data: shown under the new name, found by either.
 RENAMED = {('Aurangabad', '16'): 'Chhatrapati Sambhajinagar', ('Osmanabad', '16'): 'Dharashiv', ('Ahmednagar', '16'): 'Ahilyanagar',
@@ -59,7 +60,8 @@ for line in open(os.path.join(src, 'IN.txt'), encoding='utf8'):
         best[key] = (rank, (name, f'{lat:.4f}', f'{lng:.4f}', a1, a2, str(pop), kind, aliases))
 
 rows = sorted((v[1] for v in best.values()), key=lambda r: r[0].lower())
-with gzip.open(os.path.join(out, 'india-places.tsv.gz'), 'wt', encoding='utf8', compresslevel=9) as fh:
-    for r in rows: fh.write('\t'.join(r) + '\n')
+# mtime=0 keeps the file byte-identical between rebuilds of the same data (clean git diffs).
+with open(os.path.join(out, 'india-places.tsv.gz'), 'wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', compresslevel=9, mtime=0) as fh:
+    fh.write(''.join('\t'.join(r) + '\n' for r in rows).encode('utf8'))
 json.dump({'states': states, 'districts': districts}, open(os.path.join(out, 'india-admin.json'), 'w'), separators=(',', ':'), sort_keys=True)
 print(f'{len(rows)} places, {len(states)} states, {len(districts)} districts')
