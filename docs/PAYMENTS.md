@@ -76,6 +76,11 @@ The payment details need four new columns on orders and one new small table. The
 approval, and the OS repo keeps the migration ledger. It only adds things; nothing existing is
 changed or removed. Until it is applied, online payments only work in local "no database" mode.
 
+Since 27 Sep 2026 a shopping cart can hold several stores and is paid **once** (one "checkout",
+split into one order per store). That needs a second change, `db/migrations/0026_ol_checkouts.sql`
+(a draft too, applied after 0025). Until both are applied, a server on the database takes cash on
+delivery only.
+
 ### 5. Later: go live with real money
 
 In the Razorpay dashboard, complete **KYC / account activation** (business details, PAN, bank
@@ -134,3 +139,7 @@ Never type a real card, UPI ID or bank login while in Test Mode.
   (phone, WebView) and `.web.tsx` (web, checkout.js), flow in `app/(tabs)/cart.tsx`.
 - The amount charged is always the server's total, in paise. The key secret and webhook secret stay
   on the server; only the Key Id goes to the app. Payloads are never logged or stored.
+- Payment belongs to the **checkout** (`ol_checkouts`, migration 0026): one Razorpay order for the
+  checkout total, and verify / webhook / switch-to-cash / refunds act on every store order in it. The
+  routes accept the checkout id or, for older app versions, any of its order ids.
+  `npx tsx scripts/checkout-checks.ts` (from `frontend/`) runs 42 checks with Razorpay simulated.
