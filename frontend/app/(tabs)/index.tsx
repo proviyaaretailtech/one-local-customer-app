@@ -28,6 +28,8 @@ function LiveHome() {
   const [stores, setStores] = useState<Store[]>([]);
   useEffect(() => { api<Store[]>('/stores').then(setStores).catch(() => {}); }, []);
   if (isLoading || !data) return <LoadState error={isError} retry={refetch} />;
+  // A delivery city with no stores in the catalogue yet: show what's around instead of empty rails.
+  if (!data.products.length) return <ExploreTown empty />;
   const followed = stores.filter(s => isFollowing(s.id));
   const go = (route: string) => () => router.navigate(route as any);
   const selected = (ids: string[]) => ids.flatMap(id => data.products.filter(p => p.id === id));

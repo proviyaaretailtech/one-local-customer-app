@@ -22,6 +22,7 @@ export function DepartmentScreen({ id }: { id: DepartmentId }) {
 function LiveDepartment({ id }: { id: DepartmentId }) {
   const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useAppDimensions().width;
   if (!data) return <LoadState error={isError} retry={refetch} />;
+  if (!data.products.some(p => inDepartment(p.department, id)) && id !== 'book-it') return <ExploreTown initial={id} empty />;
   const brands = data.brands.filter(b => inDepartment(b.department, id)); const categories = data.categories.filter(c => inDepartment(c.department, id));
   const products = data.products.filter(p => inDepartment(p.department, id) && (!brand || p.brand_id === brand) && (filter === 'All' || data.categories.find(c => c.id === p.category_id)?.name.toLowerCase().includes(filter.toLowerCase())));
   // 2 columns on phones, 3 on small tablets, 4 from iPad portrait up.

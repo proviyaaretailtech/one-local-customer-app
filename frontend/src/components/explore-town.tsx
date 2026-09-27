@@ -29,11 +29,13 @@ const TYPE_ICON: Record<string, string> = {
 const LAUNCH_KEY = (id: string) => `onecity.launch-asked.${id}`;
 const km = (n: number) => (n < 1 ? `${Math.round(n * 1000)} m` : `${n < 10 ? n.toFixed(1) : Math.round(n)} km`);
 
-export function ExploreTown({ initial = 'food' }: { initial?: NearbyKind }) {
+// `empty`: a delivery city whose catalogue has no stores yet (e.g. right after the demo catalogue
+// is cleared and before the Master adds real ones) — show what's around instead of empty shelves.
+export function ExploreTown({ initial = 'food', empty = false }: { initial?: NearbyKind; empty?: boolean }) {
   const { coverage, point, edit } = useDeliveryLocation(); const router = useRouter();
   const at = point ?? CITY_CENTER; const place = coverage?.place;
   const [kind, setKind] = useState<NearbyKind>(initial);
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['nearby', at.lat, at.lng], queryFn: () => nearbyAt(at), staleTime: 10 * 60_000, retry: 1, enabled: coverage?.level === 'discover' });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['nearby', at.lat, at.lng], queryFn: () => nearbyAt(at), staleTime: 10 * 60_000, retry: 1, enabled: empty || coverage?.level === 'discover' });
   const [launch, setLaunch] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   useEffect(() => { setKind(initial); }, [initial]);
   useEffect(() => { if (place) AsyncStorage.getItem(LAUNCH_KEY(place.id)).then(v => setLaunch(v ? 'done' : 'idle')).catch(() => {}); }, [place]);
@@ -57,9 +59,11 @@ export function ExploreTown({ initial = 'food' }: { initial?: NearbyKind }) {
       {!!place && <Text style={s.sub}>{placeLine(place)}</Text>}
       <View style={s.status}>
         <Icon name="bicycle-outline" size={16} color={colors.forest} />
-        <Text testID="explore-status" style={s.statusText}>We don’t deliver here yet. Here’s what’s around you{coverage ? ` · we deliver in ${coverage.nearest_live.name}, ${Math.round(coverage.nearest_live.distance_km)} km away` : ''}.</Text>
+        <Text testID="explore-status" style={s.statusText}>{empty
+          ? `Stores in ${place?.name ?? 'your city'} are joining One Local. Until they’re in, here’s what’s around you.`
+          : `We don’t deliver here yet. Here’s what’s around you${coverage ? ` · we deliver in ${coverage.nearest_live.name}, ${Math.round(coverage.nearest_live.distance_km)} km away` : ''}.`}</Text>
       </View>
-      {launch === 'done'
+      {empty ? null : launch === 'done'
         ? <View testID="explore-launch-done" style={s.done}><Icon name="checkmark-circle" size={18} color={colors.forest} /><Text style={s.doneText}>Thanks. We’ve noted {place?.name ?? 'your town'} — each request moves it up our list.</Text></View>
         : <Pressable testID="explore-launch" disabled={launch === 'busy' || !place} onPress={ask} style={[s.primary, (launch === 'busy' || !place) && s.off]}>
             {launch === 'busy' ? <ActivityIndicator color={colors.onSurface} /> : <Text style={s.primaryText}>Bring One Local to {place?.name ?? 'my town'}</Text>}
