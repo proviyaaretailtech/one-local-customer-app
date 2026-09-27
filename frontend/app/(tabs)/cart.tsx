@@ -1,13 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+// The cart. Two carts share this screen (src/cart.tsx): Food (one restaurant) and Shopping (any
+// stores, shown grouped by store and split by the server into one order per store). When both have
+// items a switch at the top picks which one to pay for; they are paid separately.
+// Pay needs, in this order: where to deliver (the address row at the top), a signed-in customer
+// (sign-in opens and then brings them back here to carry on paying), and how to pay. Browsing and
+// filling the cart never need an account.
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/ionicons";
 import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
-import { useCart } from "@/src/cart";
-import { apiGet, apiPost, Bill, Coupon, CouponResult, Order, PaymentResult, PaymentStart, randomId } from "@/src/api";
+import { CartKind, useCart } from "@/src/cart";
+import { apiGet, apiPost, Bill, Checkout, Coupon, CouponResult, PaymentResult, PaymentStart, randomId } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { OneSaver } from '@/src/components/one-saver';
 import { CheckoutPayment } from '@/src/components/checkout-payment';
@@ -16,23 +22,52 @@ import { RazorpayCheckout } from '@/src/components/razorpay-checkout';
 import { paymentLabel } from '@/src/components/payment-options';
 import { useFeatures } from '@/src/features';
 import { useCustomer } from '@/src/customer';
+import { useDeliveryLocation } from '@/src/delivery-location';
+import { addressText } from '@/src/places';
+import { accessToken, supabase } from '@/src/lib/supabase';
 import { scheduleOrderJourney } from '@/src/native/ios-extras';
 import { CornerGlow } from '@/src/components/corner-glow';
 import { OneLottie } from '@/src/components/one-lottie';
 
+// Pay tapped while signed out: kept outside the screen (so it survives the screen being rebuilt)
+// until the customer is back from sign-in, then paid with automatically.
+let payAfterSignIn: PaymentChoice | null = null;
+
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { items, add, remove, clear, totalItems, totalPrice, totalMrp } = useCart();
-  const { payment, upiApp, profile, update } = useCustomer();
+  const focused = useIsFocused();
+  const { carts, kind, setKind, add, remove, clear } = useCart();
+  const items = carts[kind];
+  const other: CartKind = kind === 'food' ? 'shopping' : 'food';
+  const both = carts.food.length > 0 && carts.shopping.length > 0;
+  // An emptied cart gives way to the other one when that has items.
+  useEffect(() => { if (!items.length && carts[other].length) setKind(other); }, [items.length, carts, other, setKind]);
+  const totalItems = items.reduce((n, i) => n + i.qty, 0);
+  const totalPrice = items.reduce((n, i) => n + i.qty * i.price, 0);
+  const { payment, upiApp, profile, update, addresses } = useCustomer();
   const { online_payments } = useFeatures();
   // With online payments off, everything below the `online` checks is skipped and checkout is
   // cash on delivery exactly as before.
   const choice: PaymentChoice = { method: online_payments ? payment : 'cod', app: upiApp };
   const [sheet, setSheet] = useState(false);
-  type Attempt = { start: PaymentStart; choice: PaymentChoice; basket: string };
+  type Attempt = { start: PaymentStart; choice: PaymentChoice; basket: string; kind: CartKind };
   const [session, setSession] = useState<Attempt | null>(null);  // Razorpay Checkout is open
   const [unpaid, setUnpaid] = useState<Attempt | null>(null);    // the last online attempt did not go through
+
+  // Where to deliver: the place chosen in the header (useDeliveryLocation). "Home: 12 MG Road, …"
+  // splits into its label and address; a saved address also brings its delivery instructions.
+  const { location, point, edit } = useDeliveryLocation();
+  const saved = addresses.find(a => addressText(a) === location);
+  const cut = location.indexOf(': ');
+  const label = saved?.label ?? (cut > 0 && cut <= 40 ? location.slice(0, cut) : '');
+  const addressLine = cut > 0 && cut <= 40 ? location.slice(cut + 2) : location;
+  // Deliverable once there is a map point or a saved address; the starting "Latur, Maharashtra" is neither.
+  const hasAddress = !!point || !!saved;
+  const [notes, setNotes] = useState('');
+  useEffect(() => { setNotes(saved?.instructions ?? ''); }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [needAddress, setNeedAddress] = useState(false);
+  useEffect(() => { if (hasAddress) setNeedAddress(false); }, [hasAddress]);
 
   const [couponCode, setCouponCode] = useState("");
   const [applied, setApplied] = useState<Coupon | null>(null);
@@ -48,7 +83,8 @@ export default function CartScreen() {
   // that checkout would then refuse. Re-quoted (debounced) whenever the cart or coupon changes.
   const [bill, setBill] = useState<Bill | null>(null);
   const [billError, setBillError] = useState('');
-  const cartKey = items.map(i => `${i.id}x${i.qty}`).join(',');
+  useEffect(() => { setBill(null); setBillError(''); }, [kind]);
+  const cartKey = `${kind}:${items.map(i => `${i.id}x${i.qty}`).join(',')}`;
   useEffect(() => {
     if (!items.length) { setBill(null); return; }
     let live = true;
@@ -60,14 +96,20 @@ export default function CartScreen() {
     return () => { live = false; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartKey, applied?.code]);
-  // A changed cart is a new checkout: the old attempt is forgotten (an unpaid one never becomes an order).
-  const basket = `${cartKey}|${applied?.code ?? ''}`;
+  // A changed cart or address is a new checkout: the old attempt is forgotten (an unpaid one never
+  // becomes an order).
+  const basket = `${cartKey}|${applied?.code ?? ''}|${location}|${point ? `${point.lat},${point.lng}` : ''}|${notes.trim()}`;
   const checkoutFor = useRef(basket);
   const failed = unpaid?.basket === basket ? unpaid : null;
   const couponDiscount = bill?.discount ?? 0;
   const deliveryFee = bill?.delivery_fee ?? 0;
   const grand = bill?.total ?? totalPrice;
   const rupees = (n: number) => `₹${Number.isInteger(n) ? n : n.toFixed(2)}`;
+
+  // The cart's items by store, in cart order; each store's own bill joins in once the quote is back.
+  const groups = useMemo(() => [...new Set(items.map(i => i.store_id ?? ''))].map(id => ({
+    id, items: items.filter(i => (i.store_id ?? '') === id), bill: bill?.groups?.find(g => g.store_id === id),
+  })), [items, bill]);
 
   const runCoupon = async (code: string) => {
     if (!code.trim() || applying) return;
@@ -103,19 +145,21 @@ export default function CartScreen() {
     items: items.map((i) => ({
       id: i.id, name: i.name, weight: i.weight, price: i.price, mrp: i.mrp, image: i.image, qty: i.qty,
     })),
-    subtotal: totalPrice,
+    subtotal: bill?.item_total ?? totalPrice,
     discount: couponDiscount,
     delivery_fee: deliveryFee,
     total: grand,
     coupon_code: couponDiscount > 0 ? applied?.code ?? null : null,
     payment_method: method,
+    address: { label, text: addressLine, lat: point?.lat ?? null, lng: point?.lng ?? null, notes: notes.trim() },
   });
-  const done = (orderId: string, placedAt = Date.now()) => {
+  // Paid (or placed): that cart empties and the first store order opens (it lists the others).
+  const done = (orderId: string, paid: CartKind, placedAt = Date.now()) => {
     checkoutKey.current = null;
     setUnpaid(null);
     // Order updates as notifications (asks permission here, in context). No-op on the web.
     void scheduleOrderJourney(orderId, placedAt);
-    clear();
+    clear(paid);
     setApplied(null);
     setCouponCode("");
     setCouponMsg(null);
@@ -125,40 +169,60 @@ export default function CartScreen() {
 
   const handleCheckout = async (pick: PaymentChoice = choice) => {
     if (placing || items.length === 0 || !bill) return;
-    setPlacing(true);
     setCheckoutError('');
+    // 1. Where to deliver.
+    if (!hasAddress) { setSheet(false); setNeedAddress(true); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}); return; }
+    // 2. A signed-in customer (when this build has sign-in at all). The cart stays saved on the
+    //    phone; once they are back from sign-in this screen carries on paying by itself.
+    if (supabase && !(await accessToken())) { payAfterSignIn = pick; setSheet(false); router.push('/sign-in?next=checkout' as never); return; }
+    setPlacing(true);
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Remember the way they paid, so it is the Preferred Payment next time.
       if (online_payments && (pick.method !== payment || pick.app !== upiApp)) void update({ payment: pick.method, upiApp: pick.app }).catch(() => {});
       setSheet(false);
-      // One key per checkout attempt: a retry or double-tap returns the same order.
+      // One key per checkout attempt: a retry or double-tap returns the same checkout.
       if (checkoutFor.current !== basket) { checkoutKey.current = null; checkoutFor.current = basket; }
       checkoutKey.current ??= randomId(16);
       if (online_payments && pick.method !== 'cod') {
-        // Online: the server saves the order as unpaid and opens a Razorpay order for its own total.
+        // Online: the server saves the checkout as unpaid and opens one Razorpay order for its own total.
         const start = await apiPost<PaymentStart>('/payments/order', {
           ...orderBody(pick.method), upi_app: pick.method === 'upi' ? pick.app ?? null : null,
           prefill: { name: profile.name, email: profile.email, contact: profile.phone },
         }, { "Idempotency-Key": checkoutKey.current });
-        if (start.payment_status === 'paid') return done(start.order_id);
+        if (start.payment_status === 'paid') return done(start.order_id, kind);
         setUnpaid(null);
-        setSession({ start, choice: pick, basket });
+        setSession({ start, choice: pick, basket, kind });
         return;
       }
       if (online_payments && failed) {
-        // "Choose another way to pay" after a failed attempt: the same order becomes cash on delivery.
-        const r = await apiPost<{ order_id: string }>('/payments/cod', { order_id: failed.start.order_id });
-        return done(r.order_id);
+        // "Choose another way to pay" after a failed attempt: the same checkout becomes cash on delivery.
+        const r = await apiPost<{ order_id: string }>('/payments/cod', { checkout_id: failed.start.checkout_id });
+        return done(r.order_id, failed.kind);
       }
-      const order = await apiPost<Order>("/orders", orderBody(payment), { "Idempotency-Key": checkoutKey.current });
-      done(order.id, new Date(order.created_at).getTime());
+      const checkout = await apiPost<Checkout>("/checkouts", orderBody(payment), { "Idempotency-Key": checkoutKey.current });
+      done(checkout.orders[0].id, kind, new Date(checkout.created_at).getTime());
     } catch (e) {
       say(e, 'Could not place your order. Please try again.');
     } finally {
       setPlacing(false);
     }
   };
+
+  // Back from sign-in: carry on paying with what they picked — only on this visit to the screen, and
+  // only if they did sign in. The latest handleCheckout is used, so it sees the bill as it is now.
+  const pay = useRef(handleCheckout); pay.current = handleCheckout;
+  const resume = useRef<PaymentChoice | null>(null);
+  useEffect(() => {
+    if (!focused) { resume.current = null; return; }
+    if (payAfterSignIn) { resume.current = payAfterSignIn; payAfterSignIn = null; }
+  }, [focused]);
+  useEffect(() => {
+    const pick = resume.current;
+    if (!focused || !pick || !bill) return;
+    resume.current = null;
+    void accessToken().then(token => { if (token) void pay.current(pick); });
+  }, [focused, bill]);
 
   // Razorpay answered. Success is only trusted after the server checks Razorpay's signature.
   const onPaymentResult = async (result: PaymentResult) => {
@@ -169,12 +233,12 @@ export default function CartScreen() {
     setCheckoutError('');
     try {
       if (result.type === 'success') {
-        await apiPost('/payments/verify', { order_id: current.start.order_id, ...result });
-        return done(current.start.order_id);
+        await apiPost('/payments/verify', { checkout_id: current.start.checkout_id, ...result });
+        return done(current.start.order_id, current.kind);
       }
       // Closed or failed — but a slow UPI payment may still have landed (the webhook marks it paid).
-      const order = await apiGet<Order>(`/orders/${current.start.order_id}`).catch(() => null);
-      if (order?.payment_status === 'paid') return done(order.id);
+      const checkout = await apiGet<Checkout>(`/checkouts/${current.start.checkout_id}`).catch(() => null);
+      if (checkout?.payment_status === 'paid') return done(current.start.order_id, current.kind);
       setUnpaid(current);
     } catch (e) {
       say(e, 'We could not confirm your payment. If money was taken, it will be matched to your order or refunded.');
@@ -187,6 +251,15 @@ export default function CartScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }} testID="cart-screen">
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.cartTop}><Pressable testID="cart-back" accessibilityLabel="Go back" style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}><Icon name="chevron-back" size={20} color={colors.onSurface} /></Pressable><Text testID="cart-title" style={styles.title}>Your little bag</Text><Text testID="cart-total-items" style={styles.subtitle}>{totalItems} items</Text></View>
+        {both && <>
+          <View testID="cart-kinds" accessibilityRole="tablist" style={styles.kinds}>
+            {(['food', 'shopping'] as const).map(k => <Pressable key={k} testID={`cart-kind-${k}`} accessibilityRole="tab" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.kind, kind === k && styles.kindOn]}>
+              <Icon name={k === 'food' ? 'restaurant-outline' : 'bag-handle-outline'} size={15} color={kind === k ? colors.surface : colors.forest} />
+              <Text style={[styles.kindText, kind === k && styles.kindTextOn]}>{k === 'food' ? 'Food' : 'Shopping'} · {carts[k].reduce((n, i) => n + i.qty, 0)}</Text>
+            </Pressable>)}
+          </View>
+          <Text style={styles.kindNote}>Food and shopping are paid for separately.</Text>
+        </>}
         <View testID="cart-tabs" style={styles.tabs}>{[{ id: 'cart', label: 'Cart', icon: 'bag-handle-outline' }, { id: 'saver', label: 'One Saver', icon: 'sparkles-outline' }].map(t => <Pressable key={t.id} testID={`cart-tab-${t.id}`} accessibilityRole="tab" accessibilityState={{ selected: tab === t.id }} onPress={() => setTab(t.id as 'cart' | 'saver')} style={[styles.tab, tab === t.id && styles.selectedTab]}><Icon name={t.icon as any} size={15} color={tab === t.id ? colors.surface : colors.forest} /><Text style={[styles.tabText, tab === t.id && styles.selectedTabText]}>{t.label}</Text></Pressable>)}</View>
       </View>
 
@@ -202,67 +275,82 @@ export default function CartScreen() {
       ) : (
         <>
           <ScrollView testID="cart-scroll" style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.lg, paddingBottom: 24 }}>
-            <View style={styles.deliveryCard}>
-              <Icon name="flash" size={22} color={colors.onSurface} />
+            {/* Where it goes: tap to change (the location screen) */}
+            <Pressable testID="cart-address" accessibilityRole="button" accessibilityLabel={hasAddress ? `Deliver to ${label || ''} ${addressLine}. Change address` : 'Choose where to deliver'} onPress={edit} style={[styles.deliveryCard, needAddress && styles.deliveryCardAsk]}>
+              <Icon name={hasAddress ? 'location' : 'location-outline'} size={22} color={colors.onSurface} />
               <View style={{ flex: 1 }}>
-                <Text testID="cart-delivery-title" style={styles.deliveryTitle}>Your city, at your doorstep</Text>
-                <Text testID="cart-delivery-notice" style={styles.deliverySub}>Sample order · estimated 10 min · Latur</Text>
+                {hasAddress
+                  ? <Text testID="cart-delivery-title" style={styles.deliverySub} numberOfLines={2}><Text style={styles.deliveryTitle}>Deliver to{label ? `: ${label}` : ''}</Text> · {addressLine}</Text>
+                  : <><Text testID="cart-delivery-title" style={styles.deliveryTitle}>Where should we deliver?</Text><Text style={styles.deliverySub}>Choose your address before you pay</Text></>}
               </View>
-            </View>
+              <Icon name="chevron-down" size={18} color={colors.onSurface} />
+            </Pressable>
+            <TextInput testID="cart-delivery-notes" value={notes} onChangeText={setNotes} maxLength={300} placeholder="Instructions for the delivery partner (optional)" placeholderTextColor={colors.muted} style={styles.notes} />
 
-            {!!bill && bill.amount_to_free_delivery > 0 && (
-              <View style={styles.topUp} testID="free-delivery-hint">
-                <View style={styles.topUpHead}>
-                  <View style={styles.topUpIcon}><Icon name="rocket" size={16} color="#050605" /></View>
+            {/* One card per store (a food cart is one restaurant) */}
+            {groups.map((g, index) => {
+              const gb = g.bill;
+              const id = (name: string) => (index === 0 ? name : `${name}-${g.id}`);
+              return <View key={g.id || 'store'} style={[styles.card, { marginBottom: spacing.md }]} testID={`cart-store-${g.id}`}>
+                <View style={styles.storeHead}>
+                  {!!gb?.store_logo && <Image source={gb.store_logo} style={styles.storeLogo} contentFit="cover" />}
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.topUpTitle}>{rupees(bill.amount_to_free_delivery)} away from free delivery</Text>
-                    <Text style={styles.topUpSub}>{bill.top_ups.length ? 'Smart top-up · one tap closes the gap' : `Free on orders above ₹${bill.free_delivery_from}`}</Text>
+                    <Text testID={id('cart-store-name')} style={styles.storeName} numberOfLines={1}>{gb?.store_name ?? (kind === 'food' ? 'Your restaurant' : 'Store')}</Text>
+                    {!!gb && <Text style={styles.storeMeta}>{gb.delivery_time ? `Delivery in about ${gb.delivery_time} · ` : ''}{gb.delivery_fee === 0 ? 'free delivery' : `delivery ${rupees(gb.delivery_fee)}`}</Text>}
                   </View>
+                  {!!gb && groups.length > 1 && <Text testID={id('cart-store-subtotal')} style={styles.storeSubtotal}>{rupees(gb.item_total)}</Text>}
                 </View>
-                {bill.top_ups.length > 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topUpRail} testID="smart-top-up">
-                  {bill.top_ups.map(p => <View key={p.id} style={styles.topUpCard} testID={`top-up-${p.id}`}>
-                    <Image source={p.image} style={styles.topUpImg} contentFit="cover" />
+                {g.items.map((it) => (
+                  <View key={it.id} style={styles.row}>
+                    <Image source={it.image} style={styles.itemImg} contentFit="cover" />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.topUpName} numberOfLines={1}>{p.name}</Text>
-                      <Text style={styles.topUpPrice}>₹{p.price} <Text style={styles.topUpNet}>· ₹{p.net} net</Text></Text>
+                      <Text style={styles.itemName} numberOfLines={2}>{it.name}</Text>
+                      <Text style={styles.itemWeight}>{it.weight}</Text>
+                      <Text style={styles.itemPrice}>₹{it.price}</Text>
                     </View>
-                    <Pressable testID={`top-up-add-${p.id}`} accessibilityLabel={`Add ${p.name} for ₹${p.price} and unlock free delivery`} onPress={() => { add(p); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }} style={styles.topUpAdd}><Icon name="add" size={18} color={colors.electricLime} /></Pressable>
-                  </View>)}
-                </ScrollView>}
-              </View>
-            )}
-            {!!bill && bill.amount_to_free_delivery === 0 && bill.delivery_fee === 0 && (
-              <View style={styles.freeHint} testID="free-delivery-unlocked">
-                <Icon name="checkmark-circle" size={18} color={colors.onSuccess} />
-                <Text style={styles.freeHintText}>Free delivery unlocked · you save ₹{bill.delivery_fee_before_waiver}</Text>
-              </View>
-            )}
-
-            {/* Items */}
-            <View style={styles.card}>
-              {items.map((it) => (
-                <View key={it.id} style={styles.row}>
-                  <Image source={it.image} style={styles.itemImg} contentFit="cover" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemName} numberOfLines={2}>{it.name}</Text>
-                    <Text style={styles.itemWeight}>{it.weight}</Text>
-                    <Text style={styles.itemPrice}>₹{it.price}</Text>
+                    <View style={styles.stepper}>
+                      <TouchableOpacity onPress={() => remove(it.id)} style={styles.stepBtn} testID={`cart-dec-${it.id}`}>
+                        <Text style={styles.stepText}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.stepQty}>{it.qty}</Text>
+                      <TouchableOpacity onPress={() => add(it)} style={styles.stepBtn} testID={`cart-inc-${it.id}`}>
+                        <Text style={styles.stepText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={styles.stepper}>
-                    <TouchableOpacity onPress={() => remove(it.id)} style={styles.stepBtn} testID={`cart-dec-${it.id}`}>
-                      <Text style={styles.stepText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.stepQty}>{it.qty}</Text>
-                    <TouchableOpacity onPress={() => add(it)} style={styles.stepBtn} testID={`cart-inc-${it.id}`}>
-                      <Text style={styles.stepText}>+</Text>
-                    </TouchableOpacity>
+                ))}
+                {!!gb && gb.amount_to_free_delivery > 0 && (
+                  <View style={styles.topUp} testID={id('free-delivery-hint')}>
+                    <View style={styles.topUpHead}>
+                      <View style={styles.topUpIcon}><Icon name="rocket" size={16} color="#050605" /></View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.topUpTitle}>{rupees(gb.amount_to_free_delivery)} away from free delivery{groups.length > 1 ? ` from ${gb.store_name}` : ''}</Text>
+                        <Text style={styles.topUpSub}>{gb.top_ups.length ? 'Smart top-up · one tap closes the gap' : `Free on orders above ₹${bill?.free_delivery_from ?? 199} from one store`}</Text>
+                      </View>
+                    </View>
+                    {gb.top_ups.length > 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topUpRail} testID={id('smart-top-up')}>
+                      {gb.top_ups.map(p => <View key={p.id} style={styles.topUpCard} testID={`top-up-${p.id}`}>
+                        <Image source={p.image} style={styles.topUpImg} contentFit="cover" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.topUpName} numberOfLines={1}>{p.name}</Text>
+                          <Text style={styles.topUpPrice}>₹{p.price} <Text style={styles.topUpNet}>· ₹{p.net} net</Text></Text>
+                        </View>
+                        <Pressable testID={`top-up-add-${p.id}`} accessibilityLabel={`Add ${p.name} for ₹${p.price} and unlock free delivery`} onPress={() => { add(p); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }} style={styles.topUpAdd}><Icon name="add" size={18} color={colors.electricLime} /></Pressable>
+                      </View>)}
+                    </ScrollView>}
                   </View>
-                </View>
-              ))}
-            </View>
+                )}
+                {!!gb && gb.amount_to_free_delivery === 0 && gb.delivery_fee === 0 && (
+                  <View style={styles.freeHint} testID={id('free-delivery-unlocked')}>
+                    <Icon name="checkmark-circle" size={18} color={colors.onSuccess} />
+                    <Text style={styles.freeHintText}>Free delivery unlocked · you save ₹{gb.delivery_fee_before_waiver}</Text>
+                  </View>
+                )}
+              </View>;
+            })}
 
             {/* Coupon */}
-            <View style={[styles.card, { marginTop: spacing.md }]}>
+            <View style={styles.card}>
               <View style={styles.couponHead}>
                 <Icon name="pricetag-outline" size={18} color={colors.onSurface} />
                 <Text style={styles.billTitle}>Apply Coupon</Text>
@@ -301,6 +389,7 @@ export default function CartScreen() {
                 </Text>
               )}
               {applied && totalPrice < applied.min_order && <Text testID="coupon-minimum-warning" style={styles.couponMsg}>Add ₹{applied.min_order - totalPrice} more to reactivate this coupon.</Text>}
+              {applied && totalPrice >= applied.min_order && bill?.coupon && !bill.coupon.ok && <Text testID="coupon-not-usable" style={[styles.couponMsg, { color: colors.onError }]}>{bill.coupon.message}</Text>}
               <View style={{ marginTop: spacing.sm, gap: 6 }}>
                 <TouchableOpacity testID="coupon-suggestion-latur10" onPress={() => setCouponCode("LATUR10")}>
                   <Text style={styles.hint}>LATUR10 — 10% off above ₹99</Text>
@@ -321,8 +410,11 @@ export default function CartScreen() {
                   : <OneLottie testID="bill-loading" name="neon-loader" size={56} loop style={{ alignSelf: 'center' }} />
               ) : <>
                 <BillRow testID="bill-items" label="Item total" value={rupees(bill.item_total)} was={bill.mrp_savings > 0 ? rupees(bill.item_mrp_total) : undefined} />
-                <BillRow testID="bill-delivery" label="Delivery fee" value={bill.delivery_fee === 0 ? 'FREE' : rupees(bill.delivery_fee)} was={bill.delivery_fee === 0 ? rupees(bill.delivery_fee_before_waiver) : undefined} success={bill.delivery_fee === 0}
-                  note={bill.delivery_fee === 0 ? `Free on orders above ₹${bill.free_delivery_from}` : `Free above ₹${bill.free_delivery_from}`} />
+                {bill.groups.length > 1
+                  ? <BillRow testID="bill-delivery" label={`Delivery fee · ${bill.groups.length} stores`} value={bill.delivery_fee === 0 ? 'FREE' : rupees(bill.delivery_fee)} success={bill.delivery_fee === 0}
+                      note={`Each store delivers on its own · ${bill.groups.map(g => `${g.store_name} ${g.delivery_fee ? rupees(g.delivery_fee) : 'free'}`).join(' · ')}`} />
+                  : <BillRow testID="bill-delivery" label="Delivery fee" value={bill.delivery_fee === 0 ? 'FREE' : rupees(bill.delivery_fee)} was={bill.delivery_fee === 0 ? rupees(bill.delivery_fee_before_waiver) : undefined} success={bill.delivery_fee === 0}
+                      note={bill.delivery_fee === 0 ? `Free on orders above ₹${bill.free_delivery_from}` : `Free above ₹${bill.free_delivery_from}`} />}
                 {bill.handling_fee > 0 && <BillRow testID="bill-handling" label="Handling fee" value={rupees(bill.handling_fee)} />}
                 {bill.platform_fee > 0 && <BillRow testID="bill-platform" label="Platform fee" value={rupees(bill.platform_fee)} />}
                 {bill.gst_added.total > 0 && <>
@@ -336,7 +428,7 @@ export default function CartScreen() {
                 </>}
                 {bill.discount > 0 && <BillRow testID="bill-coupon" label={`Coupon ${bill.coupon?.code ?? ''}`} value={`− ${rupees(bill.discount)}`} success />}
                 <View style={styles.divider} />
-                <BillRow testID="bill-total" label="To pay" value={rupees(bill.total)} strong />
+                <BillRow testID="bill-total" label="To pay" value={rupees(bill.total)} strong note={bill.groups.length > 1 ? `One payment · ${bill.groups.length} store orders` : undefined} />
                 {bill.gst_included.length > 0 && <Pressable testID="bill-included-toggle" onPress={() => setShowTaxes(v => !v)} style={{ marginTop: spacing.sm }}>
                   <Text style={styles.hint}>Item prices include GST{showTaxes ? ':' : ' · tap to see how much'}</Text>
                   {showTaxes && bill.gst_included.map(t => <BillRow small key={t.rate} label={`${t.rate}% items — CGST ${t.rate / 2}% + SGST ${t.rate / 2}%`} value={rupees(t.cgst + t.sgst)} />)}
@@ -351,6 +443,14 @@ export default function CartScreen() {
           </ScrollView>
 
           {!!checkoutError && <Text testID="checkout-error" style={{ color: colors.onError, padding: 12 }}>{checkoutError}</Text>}
+          {needAddress && <View testID="checkout-need-address" style={styles.ask}>
+            <Icon name="location" size={20} color={colors.forest} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.askTitle}>Where should we deliver?</Text>
+              <Text style={styles.askText}>Choose your address first, so the store knows where to send your order.</Text>
+            </View>
+            <TouchableOpacity testID="checkout-choose-address" onPress={edit} style={styles.askBtn}><Text style={styles.askBtnText}>Choose</Text></TouchableOpacity>
+          </View>}
           {!!failed && !placing && <View testID="payment-retry" style={styles.retry}>
             <Icon name="alert-circle" size={20} color={colors.onError} />
             <View style={{ flex: 1 }}>
@@ -412,7 +512,7 @@ function BillRow({ label, value, strong, success, was, note, small, testID }: { 
 const billStyles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: 'flex-start', marginTop: spacing.sm, gap: spacing.md },
   label: { fontSize: 13, color: colors.onSurfaceSecondary },
-  note: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  note: { fontSize: 11, color: colors.muted, marginTop: 1 },
   values: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   was: { fontSize: 11, color: colors.muted, textDecorationLine: 'line-through' },
   value: { fontSize: 13, color: colors.onSurface, fontWeight: "600" },
@@ -422,6 +522,12 @@ const billStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   cartTop: { flexDirection: 'row', alignItems: 'center', gap: 10 }, back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream }, tabs: { flexDirection: 'row', backgroundColor: colors.surfaceSecondary, padding: 4, borderRadius: 28, marginTop: 10 }, tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: 24 }, selectedTab: { backgroundColor: colors.forestDeep }, tabText: { color: colors.forest, fontSize: 12, fontWeight: '600' }, selectedTabText: { color: colors.surface },
+  kinds: { flexDirection: 'row', gap: spacing.sm, marginTop: 10 },
+  kind: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.forest },
+  kindOn: { backgroundColor: colors.forest },
+  kindText: { color: colors.forest, fontSize: 13, fontWeight: '700' },
+  kindTextOn: { color: colors.surface },
+  kindNote: { color: colors.muted, fontSize: 11, textAlign: 'center', marginTop: 6 },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 20, fontWeight: "700", color: colors.onSurface, flex: 1 },
   subtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
@@ -431,11 +537,18 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 13, color: colors.muted, marginTop: 4 },
   browseBtn: { marginTop: spacing.lg, backgroundColor: colors.brandPrimary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: radius.pill },
   browseText: { color: colors.onBrandPrimary, fontWeight: "700" },
-  deliveryCard: { backgroundColor: colors.limeSoft, borderRadius: radius.md, padding: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
+  deliveryCard: { backgroundColor: colors.limeSoft, borderRadius: radius.md, padding: spacing.md, minHeight: 56, flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.limeSoft },
+  deliveryCardAsk: { borderColor: colors.forest },
   deliveryTitle: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
-  deliverySub: { fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 2 },
-  freeHint: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.pastelGreen, padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.md },
-  topUp: { backgroundColor: '#050605', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  deliverySub: { fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 2, lineHeight: 19 },
+  notes: { minHeight: 44, marginTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.onSurface, fontSize: 13 },
+  storeHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  storeLogo: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary },
+  storeName: { fontSize: 15, fontWeight: '800', color: colors.onSurface },
+  storeMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  storeSubtotal: { fontSize: 14, fontWeight: '800', color: colors.onSurface },
+  freeHint: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.pastelGreen, padding: spacing.md, borderRadius: radius.md, marginTop: spacing.md },
+  topUp: { backgroundColor: '#050605', borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md },
   topUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   topUpIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.electricLime, alignItems: 'center', justifyContent: 'center' },
   topUpTitle: { color: colors.surface, fontSize: 14, fontWeight: '800' },
@@ -484,6 +597,11 @@ const styles = StyleSheet.create({
   payMethod: { fontSize: 14, fontWeight: "800", color: colors.onSurface, marginTop: 2 },
   payNow: { flex: 1.3, minHeight: 52, backgroundColor: colors.brandSecondary, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   payNowText: { color: colors.onBrandSecondary, fontWeight: "800", fontSize: 16 },
+  ask: { flexDirection: "row", alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.limeSoft, borderWidth: 1, borderColor: colors.forest },
+  askTitle: { color: colors.onSurface, fontSize: 14, fontWeight: '800' },
+  askText: { color: colors.onSurfaceSecondary, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  askBtn: { minHeight: 44, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.forest, alignItems: 'center', justifyContent: 'center' },
+  askBtnText: { color: colors.surface, fontWeight: '800', fontSize: 13 },
   retry: { flexDirection: "row", gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.error },
   retryText: { color: colors.onSurface, fontSize: 13, fontWeight: "600", lineHeight: 19 },
   retryActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },

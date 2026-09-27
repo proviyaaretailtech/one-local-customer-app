@@ -1,5 +1,6 @@
-// Customer sign-in through Supabase Auth: email + password now, Google once its keys exist.
-// Browsing and ordering never need an account.
+// Customer sign-in through Supabase Auth: email + password; a one-time code by SMS to an Indian
+// mobile number once Supabase's Phone provider is on; Google once its keys exist. Browsing and
+// filling the cart never need an account; placing an order does (the cart opens sign-in at Pay).
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
@@ -9,10 +10,12 @@ import { supabase, SUPABASE_KEY, SUPABASE_URL } from './lib/supabase';
 import { useCustomer } from './customer';
 
 type AuthState = {
-  ready: boolean; session: Session | null; googleAvailable: boolean;
+  ready: boolean; session: Session | null; googleAvailable: boolean; phoneAvailable: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  sendPhoneCode: (mobile: string) => Promise<void>;
+  verifyPhoneCode: (mobile: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -22,28 +25,44 @@ function friendly(message: string): string {
   if (/already registered|already exists/i.test(message)) return 'An account with this email already exists. Sign in instead.';
   if (/password should be at least/i.test(message)) return 'Choose a password with at least 6 characters.';
   if (/email not confirmed/i.test(message)) return 'Please confirm your email first — check your inbox for the link.';
+  if (/token has expired or is invalid|otp.*(expired|invalid)|invalid.*otp/i.test(message)) return 'That code is wrong or has expired. Check it, or send a new one.';
+  const wait = message.match(/after (\d+) seconds/i);
+  if (wait) return `Please wait ${wait[1]} seconds before asking for another code.`;
+  if (/phone.*(disabled|not enabled)|unsupported phone provider|signups not allowed for otp/i.test(message)) return 'Sign-in by mobile number isn’t switched on yet. Please use your email for now.';
+  if (/sending.*(sms|otp)|sms.*(send|fail)/i.test(message)) return 'We couldn’t send the code. Check the number and try again in a minute.';
+  if (/invalid phone|phone number/i.test(message)) return 'Enter a valid 10-digit mobile number.';
   if (/rate limit|too many/i.test(message)) return 'Too many attempts. Please wait a minute and try again.';
   return message;
 }
 const AuthContext = createContext<AuthState | null>(null);
 
-// Ask Supabase (public settings) whether Google sign-in is switched on, so customers never
-// land on a raw error page.
-async function googleEnabled(): Promise<boolean> {
+// Ask Supabase (public settings) which sign-in methods are switched on, so a customer is never
+// offered one that ends on a raw error page.
+async function providers(): Promise<{ google: boolean; phone: boolean }> {
   try {
     const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY ?? '' } });
-    return !!(await r.json())?.external?.google;
+    const external = (await r.json())?.external ?? {};
+    return { google: !!external.google, phone: !!external.phone };
   } catch {
-    return false;
+    return { google: false, phone: false };
   }
+}
+const googleEnabled = async () => (await providers()).google;
+
+// Indian mobile numbers only for now: 10 digits starting 6–9, sent as +91…
+export const mobileDigits = (value: string) => value.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+function e164(mobile: string) {
+  const digits = mobileDigits(mobile);
+  if (!/^[6-9]\d{9}$/.test(digits)) throw new Error('Enter a valid 10-digit mobile number.');
+  return `+91${digits}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null); const [ready, setReady] = useState(!supabase);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false); const [phoneAvailable, setPhoneAvailable] = useState(false);
   const { profile, update, ready: customerReady } = useCustomer();
 
-  useEffect(() => { void googleEnabled().then(setGoogleAvailable); }, []);
+  useEffect(() => { void providers().then(p => { setGoogleAvailable(p.google); setPhoneAvailable(p.phone); }); }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -52,12 +71,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  // First sign-in: fill an empty profile from the Google account (never overwrites).
+  // First sign-in: fill an empty profile from the account — name and email from Google or email
+  // sign-up, the mobile number from a phone sign-in (never overwrites).
   useEffect(() => {
     const user = session?.user;
-    if (!user || !customerReady || (profile.name && profile.email)) return;
+    if (!user || !customerReady) return;
     const meta = user.user_metadata ?? {};
-    update({ profile: { ...profile, name: profile.name || meta.full_name || meta.name || '', email: profile.email || user.email || '' } }).catch(() => {});
+    const phone = mobileDigits(user.phone ?? '');
+    const next = {
+      name: profile.name || meta.full_name || meta.name || '', email: profile.email || user.email || '',
+      phone: profile.phone || (/^[6-9]\d{9}$/.test(phone) ? phone : ''),
+    };
+    if (next.name === profile.name && next.email === profile.email && next.phone === profile.phone) return;
+    update({ profile: { ...profile, ...next } }).catch(() => {});
   }, [session?.user?.id, customerReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signInWithGoogle = async () => {
@@ -95,9 +121,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { needsConfirmation: !data.session };
   };
 
+  // Mobile number sign-in: Supabase texts a one-time code (creating the account the first time),
+  // then the code signs the customer in. Needs Supabase's Phone provider and an SMS provider.
+  const sendPhoneCode = async (mobile: string) => {
+    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    const { error } = await supabase.auth.signInWithOtp({ phone: e164(mobile) });
+    if (error) throw new Error(friendly(error.message));
+  };
+  const verifyPhoneCode = async (mobile: string, code: string) => {
+    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    const token = code.replace(/\D/g, '');
+    if (token.length < 4) throw new Error('Enter the code we sent you.');
+    const { error } = await supabase.auth.verifyOtp({ phone: e164(mobile), token, type: 'sms' });
+    if (error) throw new Error(friendly(error.message));
+  };
+
   const signOut = async () => { await supabase?.auth.signOut(); };
 
-  return <AuthContext.Provider value={{ ready, session, googleAvailable, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ready, session, googleAvailable, phoneAvailable, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

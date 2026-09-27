@@ -91,8 +91,16 @@ export type OrderItem = {
   id: string; name: string; weight: string; price: number; mrp: number; image: string; qty: number;
 };
 
+// Where an order goes (server/store.ts): the chosen address, its map point when known, rider notes.
+export type DeliveryAddress = { label: string; text: string; lat: number | null; lng: number | null; notes: string };
+
 export type Order = {
   id: string;
+  // Orders placed together (one per store) share a checkout; older orders have none.
+  checkout_id?: string | null;
+  store_id?: string | null;
+  store_name?: string;
+  address?: DeliveryAddress | null;
   items: OrderItem[];
   subtotal: number;
   discount: number;
@@ -110,10 +118,18 @@ export type Order = {
   created_at: string;
 };
 
-// POST /api/payments/order: our order (payment pending) plus what Razorpay Checkout opens on.
+// One payment for one or more store orders (POST /api/checkouts, GET /api/checkouts/:id).
+export type Checkout = {
+  id: string; kind: 'food' | 'shopping'; item_total: number; discount: number; delivery_fee: number; total: number;
+  coupon_code: string | null; payment_method: NonNullable<Order['payment_method']>; payment_status: NonNullable<Order['payment_status']>;
+  created_at: string; orders: Order[];
+};
+
+// POST /api/payments/order: our checkout (payment pending) plus what Razorpay Checkout opens on.
 // `checkout` holds no secrets — key_id is Razorpay's public key; the secret never leaves the server.
+// order_id is the checkout's first store order (what older app versions used).
 export type PaymentStart = {
-  order_id: string; payment_status: NonNullable<Order['payment_status']>;
+  order_id: string; checkout_id: string; order_ids: string[]; payment_status: NonNullable<Order['payment_status']>;
   razorpay_order_id: string; key_id: string; amount: number; currency: 'INR';
   prefill: { name: string; email: string; contact: string };
   checkout: Record<string, unknown>;
@@ -134,9 +150,17 @@ export async function apiPost<T>(path: string, body: unknown, headers: Record<st
   return resolveMedia(await r.json());
 }
 
-// The cart's bill as the server works it out (server/pricing.ts).
+// The cart's bill as the server works it out (server/pricing.ts): one part per store, then the sums.
 export type TaxSplit = { rate: number; taxable: number; cgst: number; sgst: number };
+export type StoreBill = {
+  store_id: string; store_name: string; store_logo: string; delivery_time: string;
+  item_mrp_total: number; item_total: number;
+  delivery_fee: number; delivery_fee_before_waiver: number; amount_to_free_delivery: number;
+  handling_fee: number; platform_fee: number; gst_added: TaxSplit & { total: number };
+  discount: number; total: number; top_ups: (Product & { net: number })[];
+};
 export type Bill = {
+  kind: 'food' | 'shopping'; groups: StoreBill[];
   item_mrp_total: number; item_total: number; mrp_savings: number;
   delivery_fee: number; delivery_fee_before_waiver: number; free_delivery_from: number; amount_to_free_delivery: number;
   handling_fee: number; platform_fee: number;
