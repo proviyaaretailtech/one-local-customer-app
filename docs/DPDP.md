@@ -254,3 +254,196 @@ Owners: **Founder** (business and legal decisions), **Lawyer** (review), **Engin
 - People must not impersonate others, suppress facts, or file false or frivolous complaints
   (penalty up to ₹10,000). The notice asks people to use our grievance process first; no other
   action needed.
+
+## 4. Data inventory
+
+Where: **Phone** = the app's storage on the customer's phone (AsyncStorage; browser storage on the
+web). **DB** = the shared Supabase Postgres database, Mumbai region (`ap-south-1`), server access
+only. **Auth** = Supabase Auth, same project and region. Retention is the proposal in section 5.
+
+| Data item | Purpose | Where stored | Retention (proposed) | Shared with |
+| --- | --- | --- | --- | --- |
+| Name | Account, orders, reaching the customer | Phone (profile); Auth (`full_name` from Google or email sign-up); DB booking enquiries | Account life; erased on deletion | Store and rider for their order (when stores see names); Supabase |
+| Mobile number | Sign-in code, contact about orders | Auth (phone sign-in); Phone (profile); DB booking enquiries | Account life | SMS provider (sign-in codes only); Supabase |
+| Email | Sign-in, receipts | Auth; Phone (profile) | Account life | Supabase (sends auth emails) |
+| Password | Sign-in | Auth, as a one-way hash (never readable) | Account life | Supabase |
+| Profile photo, birthday, food preference, language | Personalising the app | Phone only | Until the person removes it or clears the phone | Nobody |
+| Saved addresses with map points | Delivery | Phone only (moving to `ol_addresses` later) | Until removed | Nobody until used on an order |
+| Delivery address, map point and rider notes on an order | Delivering that order | DB `ol_orders.delivery_address` | 1 year after delivery, then removed (order kept for tax, without it); at once on account deletion | The store and the rider for that order; Supabase |
+| Current location / chosen place | Showing what we offer nearby | Phone only; the server receives a position to answer the coverage and nearby lists but does not store it | Until changed | Google Maps (address search, when on); OpenStreetMap (a town-sized area, no identity) |
+| Orders: items, amounts, taxes, coupon, store, status | Fulfilment, billing, refunds, GST records | DB `ol_orders`, `ol_order_items`, `ol_checkouts` | 72 months from the due date of that year's GST annual return; unlinked from the person on deletion | The store (its own order); VINII POS for restaurant orders (POS `orders` has customer name and phone) |
+| Payment metadata: Razorpay order and payment ids, method, status, paid time, failure reason | Confirming payment and refunds | DB `ol_checkouts` (and 0025 columns on `ol_orders`), `ol_payment_events` (ids only) | As long as the order (tax and payment reconciliation) | Razorpay (holds card, UPI and bank data under its own licence; we never see it) |
+| Refunds | Money back | DB `ol_refunds` | As long as the order | Razorpay |
+| Device key | Keeps guest orders private to a phone | Phone (raw key); DB stores only a SHA-256 hash as `customer_hash` | Until the app is removed or the phone is cleared | Nobody |
+| Account hash | Links orders to an account | DB `customer_hash` (hash of the account id) | With the order; replaced by a random stand-in on deletion | Nobody |
+| Sign-in session tokens | Staying signed in | Phone; Auth | Until sign-out / expiry | Supabase |
+| Voice and photo search inputs | Finding products (AI) | Not stored; feature switched off | — | AI provider when switched on (must be added to the notice first) |
+| Help requests (support messages) | Answering the customer | DB `ol_support_requests` | 2 years after closing, then deleted; at once on account deletion (message replaced) | Supabase |
+| Booking enquiries (name, phone, event, date) | Answering the enquiry | DB `ol_booking_enquiries`; Phone copy | 1 year after the event date; deleted on account deletion | The venue, when bookings go live |
+| "Launch here" requests | Counting demand per town | DB `ol_support_requests` (reference `launch:<place>`) | Kept unlinked (a town, not a person) | Nobody |
+| Consent choices | Proof of consent (s.6(10)) | Phone; DB `ol_consents` (0027) | Account life + 3 years (proof), then purged | Nobody |
+| Privacy requests (download, erasure, correction, nominee, grievance) | Answering rights requests, proving we did | DB `ol_privacy_requests` (0027), before that `ol_support_requests` as `privacy:<ref>` | 3 years after closing | Nobody |
+| Nominee's name, relationship, phone or email | Acting for the person after death or incapacity | DB `ol_privacy_requests.details` | Until replaced or the account is closed + 3 years | Nobody |
+| Wishlist, cart, followed stores, recent places, reel likes | App features | Phone only | Until the person clears them | Nobody |
+| Server logs (requests, errors, the privacy audit line) | Security and debugging | API host logs (host not final) | 1 year (DPDP Rules) and 180 days in India (CERT-In) | API host |
+| Restaurant partner devices' push tokens | Order alerts to restaurants (not customers) | DB `ol_partner_devices` | While the device is registered | Expo push service (US) |
+
+## 5. Retention schedule (proposal — the founder decides, the lawyer and accountant confirm)
+
+| Record | Keep for | Then | Why |
+| --- | --- | --- | --- |
+| Account (login, name, phone, email) | While the account is used; after **3 years** with no sign-in and no order, warn 48 hours ahead, then delete | Delete the login and anonymise as in erasure | Mirrors the Rules' Third Schedule period for large e-commerce, a sensible default for us too |
+| Delivery address and notes on an order | **1 year** after delivery (covers disputes, refunds, chargebacks) | Remove from the order; keep the order for tax | Only needed to deliver and to settle disputes |
+| Orders, order lines, checkouts, amounts, taxes | **72 months** from the due date of that year's GST annual return (CGST Act s.36; confirm with the accountant; income-tax books similar) | Delete, or keep only anonymous totals | Tax law |
+| Payment references and refunds | Same as the order they belong to | As above | Tax and payment reconciliation; RBI rules bind Razorpay, not us |
+| Help requests | **2 years** after closing | Delete | Long enough for repeat issues and disputes |
+| Booking enquiries | **1 year** after the event date | Delete | No further purpose |
+| Consent history | Account life + **3 years** | Purge (the migration's purge switch) | Proof of consent (s.6(10)); 3 years is a common limitation period — lawyer to confirm |
+| Privacy requests and grievances | **3 years** after closing | Delete | Proof we answered |
+| Security and audit logs | **1 year** (DPDP Rules), at least 180 days kept in India (CERT-In) | Delete | Law |
+| On-phone data | Until the person clears it, signs out and clears, or deletes the account | — | The person controls it |
+| Backups | Rolling **30 days** | Overwritten | Erased data must disappear from backups within the backup cycle |
+
+None of these purges runs yet: they need a scheduled job (Master cron or Supabase `pg_cron`), which is
+section 8's item 6.
+
+## 6. Breach-response runbook
+
+A **personal data breach** is any unauthorised processing, or accidental disclosure, access,
+change, loss or destruction of personal data that compromises its confidentiality, integrity or
+availability. A leaked service key, a public storage bucket holding customer data, a lost laptop
+with a database backup, or a wrong customer's order shown to someone else all count.
+
+**Who**
+
+| Role | Who (founder to fill) | Does |
+| --- | --- | --- |
+| Incident lead | [FOUNDER TO FILL] | Decides, owns the clock, signs off every message |
+| Deputy | [FOUNDER TO FILL] | Takes over if the lead cannot be reached within 1 hour |
+| Engineering | [FOUNDER TO FILL] | Contains, preserves evidence, finds scope |
+| Grievance officer | as in `constants/privacy.ts` | Answers customers' questions afterwards |
+| Lawyer | [FOUNDER TO FILL] | Reviews the Board notice and customer message |
+
+**What, within what time** (the clock starts when anyone at One Local becomes aware)
+
+| When | Step |
+| --- | --- |
+| 0 – 1 hour | **Contain.** Rotate exposed keys (Supabase service role, Razorpay, Maps); revoke sessions (Supabase: sign out all users if accounts are affected); close the hole (switch the feature off with `FEATURE_*=off`, take the route down, make the bucket private). **Preserve evidence**: keep logs, take a database snapshot (`scripts/db.py snapshot`), write down times. Tell the incident lead. |
+| 1 – 6 hours | **Scope.** Which tables and fields, how many people, since when, is it still happening. Use the privacy audit lines and API logs; `customer_hash` / `user_id` to find the people. **CERT-In**: if it is a reportable cyber incident, report to CERT-In **within 6 hours** of noticing (separate law, already in force). |
+| As soon as the basic facts are known ("without delay") | **Tell the Board** (initial intimation): what happened, extent, timing, location, likely impact. **Tell each affected person** (SMS or email, plus an in-app notice): what happened and when, what data, likely consequences, what we are doing, what they should do (for example watch for fake calls asking for OTPs; we never ask for an OTP), and who to contact (the grievance officer). Plain language; no blame; no minimising. |
+| Within 72 hours of becoming aware | **Detailed report to the Board**: updated facts, circumstances and reasons, mitigation, findings about who caused it, what we changed so it cannot happen again, and copies of the notices sent to people. If more time is truly needed, ask the Board in writing before the 72 hours run out. |
+| Within 2 weeks | **Fix the cause** for good and review: what failed, what changes (code, access, processes). Add the lesson to this runbook. Tell processors involved (Supabase, Razorpay) and check theirs. |
+
+**Message to affected customers (template)** — "On [date] we found that [what happened]. It affected
+[which details] of some One Local customers, including you. [What it means for you.] We have
+[what we did]. We suggest you [steps]. We never ask for your OTP, PIN or password. Questions: [grievance
+officer name, email, phone]. Reference: [incident id]."
+
+**Evidence to keep**: timeline, logs, snapshots, the list of affected people (kept apart, access
+limited), copies of every notice, and the Board's acknowledgements — for at least 1 year.
+
+## 7. What was built (27 September 2026)
+
+### 7.1 Screens and phone storage
+
+| Where | What |
+| --- | --- |
+| `frontend/constants/privacy.ts` | The one config: notice version and date, legal entity, address, grievance officer, response days (90), Board link, minimum age, consent purposes, the itemised "what we collect", "shared with", and "kept by law". Imported by both the app and the server. |
+| `frontend/app/privacy-notice.tsx` | `/privacy-notice`: the itemised notice. Placeholders show highlighted, with a "draft" banner until filled. |
+| `frontend/app/privacy.tsx` | `/privacy` (Privacy & your data, linked from the You tab): consent switches with the last change's time and notice version; download; correct (profile edit, or a correction request); nominate; grievance; read the notice; what is stored on this phone; clear it (guests); delete my account with a confirm sheet listing what is deleted and what is kept. |
+| `frontend/app/sign-in.tsx` | Notice line and link, "I am 18 or older" (required, never pre-ticked), optional unticked marketing box, "Under 18?" explanation. Choices recorded before sign-in completes. |
+| `frontend/src/privacy.ts` | Consent choices on the phone (`onecity.privacy.v1`), sent to the server after sign-in and re-sent until accepted; picks up choices made on another phone; the list of every key the app stores; the download file (server data + phone data; device key and session never included); clearing the phone. |
+| `frontend/src/places.ts` | Reading the phone's last known position without asking now needs the location consent. |
+| `frontend/src/customer.tsx` | "Offers near me" starts off; `reset()` for clearing and deletion. |
+| `frontend/src/auth.tsx` | After sign-in, sends and pulls consent choices. |
+
+### 7.2 Server
+
+| Route | Does | Limit |
+| --- | --- | --- |
+| `GET /api/privacy/export` | Account (from Supabase Auth with the person's own token), orders, checkouts, refunds, help requests, launch requests, booking enquiries, consents, privacy requests; plus what we collect, who we share with, what the law keeps. Internal keys left out. Rows = linked to the account, or placed from this phone before signing in (what My Orders already shows). | 5 per hour |
+| `GET /api/privacy/consents` | Newest choice per purpose. | 60 per hour |
+| `POST /api/privacy/consents` | Appends up to 20 choices; validates purpose, notice version and source; the age and notice declarations can only be confirmed. | 30 per hour |
+| `POST /api/privacy/erasure` | Needs `{ "confirm": "DELETE" }`; refuses while an order from the last day is on its way. Deletes booking enquiries; replaces help-request messages; removes delivery addresses from orders; gives orders and checkouts a random stand-in owner (amounts, taxes, items and Razorpay references stay); unlinks refunds and launch requests; withdraws optional consents; ends every session (Supabase global sign-out); records an `ER-` request with the outcome. | 3 per day |
+| `POST /api/privacy/grievances` | Grievance (`GR-`) or correction (`CR-`), 10–2,000 characters, answer-by date 90 days out, grievance contact in the reply. | 5 per day |
+| `POST /api/privacy/nominee` | Name, relationship, and a phone or an email (`NM-`). | 5 per day |
+
+All are signed-in only (a Supabase access token; a device key alone is refused), use the same
+`route` / `HttpError` / `limit` helpers as the rest of the API, and work with no database (memory
+mode). Every action writes one `[privacy]` audit line: event, a 12-character one-way tag of the
+account, reference, counts. No names, numbers, emails, addresses, messages, account ids or tokens.
+`frontend/scripts/privacy-checks.ts` proves this (56 checks: `npx tsx scripts/privacy-checks.ts`).
+
+Before migration 0027 is applied: consents stay on the phone (the server answers `phone_only`, the
+phone re-sends later); grievances, corrections, nominations and erasure records go to the existing
+help-request table with reference `privacy:<ref>` so the team sees them; downloads are logged only.
+
+### 7.3 Deleting the login itself: `PRIVACY_HARD_DELETE` (off by default)
+
+Erasure always removes the person's details from One Local's own tables and signs them out
+everywhere. Deleting their **Supabase Auth user** is implemented but only runs when the server has
+`PRIVACY_HARD_DELETE=on`, a database connection, and the person has **no other membership**
+(`org_users`, `riders`, `platform_admins`). Why it is off:
+
+1. **One login serves every Proviyaa app** (D1 in `PLATFORM_FOUNDATIONS.md`). The same person may be
+   a restaurant's staff member in VINII POS or a rider; deleting the login from the customer app
+   would lock them out of work. The membership check guards the known tables, but new apps may add
+   more.
+2. **Other apps' rows point at the login.** Deleting it sets or cascades foreign keys in tables One
+   Local does not own, which the shared-database rules forbid us to change without their owner
+   (rule 6, "never hard-delete people that orders reference", rule 7).
+3. **It cannot be undone**, and it needs the service-role key's admin power.
+
+With it off, the erasure request is marked `partially_completed` with `login: kept_for_review`, and
+the team deletes the login by hand (Supabase dashboard) within the response period after checking
+other apps. Switch it on once the founder and the Master team agree, ideally when the Master owns
+account deletion across apps.
+
+### 7.4 Database (draft, not applied)
+
+`db/migrations/0027_ol_privacy.sql`: `ol_consents` (append-only by trigger; deletes only by the
+retention purge, which sets `ol.privacy_purge`), `ol_consent_current` (newest choice per person
+and purpose), `ol_privacy_requests` (kind, status, reference, details, due date, resolved date).
+RLS on, no policies, server only, like every `ol_` table. The number is a placeholder: the OS repo
+ledger assigns the real one.
+
+## 8. What the founder must decide or fill
+
+1. **Legal entity and registered address** — fill in `frontend/constants/privacy.ts`.
+2. **Grievance officer** — name, email, phone, hours (same file). Can be the founder at first; must
+   answer within 90 days, ideally much sooner.
+3. **The Board's official complaint link** — once confirmed (same file).
+4. **Retention periods** — approve or change section 5; confirm the tax periods with the accountant.
+5. **Deleting logins** — keep `PRIVACY_HARD_DELETE` off (team deletes by hand) or switch it on.
+6. **Purge job** — approve a scheduled job to apply section 5 (after 0027).
+7. **Migration 0027** — approve, and have the OS repo ledger give it a number.
+8. **Processor contracts** — accept data-processing terms from Supabase, Razorpay, Google and the
+   SMS provider; choose the SMS provider.
+9. **Breach team** — name the incident lead, deputy, engineer and lawyer (section 6).
+10. **Lawyer review** — of this map, the notice text, the 18+ self-declaration, and the timeline.
+11. **Nominee verification** — how the team checks that a nominee is who they say (death
+    certificate, ID) before acting.
+12. **Existing installs** — "Offers near me" was on by default before today; decide whether to
+    switch it off for everyone until they say yes (recommended before any marketing send).
+
+## 9. Risks and known gaps
+
+- **Not applied**: without 0027, consent evidence lives only on phones; a lost phone loses unsent
+  choices. Apply 0027 before any marketing starts.
+- **Login deletion is manual** while the flag is off: a request could be missed. The `ER-` request
+  (or `privacy:ER-…` help request) is the to-do; the Master needs a queue sorted by due date.
+- **Restaurant orders** also live in the POS `orders` table (customer name and phone), owned by
+  VINII POS; erasure here does not reach them. Needs a contract function from the POS owner.
+- **Profile and addresses live on the phone**: when they move to `shoppers` / `ol_addresses`, the
+  download and erasure must include those tables (a one-line addition to each query list in
+  `server/privacy.ts`).
+- **Rate limits are per server process** and reset on restart; they move to the shared Redis
+  limiter with the rest of the API.
+- **Age is self-declared.** Acceptable only if the lawyer agrees for this kind of service.
+- **Shared phones**: a person signed in on someone else's phone sees and can delete that phone's
+  guest orders (as My Orders already shows them). Documented; low harm because amounts are kept.
+- **Download size**: on phones the file is shared as text through the share sheet; very long order
+  histories may be slow. A file-based share needs a native module (next native build).
+- **Nothing was tried on a real phone or with a real account in this session**: the server logic is
+  covered by the checks script with sign-in simulated; the screens were checked in a web browser as
+  a guest.
