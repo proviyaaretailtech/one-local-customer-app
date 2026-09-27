@@ -13,7 +13,7 @@ import { CityScroll } from '../motion';
 import { useDeliveryLocation } from '../delivery-location';
 import { CITY_CENTER, nearbyAt, NearbyKind, NearbyPlace, placeLine, requestLaunch } from '../places';
 
-const KINDS: { id: NearbyKind; label: string; icon: string; color: string; soft: string }[] = [
+export const KINDS: { id: NearbyKind; label: string; icon: string; color: string; soft: string }[] = [
   { id: 'food', label: 'Food', icon: 'restaurant-outline', color: colors.food, soft: colors.foodSoft },
   { id: 'grocery', label: 'Groceries', icon: 'basket-outline', color: colors.grocery, soft: colors.groceryFade },
   { id: 'shops', label: 'Shops', icon: 'storefront-outline', color: colors.shops, soft: colors.shopsFade },
@@ -93,7 +93,7 @@ export function ExploreTown({ initial = 'food', empty = false }: { initial?: Nea
   </CityScroll>;
 }
 
-function PlaceRow({ p, kind }: { p: NearbyPlace; kind: (typeof KINDS)[number] }) {
+export function PlaceRow({ p, kind }: { p: NearbyPlace; kind: (typeof KINDS)[number] }) {
   const detail = [p.cuisine ?? p.type, p.rating ? `★ ${p.rating.toFixed(1)}${p.rating_count ? ` (${p.rating_count})` : ''}` : null].filter(Boolean).join(' · ');
   const open = (url: string) => Linking.openURL(url).catch(() => {});
   return <View testID={`explore-place-${p.id}`} style={s.row}>
