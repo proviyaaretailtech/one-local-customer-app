@@ -57,9 +57,56 @@ export function onForOneLocal(item: MenuItemRow, off: SwitchRow | undefined, now
   return !!off.off_until && Date.parse(off.off_until) <= now; // switched off until a time now past = on again
 }
 
+// Postgres numeric arrives as a string; the API always answers with JSON numbers.
+export const num = (v: unknown, fallback = 0) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? fallback : Number(v));
+export const numOrNull = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+// What an item sells as: one option per variant ("Half", "Full"), or the item itself at its own
+// price. A ₹0 option is a POS placeholder, not something to sell.
+function optionsOf(item: MenuItemRow, variants: VariantRow[] | undefined) {
+  const all = variants?.length ? variants.map(v => ({ variant: v, label: v.name, price: num(v.price) })) : [{ variant: null, label: '', price: num(item.price) }];
+  return all.filter(o => o.price > 0);
+}
+
+function variantsByItem(im: ItemMaster) {
+  const byItem = new Map<string, VariantRow[]>();
+  for (const v of [...im.variants].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))) {
+    byItem.set(v.menu_item_id, [...(byItem.get(v.menu_item_id) ?? []), v]);
+  }
+  return byItem;
+}
+
+// Items the app shows for this organization: on for One Local and with something to sell.
 export function itemsLive(organizationId: string, im: ItemMaster, now = Date.now()) {
   const switches = new Map(im.switches.map(s => [s.menu_item_id, s]));
-  return im.items.filter(i => i.organization_id === organizationId && onForOneLocal(i, switches.get(i.id), now) && Number(i.price) > 0).length;
+  const variants = variantsByItem(im);
+  return im.items.filter(i => i.organization_id === organizationId && onForOneLocal(i, switches.get(i.id), now) && optionsOf(i, variants.get(i.id)).length > 0).length;
+}
+
+// The Master's preview of an organization's items: every POS item grouped by its menu category,
+// with whether the app shows it (the same rule as the catalogue). The price is the default
+// variant's, else the item's own; all variants are listed.
+export type PreviewItem = { id: string; name: string; price: number; image: string | null; available_on_one_local: boolean; variants: { id: string; name: string; price: number }[] };
+export type PreviewCategory = { id: string; name: string; items: PreviewItem[] };
+
+export function itemPreview(organizationId: string, im: ItemMaster, now = Date.now()): PreviewCategory[] {
+  const switches = new Map(im.switches.map(s => [s.menu_item_id, s]));
+  const variants = variantsByItem(im);
+  const categories = im.categories.filter(c => c.organization_id === organizationId).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const items = im.items.filter(i => i.organization_id === organizationId).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const view = (i: MenuItemRow): PreviewItem => {
+    const own = variants.get(i.id) ?? [];
+    const shown = own.find(v => v.is_default) ?? own[0];
+    return {
+      id: i.id, name: i.name, price: num(shown ? shown.price : i.price), image: i.image_url || null,
+      available_on_one_local: onForOneLocal(i, switches.get(i.id), now) && optionsOf(i, own).length > 0,
+      variants: own.map(v => ({ id: v.id, name: v.name, price: num(v.price) })),
+    };
+  };
+  const groups = categories.map(c => ({ id: c.id, name: c.name, items: items.filter(i => i.category_id === c.id).map(view) }));
+  const loose = items.filter(i => !i.category_id || !categories.some(c => c.id === i.category_id));
+  if (loose.length) groups.push({ id: 'uncategorized', name: 'More', items: loose.map(view) });
+  return groups.filter(g => g.items.length);
 }
 
 export const slugify = (text: string) => text.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
@@ -196,7 +243,7 @@ export async function readLocations(organizationIds: (string | null)[]): Promise
 export async function readListingRows(filter: { id?: string; organizationIds?: string[] } = {}): Promise<StoreRow[]> {
   let rows: StoreRow[];
   if (!dbConfigured()) {
-    rows = memory().stores;
+    rows = memory().stores.map(r => ({ ...r })); // copies, as a database read would return
   } else if (filter.organizationIds && !filter.organizationIds.length) {
     rows = [];
   } else {
@@ -244,7 +291,6 @@ export type ListingCatalog = { stores: CatalogStore[]; products: CatalogProduct[
 
 const COLORS = ['pastelGreen', 'pastelYellow', 'pastelRed', 'pastelBlue', 'pastelOrange', 'pastelPurple', 'pastelPink', 'pastelMint'];
 const hash = (text: string) => [...text].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
-const num = (v: unknown, fallback = 0) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? fallback : Number(v));
 const minutes = (text: string | null) => num(text?.match(/\d+/)?.[0], 30);
 
 export function storeOf(row: StoreRow): CatalogStore {
@@ -260,10 +306,7 @@ export function listingCatalog(listings: StoreRow[], im: ItemMaster, now = Date.
   const orgs = new Map(im.organizations.map(o => [o.id, o]));
   const switches = new Map(im.switches.map(s => [s.menu_item_id, s]));
   const menuCategories = new Map(im.categories.map(c => [c.id, c]));
-  const variants = new Map<string, VariantRow[]>();
-  for (const v of [...im.variants].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))) {
-    variants.set(v.menu_item_id, [...(variants.get(v.menu_item_id) ?? []), v]);
-  }
+  const variants = variantsByItem(im);
   const ordered = [...listings].sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id));
   const primary = new Map<string, StoreRow>();
   for (const l of ordered) if (!primary.has(l.organization_id!)) primary.set(l.organization_id!, l);
@@ -282,19 +325,15 @@ export function listingCatalog(listings: StoreRow[], im: ItemMaster, now = Date.
       const categoryId = `im-${department}-${slugify(categoryName) || 'more'}`;
       const category = categories.get(categoryId) ?? { id: categoryId, name: categoryName, emoji: '', color: COLORS[hash(categoryId) % COLORS.length], department, image: l.cover_image || l.logo || '', fromItem: false };
       if (item.image_url && !category.fromItem) Object.assign(category, { image: item.image_url, fromItem: true });
-      const options = variants.get(item.id)?.map(v => ({ id: `${l.id}_${item.id}_${v.id}`, label: v.name, price: num(v.price) }))
-        ?? [{ id: `${l.id}_${item.id}`, label: '', price: num(item.price) }];
-      let added = false;
+      const options = optionsOf(item, variants.get(item.id));
       for (const o of options) {
-        if (!(o.price > 0)) continue; // a ₹0 row is a POS placeholder, not something to sell
-        added = true;
         products.push({
-          id: o.id, name: item.name, weight: department === 'food' ? [l.name, o.label].filter(Boolean).join(' · ') : o.label,
+          id: o.variant ? `${l.id}_${item.id}_${o.variant.id}` : `${l.id}_${item.id}`, name: item.name, weight: department === 'food' ? [l.name, o.label].filter(Boolean).join(' · ') : o.label,
           price: o.price, mrp: o.price, image: item.image_url || l.logo || '', category_id: categoryId, store_id: l.id,
           delivery_min: minutes(l.delivery_time), discount_pct: null, rating: num(l.rating, 4.5), department, brand_id: brandId, city_id: l.city_id,
         });
       }
-      if (added) categories.set(categoryId, category);
+      if (options.length) categories.set(categoryId, category);
     }
   }
   const brands = [...primary.values()].map(l => ({
