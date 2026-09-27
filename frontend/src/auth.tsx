@@ -16,7 +16,7 @@ type AuthState = {
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
   sendPhoneCode: (mobile: string) => Promise<void>;
   verifyPhoneCode: (mobile: string, code: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (everywhere?: boolean) => Promise<void>;
 };
 
 // Supabase's own messages, in words a customer can act on.
@@ -136,7 +136,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(friendly(error.message));
   };
 
-  const signOut = async () => { await supabase?.auth.signOut(); };
+  // This phone only by default (Supabase's own default signs out every device); "everywhere"
+  // ends every session of the account, e.g. after losing a phone.
+  const signOut = async (everywhere = false) => {
+    const { error } = (await supabase?.auth.signOut({ scope: everywhere ? 'global' : 'local' })) ?? { error: null };
+    if (error) throw new Error('Couldn’t sign out right now. Check your connection and try again.');
+  };
 
   return <AuthContext.Provider value={{ ready, session, googleAvailable, phoneAvailable, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
 }

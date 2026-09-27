@@ -1,7 +1,7 @@
 // "You" tab: identity, quick stats, OneLocal Coins (coming soon), preferences that save as you tap,
 // and everything account-related grouped so it can be scanned in one glance.
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Switch, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -26,6 +26,7 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     { icon: 'person-circle-outline', label: 'Edit profile', sub: 'Photo, name, birthday and contact', id: 'profile', route: '/profile-edit' },
     { icon: 'location-outline', label: 'Saved Addresses', sub: 'Home, work and everywhere in between', id: 'addresses', route: '/addresses' },
     { icon: 'card-outline', label: 'Payment Preferences', sub: 'Choose how you prefer to pay', id: 'payments', route: '/payments' },
+    { icon: 'shield-checkmark-outline', label: 'Privacy & your data', sub: 'Consents, download or delete your data', id: 'privacy', route: '/privacy' },
   ] },
   { title: 'Rewards', rows: [
     { icon: 'gift-outline', label: 'Refer & Earn', sub: 'Good things are better shared', id: 'refer', route: '/refer' },
@@ -45,6 +46,14 @@ export default function AccountScreen() {
   const router = useRouter(); const { profile, saved, addresses, ready, error, update } = useCustomer();
   const auth = useAuth(); const user = auth.session?.user;
   const [orders, setOrders] = useState<Order[] | null>(null);
+  const [confirm, setConfirm] = useState(false); const [leaving, setLeaving] = useState<'' | 'here' | 'everywhere'>(''); const [signOutError, setSignOutError] = useState(''); const [signedOut, setSignedOut] = useState(false);
+  const who = user?.email || user?.phone && `+${user.phone.replace(/^\+/, '')}` || '';
+  const leave = async (everywhere: boolean) => {
+    setLeaving(everywhere ? 'everywhere' : 'here'); setSignOutError('');
+    try { await auth.signOut(everywhere); setConfirm(false); setSignedOut(true); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }
+    catch (e) { setSignOutError((e as Error).message); }
+    finally { setLeaving(''); }
+  };
   useEffect(() => { apiGet<Order[]>('/orders').then(setOrders).catch(() => setOrders([])); }, [user?.id]);
   const delivered = (orders ?? []).filter(o => o.status !== 'cancelled');
   const wouldEarn = Math.floor(delivered.reduce((s, o) => s + o.total, 0) * COINS_PER_RUPEE);
@@ -62,7 +71,7 @@ export default function AccountScreen() {
         </Pressable>
         <View style={s.flex}>
           <Text testID="account-name" style={s.name} numberOfLines={1}>{profile.name || 'Hello, neighbour'}</Text>
-          <Text testID="account-email" style={s.email} numberOfLines={1}>{user?.email || profile.email || 'Browsing as a guest'}</Text>
+          <Text testID="account-email" style={s.email} numberOfLines={1}>{who || profile.email || 'Browsing as a guest'}</Text>
         </View>
         <Pressable testID="edit-profile-btn" accessibilityLabel="Edit profile" onPress={() => router.push('/profile-edit')} style={s.editBtn}><Icon name="create-outline" size={18} color={colors.electricLime} /></Pressable>
       </View>
@@ -122,7 +131,38 @@ export default function AccountScreen() {
       </Tap>)}</View>
     </View>)}
 
-    {user && <Pressable testID="sign-out-btn" onPress={() => auth.signOut()} style={s.signOut}><Icon name="log-out-outline" size={18} color={colors.onError} /><Text style={s.signOutText}>Sign out</Text></Pressable>}
+    {/* Account: who you are, and a clear way out */}
+    <Text style={s.groupTitle}>Signed in</Text>
+    {user ? <View testID="account-session-card" style={s.session}>
+      <View style={s.sessionRow}>
+        <View style={s.sessionIcon}><Icon name="person-outline" size={20} color={colors.forest} /></View>
+        <View style={s.flex}><Text style={s.label}>{profile.name || 'Your account'}</Text><Text testID="account-session-who" style={s.sub} numberOfLines={1}>{who}</Text></View>
+      </View>
+      <Pressable testID="sign-out-btn" accessibilityRole="button" accessibilityLabel="Sign out" onPress={() => { setSignOutError(''); setConfirm(true); }} style={s.signOut}>
+        <Icon name="log-out-outline" size={19} color={colors.onError} /><Text style={s.signOutText}>Sign out</Text>
+      </Pressable>
+    </View> : <View testID="account-guest-card" style={s.session}>
+      {signedOut && <View testID="signed-out-notice" style={s.signedOut}><Icon name="checkmark-circle" size={18} color={colors.forest} /><Text style={s.signedOutText}>You’re signed out. Your cart and preferences stay on this phone.</Text></View>}
+      <Text style={s.sub}>Sign in so your orders, addresses and bookings follow you to any phone.</Text>
+      <Pressable testID="account-sign-in-bottom" accessibilityRole="button" onPress={() => router.push('/sign-in?next=/account' as never)} style={s.signInBottom}><Text style={s.signInText}>Sign in or create an account</Text><Icon name="arrow-forward" size={16} color={INK} /></Pressable>
+    </View>}
+
+    <Modal transparent visible={confirm} animationType="fade" onRequestClose={() => setConfirm(false)}>
+      <Pressable style={s.overlay} onPress={() => !leaving && setConfirm(false)}>
+        <Pressable testID="sign-out-sheet" style={s.sheet} onPress={() => {}}>
+          <Text style={s.sheetTitle}>Sign out of One Local?</Text>
+          <Text style={s.sheetBody}>{who ? `You’re signed in as ${who}. ` : ''}Your cart and preferences stay on this phone. Sign in again any time to see your orders.</Text>
+          {!!signOutError && <Text testID="sign-out-error" style={s.error}>{signOutError}</Text>}
+          <Pressable testID="sign-out-confirm" disabled={!!leaving} onPress={() => leave(false)} style={s.sheetDanger}>
+            {leaving === 'here' ? <ActivityIndicator color="#fff" /> : <Text style={s.sheetDangerText}>Sign out</Text>}
+          </Pressable>
+          <Pressable testID="sign-out-everywhere" disabled={!!leaving} onPress={() => leave(true)} style={s.sheetSecondary}>
+            {leaving === 'everywhere' ? <ActivityIndicator color={colors.onError} /> : <Text style={s.sheetSecondaryText}>Sign out of all devices</Text>}
+          </Pressable>
+          <Pressable testID="sign-out-cancel" disabled={!!leaving} onPress={() => setConfirm(false)} style={s.sheetCancel}><Text style={s.sheetCancelText}>Cancel</Text></Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
     <Text testID="account-device-notice" style={s.notice}>{user ? 'Your orders are linked to your account. Profile and preferences are saved on this device for now.' : 'Your profile and preferences are saved on this device.'}</Text>
     <Text style={s.tag}>OneCity · Made in Latur</Text>
   </ScrollView>;
@@ -186,8 +226,24 @@ const s = StyleSheet.create({
   sub: { fontSize: 11, color: colors.muted, lineHeight: 16, marginTop: 2 },
   soon: { backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   soonText: { fontSize: 9, fontWeight: '800', color: colors.muted, letterSpacing: 1 },
-  signOut: { marginTop: 22, minHeight: 50, borderRadius: 18, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  signOutText: { color: colors.onError, fontSize: 14, fontWeight: '700' },
+  session: { backgroundColor: colors.surface, borderRadius: 22, padding: 16, gap: 14 },
+  sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sessionIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.limeSoft, alignItems: 'center', justifyContent: 'center' },
+  signOut: { minHeight: 52, borderRadius: 16, borderWidth: 1.5, borderColor: colors.onError, backgroundColor: colors.error, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  signOutText: { color: colors.onError, fontSize: 15, fontWeight: '800' },
+  signInBottom: { minHeight: 52, borderRadius: 16, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  signedOut: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.limeSoft },
+  signedOutText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.forest, fontWeight: '600' },
+  overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 34, gap: 10 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: colors.onSurface },
+  sheetBody: { fontSize: 14, lineHeight: 20, color: colors.muted, marginBottom: 6 },
+  sheetDanger: { minHeight: 52, borderRadius: 16, backgroundColor: colors.onError, alignItems: 'center', justifyContent: 'center' },
+  sheetDangerText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  sheetSecondary: { minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  sheetSecondaryText: { color: colors.onError, fontSize: 14, fontWeight: '700' },
+  sheetCancel: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  sheetCancelText: { color: colors.onSurface, fontSize: 14, fontWeight: '700' },
   notice: { color: colors.muted, fontSize: 11, textAlign: 'center', marginTop: 18, lineHeight: 16 },
   tag: { color: colors.forest, fontSize: 11, textAlign: 'center', marginTop: 8, fontWeight: '600' },
   error: { color: colors.onError, margin: 16 }, pressed: { opacity: 0.6 },
