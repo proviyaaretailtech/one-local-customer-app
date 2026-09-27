@@ -1,10 +1,16 @@
-// Read side of the One Latur catalogue. Loaded from the ol_* Postgres tables (service role,
-// see db.ts) and cached in memory for a short TTL so every request doesn't hit the database.
-// Falls back to the bundled sample (data/catalog.json) when Supabase isn't configured, so the
-// app still runs with `npx expo start` and no .env — see dbConfigured() in db.ts.
+// Read side of the One Latur catalogue, from two sources merged into one:
+//   1. Marketplace listings the Master approved (ol_stores rows with an organization, not demo, status
+//      live) selling their organization's own POS items: the Item Master (marketplace.ts). These are
+//      the real stores, so they are listed first.
+//   2. The ol_* demo catalogue, as before, minus any store row that is paused or soft-deleted. After
+//      the founder's clean-up (db/cleanup/) no demo rows are left and only source 1 remains.
+// Loaded with the service role (db.ts) and cached in memory for a short TTL so every request doesn't
+// hit the database. Without Supabase it is the bundled sample (data/catalog.json) plus the in-memory
+// listings, so the app and the Master still run with `npx expo start` and no .env.
 import jsonFallback from './data/catalog.json';
 import { db, dbConfigured } from './db';
 import { HttpError } from './http';
+import { isListing, isVisible, ListingCatalog, listingCatalog, memory, readItemMaster, StoreRow } from './marketplace';
 
 export type Product = (typeof jsonFallback.products)[number];
 export type Store = (typeof jsonFallback.stores)[number];
@@ -17,6 +23,14 @@ type CatalogData = typeof jsonFallback;
 const TTL_MS = 30_000;
 let cache: { data: CatalogData; at: number } | null = null;
 let inFlight: Promise<CatalogData> | null = null;
+let generation = 0;
+
+// After an admin change, so this server shows it at once (other servers within TTL_MS).
+export function invalidateCatalog() {
+  generation++;
+  cache = null;
+  inFlight = null;
+}
 
 const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
 
@@ -37,7 +51,7 @@ async function loadFromDb(): Promise<CatalogData> {
   const first = [categories, brands, stores, products, banners, chips, coupons, events, themed, reels].find(r => r.error);
   if (first?.error) { console.error('[catalog] load failed:', first.error.message); throw new HttpError(503, 'The catalogue is not available right now.'); }
 
-  return {
+  return withListings({
     categories: (categories.data ?? []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji, color: c.color, department: c.department, image: c.image })),
     discover_chips: (chips.data ?? []).map(c => ({ id: c.id, label: c.label, emoji: c.emoji, color: c.color })),
     banners: (banners.data ?? []).map(b => ({ id: b.id, title: b.title, subtitle: b.subtitle, image: b.image, bg: b.bg, city_id: b.city_id })),
@@ -53,17 +67,39 @@ async function loadFromDb(): Promise<CatalogData> {
     events: (events.data ?? []).map(e => ({ id: e.id, title: e.title, kind: e.kind, subtitle: e.subtitle, venue: e.venue, price: num(e.price), image: e.image, tag: e.tag, slots: e.slots ?? [], city_id: e.city_id })),
     themed_stores: (themed.data ?? []).map(t => t.data),
     reels: (reels.data ?? []).map(r => ({ id: r.id, product_id: r.product_id, brand_id: r.brand_id, video: r.video, caption: r.caption, creator: r.creator, likes: r.likes, tag: r.tag, city_id: r.city_id })),
+  } as unknown as CatalogData, (stores.data ?? []) as StoreRow[]);
+}
+
+// Merges the live Item-Master listings into a catalogue built from the demo rows. `rows` are all
+// ol_stores rows: listing rows and paused or soft-deleted rows are taken out of the demo part (with
+// their products), and the live listings are added in front with their organization's items.
+async function withListings(base: CatalogData, rows: StoreRow[]): Promise<CatalogData> {
+  const live = rows.filter(r => isListing(r) && isVisible(r));
+  const hidden = new Set(rows.filter(r => isListing(r) || !isVisible(r)).map(r => r.id));
+  if (!live.length && !hidden.size) return base;
+  const market: ListingCatalog = live.length
+    ? listingCatalog(live, await readItemMaster(live.map(r => r.organization_id)))
+    : { stores: [], products: [], categories: [], brands: [] };
+  return {
+    ...base,
+    stores: [...market.stores, ...base.stores.filter(s => !hidden.has(s.id))],
+    products: [...market.products, ...base.products.filter(p => !hidden.has(p.store_id))],
+    categories: [...market.categories, ...base.categories],
+    brands: [...market.brands, ...base.brands],
   } as unknown as CatalogData;
 }
 
 export async function getCatalog(): Promise<CatalogData> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
-  if (!dbConfigured()) return jsonFallback;
+  // No database: the sample plus the in-memory listings, worked out on every call (it is small).
+  if (!dbConfigured()) return withListings(jsonFallback, memory().stores);
   if (!inFlight) {
-    inFlight = loadFromDb()
-      .then(data => { cache = { data, at: Date.now() }; return data; })
+    const started = generation;
+    const load: Promise<CatalogData> = loadFromDb()
+      .then(data => { if (started === generation) cache = { data, at: Date.now() }; return data; })
       .catch(err => { if (cache) return cache.data; throw err; })
-      .finally(() => { inFlight = null; });
+      .finally(() => { if (inFlight === load) inFlight = null; });
+    inFlight = load;
   }
   return inFlight;
 }
