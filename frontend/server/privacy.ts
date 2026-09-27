@@ -184,7 +184,6 @@ function recordsFromMemory(p: Person): Records {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function select(table: string, filter: (q: any) => any, columns = '*'): Promise<Row[]> {
   const { data, error } = await filter(db().from(table).select(columns)).order('created_at', { ascending: false }).range(0, 4999);
   if (error) fromDbError(error);

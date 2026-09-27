@@ -390,8 +390,8 @@ everywhere. Deleting their **Supabase Auth user** is implemented but only runs w
    would lock them out of work. The membership check guards the known tables, but new apps may add
    more.
 2. **Other apps' rows point at the login.** Deleting it sets or cascades foreign keys in tables One
-   Local does not own, which the shared-database rules forbid us to change without their owner
-   (rule 6, "never hard-delete people that orders reference", rule 7).
+   Local does not own. The shared-database rules in `PLATFORM_FOUNDATIONS.md` say never to change
+   another app's tables (Never 6) and never to hard-delete people that orders reference (Never 7).
 3. **It cannot be undone**, and it needs the service-role key's admin power.
 
 With it off, the erasure request is marked `partially_completed` with `login: kept_for_review`, and
