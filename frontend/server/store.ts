@@ -45,10 +45,20 @@ const publicOrder = ({ city_id, customer, user_id, paid_at, payment_error, ...or
 const publicCheckout = ({ city_id, customer, user_id, razorpay_order_id, razorpay_payment_id, paid_at, payment_error, refunds, ...checkout }: StoredCheckout, orders: Order[]): Checkout => ({ ...checkout, orders });
 
 // ---------- In-memory fallback (no database configured) ----------
-type Memory = { checkouts: StoredCheckout[]; orders: StoredOrder[]; replies: Map<string, { fingerprint: string; checkout: Checkout; at: number }>; enquiries: object[]; support: object[] };
+// Enquiries and help requests carry their owner like orders do, so a person's data can be found
+// for a download or an erasure (server/privacy.ts), exactly as the database columns allow.
+type Owned = { customer: string | null; user_id: string | null };
+export type MemoryEnquiry = Owned & { id: string; event_id: string; name: string; phone: string; date: string; slot: string; guests: number; status: string; created_at: string };
+export type MemorySupport = Owned & { id: string; topic: string; message: string; reference: string; status: string; created_at: string };
+type Memory = { checkouts: StoredCheckout[]; orders: StoredOrder[]; replies: Map<string, { fingerprint: string; checkout: Checkout; at: number }>; enquiries: MemoryEnquiry[]; support: MemorySupport[] };
 const g = globalThis as unknown as { __onecityStore?: Memory };
 const mem: Memory = (g.__onecityStore ??= { checkouts: [], orders: [], replies: new Map(), enquiries: [], support: [] } as Memory);
 mem.checkouts ??= []; // a dev server whose memory dates from before checkouts
+
+// For server/privacy.ts only (download and erasure in memory mode). The database path uses the
+// tables directly; nothing else should reach into memory.
+export const memoryRecords = () => mem;
+export type { StoredCheckout, StoredOrder };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -433,9 +443,9 @@ export async function createEnquiry(request: Request) {
   if (!Number.isInteger(b.guests) || (b.guests as number) < 1 || (b.guests as number) > 8) throw new HttpError(400, 'Choose between 1 and 8 guests');
 
   const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
-  const saved = { event_id: event.id, name: b.name, phone: b.phone, date: b.date, slot: b.slot, guests: b.guests, id: crypto.randomUUID(), status: 'demo_enquiry_saved', created_at: new Date().toISOString() };
+  const saved = { event_id: event.id, name: b.name, phone: b.phone, date: b.date as string, slot: b.slot, guests: b.guests as number, id: crypto.randomUUID(), status: 'demo_enquiry_saved', created_at: new Date().toISOString() };
 
-  if (!dbConfigured()) { mem.enquiries.push(saved); return saved; }
+  if (!dbConfigured()) { mem.enquiries.push({ ...saved, customer: hash, user_id: userId }); return saved; }
   const { error } = await db().from('ol_booking_enquiries').insert({
     id: saved.id, event_id: saved.event_id, name: saved.name, phone: saved.phone, date: saved.date,
     slot: saved.slot, guests: saved.guests, status: saved.status, customer_hash: hash, user_id: userId, created_at: saved.created_at,
@@ -456,7 +466,7 @@ export async function createSupportRequest(request: Request) {
   const receipt = { id: crypto.randomUUID(), status: 'saved_for_review', created_at: new Date().toISOString() };
 
   const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
-  if (!dbConfigured()) { mem.support.push({ topic: b.topic, message: b.message, reference, ...receipt }); return receipt; }
+  if (!dbConfigured()) { mem.support.push({ topic: b.topic, message: b.message, reference, ...receipt, customer: hash, user_id: userId }); return receipt; }
   const { error } = await db().from('ol_support_requests').insert({
     id: receipt.id, topic: b.topic, message: b.message, reference, status: receipt.status,
     customer_hash: hash, user_id: userId, created_at: receipt.created_at,
@@ -478,7 +488,7 @@ export async function createLaunchRequest(request: Request) {
   const reference = `launch:${place.id}`.slice(0, 100);
 
   const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
-  if (!dbConfigured()) { mem.support.push({ topic: 'other', message, reference, ...receipt }); return receipt; }
+  if (!dbConfigured()) { mem.support.push({ topic: 'other', message, reference, ...receipt, customer: hash, user_id: userId }); return receipt; }
   const { error } = await db().from('ol_support_requests').insert({
     id: receipt.id, topic: 'other', message, reference, status: receipt.status,
     customer_hash: hash, user_id: userId, created_at: receipt.created_at,

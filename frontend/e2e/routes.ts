@@ -82,6 +82,8 @@ export const SCREENS: Screen[] = [
   { name: 'help', route: '/help', ready: 'help-screen' },
   { name: 'enquiries', route: '/enquiries', ready: 'enquiries-screen' },
   { name: 'about', route: '/about', ready: 'about-screen' },
+  { name: 'privacy', route: '/privacy', ready: 'privacy-screen', setup: seedAddresses },
+  { name: 'privacy-notice', route: '/privacy-notice', ready: 'privacy-notice-screen' },
   // Dynamic routes with real ids
   { name: 'product-p1', route: '/product/p1', ready: 'product-detail' },
   { name: 'product-sneak1', route: '/product/sneak1', ready: 'product-detail' },

@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, SUPABASE_KEY, SUPABASE_URL } from './lib/supabase';
 import { useCustomer } from './customer';
+import { afterSignIn } from './privacy';
 
 type AuthState = {
   ready: boolean; session: Session | null; googleAvailable: boolean; phoneAvailable: boolean;
@@ -85,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (next.name === profile.name && next.email === profile.email && next.phone === profile.phone) return;
     update({ profile: { ...profile, ...next } }).catch(() => {});
   }, [session?.user?.id, customerReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Privacy choices made on this phone (including at sign-in) go to the account; choices made on
+  // another phone come back (src/privacy.ts).
+  useEffect(() => { if (session?.user?.id) void afterSignIn(); }, [session?.user?.id]);
 
   const signInWithGoogle = async () => {
     if (!supabase) throw new Error('Sign-in is not configured for this build.');

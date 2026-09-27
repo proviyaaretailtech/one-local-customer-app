@@ -3,6 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { apiGet, apiPost } from './api';
+import { consentGranted } from './privacy';
 import type { Point } from './delivery-location';
 import type { Address } from './customer';
 
@@ -45,9 +46,12 @@ export async function currentPoint(): Promise<Point> {
   return { lat: pos.coords.latitude, lng: pos.coords.longitude };
 }
 
-// Only if the customer already allowed location: never prompts.
+// Only if the customer already allowed location: never prompts. Reading it without being asked is
+// the optional "location for nearby suggestions" purpose, so it also needs that consent (off until
+// switched on in Privacy & your data). Tapping "Use current location" (currentPoint) always works.
 export async function knownPoint(): Promise<Point | null> {
   try {
+    if (!(await consentGranted('location_suggestions'))) return null;
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return null;
     const pos = await Location.getLastKnownPositionAsync();

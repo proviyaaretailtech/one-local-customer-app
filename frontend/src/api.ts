@@ -29,6 +29,8 @@ export function randomId(bytes = 24): string {
   return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
 }
 let customerKey: Promise<string> | null = null;
+// After "Clear this phone" (src/privacy.ts): the next request creates a new key.
+export function forgetCustomerKey() { customerKey = null; }
 function getCustomerKey(): Promise<string> {
   return (customerKey ??= AsyncStorage.getItem(CUSTOMER_KEY).then(async saved => {
     if (saved) return saved;
