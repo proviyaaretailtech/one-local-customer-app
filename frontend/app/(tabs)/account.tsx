@@ -132,7 +132,7 @@ export default function AccountScreen() {
     </View>)}
 
     {/* Account: who you are, and a clear way out */}
-    <Text style={s.groupTitle}>Signed in</Text>
+    <Text style={s.groupTitle}>{user ? 'Signed in' : 'Your account'}</Text>
     {user ? <View testID="account-session-card" style={s.session}>
       <View style={s.sessionRow}>
         <View style={s.sessionIcon}><Icon name="person-outline" size={20} color={colors.forest} /></View>
