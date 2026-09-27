@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: Pick any place in India; towns we don't serve show real local shops to call
+
+**Customers now start by choosing where they are (any city, town or village). In towns we don't deliver to yet, the app shows real nearby restaurants, grocers, shops and pharmacies, with a Call button and directions. It no longer shows Latur's catalogue.**
+
+- **Why:** The founder wants One Local usable across India now, with phone numbers shown, and the move to Google Maps planned.
+- **Structural decisions:** (1) First launch asks "Where are you?" instead of pushing sign-in. Sign-in moves to the moment of paying (a separate build, in progress). (2) Listings have one shape and two sources. Google Places switches on by itself when the Maps key is set; OpenStreetMap is used until then. Google's terms don't allow keeping its data, so its answers are not stored. (3) Phone numbers are cleaned into a dialable +91 form, and numbers that aren't valid are hidden rather than shown wrong. (4) "Bring One Local to <town>" requests are saved per place for the Master to count.
+- **What works now:** Search any place (for example Killari, Pune, or Chhatrapati Sambhajinagar); browse India by state and district down to every village; use current location. Latur still shows the full delivery app. Killari shows places up to 30 km away; Pune shows 40 food places. In the founder's words, the "current location bug" was fixed three ways: it no longer spins forever (12-second limit, then the last known position); after "Don't Allow" it offers Open Settings; and on the map, a failed "locate me" keeps the pin's address.
+- **Left undone:** OpenStreetMap has few phone numbers (about 1 listing in 12 in Pune); Google fixes that once the key is set. The first look at a village can take about 25 seconds. Current location was checked in the browser only; it still needs a try on a real phone. Book It still shows Latur events everywhere.
+- **Open questions for the founder:** When will the Google Maps key (with Places API New) be added? Google charges per search. The expected cost should be checked on Google's pricing page before switching it on.
+
 ## 2026-09-27 — One Local: Any place in India can be found; Swiggy studied by five specialists; one build plan
 
 **The server can now find any city, town or village in India and say what One Local offers there (we deliver, local listings only, or not yet). Five studies of Swiggy became one ranked build plan.**
