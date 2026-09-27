@@ -8,6 +8,7 @@ import { db, dbConfigured, fromDbError } from './db';
 import { customerKey, HttpError, limit, readBody } from './http';
 import { quote } from './pricing';
 import { features } from './features';
+import { placeById } from './geo';
 
 const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -216,6 +217,28 @@ export async function createSupportRequest(request: Request) {
   if (!dbConfigured()) { mem.support.push({ topic: b.topic, message: b.message, reference, ...receipt }); return receipt; }
   const { error } = await db().from('ol_support_requests').insert({
     id: receipt.id, topic: b.topic, message: b.message, reference, status: receipt.status,
+    customer_hash: hash, user_id: userId, created_at: receipt.created_at,
+  });
+  if (error) fromDbError(error);
+  return receipt;
+}
+
+// "Launch One Local here" from a discover-only place. Kept in the help-request table (topic
+// 'other', reference 'launch:<place id>') so the demand list needs no new table yet; the Master
+// can count requests per place with one query.
+export async function createLaunchRequest(request: Request) {
+  limit(customerKey(request) ?? 'anonymous', 'launch', 3, 86_400_000);
+  const b = await readBody<Record<string, unknown>>(request);
+  const place = placeById(typeof b.place_id === 'string' ? b.place_id : '');
+  const where = [place.name, place.district, place.state].filter(Boolean).join(', ');
+  const receipt = { id: crypto.randomUUID(), status: 'saved_for_review', created_at: new Date().toISOString(), place: where };
+  const message = `Please launch One Local in ${where} (${place.lat}, ${place.lng}).`;
+  const reference = `launch:${place.id}`.slice(0, 100);
+
+  const { hash, userId } = await caller(request).then(c => ({ hash: c.owner, userId: c.userId }));
+  if (!dbConfigured()) { mem.support.push({ topic: 'other', message, reference, ...receipt }); return receipt; }
+  const { error } = await db().from('ol_support_requests').insert({
+    id: receipt.id, topic: 'other', message, reference, status: receipt.status,
     customer_hash: hash, user_id: userId, created_at: receipt.created_at,
   });
   if (error) fromDbError(error);
