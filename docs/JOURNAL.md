@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: Any place in India can be found; Swiggy studied by five specialists; one build plan
+
+**The server can now find any city, town or village in India and say what One Local offers there (we deliver, local listings only, or not yet). Five studies of Swiggy became one ranked build plan.**
+
+- **Why:** The founder wants One Local to work across India the way District and Swiggy do, and asked for Swiggy to be studied again for UI, UX, motion, profile, images, user flows and tickets.
+- **Structural decisions:** (1) Places come from our own list of about 470,000 Indian cities, towns, localities and villages (GeoNames, free), not a paid Google call per keystroke. Renamed cities show today's name and still answer to the old one (Aurangabad → Chhatrapati Sambhajinagar). (2) Each place is one of three levels. *Live* means we deliver, read from the existing `ol_service_areas` table, so opening a city is a new row, not an app release. *Discover* covers anywhere else in India, with real local restaurants, grocers, shops and pharmacies from OpenStreetMap. *Soon* is outside India. (3) "Launch One Local here" requests reuse the existing help-request table, so no new table is needed yet. (4) Listings come from the free public OpenStreetMap server. It is slow the first time in a village (about 25 seconds), then answers are kept for 6 hours. A paid or self-hosted source would lose less time but costs money; revisit at launch. (5) The popular-city tiles follow the founder's choice: Mumbai, Delhi, Bengaluru, Hyderabad, Chennai, Kolkata, Pune, Ahmedabad.
+- **What works now:** The server answers place search (villages included), browsing by state and district, a coverage check for any map position, and local listings (Latur 135 places, Powai 160, Killari 52 within 30 km). Online payments were merged, switched off until keys are set (entry below). The plan is `docs/SWIGGY_STUDY_PLAN.md`; the five studies are in `docs/research/swiggy-2026-09-27/`.
+- **Left undone:** No screen uses the all-India server yet; the location-first start and the explore-town page are steps 1–2 of the plan. Swiggy's event tickets (Scenes), Instamart and Dineout could not be seen through iPhone Mirroring. On the founder's phone, Swiggy was left on the blank Scenes screen. The "Made in Latur" brand line was kept, as the founder asked to decide it later.
+- **Open questions for the founder:** Listed in `docs/SWIGGY_STUDY_PLAN.md`. The ones that block building are: showing OpenStreetMap phone numbers, one store per cart or mixed carts, and the sign-in method at checkout (email or phone OTP).
+
 ## 2026-09-27 — One Local: Real online payments through Razorpay (ready, switched off until keys are set)
 
 **Customers can pay by UPI, card, netbanking, wallets or Pay Later through Razorpay, from a Payment Options screen laid out like the ones Indian shoppers already know; it switches on by itself once the founder adds Razorpay keys.**

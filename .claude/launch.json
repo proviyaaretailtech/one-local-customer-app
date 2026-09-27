@@ -7,6 +7,14 @@
       "runtimeArgs": ["run", "web"],
       "cwd": "frontend",
       "port": 8081
+    },
+    {
+      "name": "Expo Web Preview (payments UI on)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web", "--", "--port", "8082"],
+      "cwd": "frontend",
+      "env": { "FEATURE_ONLINE_PAYMENTS": "on" },
+      "port": 8082
     }
   ]
 }
