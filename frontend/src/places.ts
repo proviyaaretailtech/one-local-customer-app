@@ -2,7 +2,7 @@
 // own API (app/api/places, app/api/geocode) so the Maps key never ships in the app.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import { apiGet } from './api';
+import { apiGet, apiPost } from './api';
 import type { Point } from './delivery-location';
 import type { Address } from './customer';
 
@@ -23,10 +23,25 @@ export const reverseGeocode = (p: Point) => apiGet<Place>(`/geocode/reverse?lat=
 export const checkServiceable = (p: Point) =>
   apiGet<{ serviceable: boolean; city: string | null; nearest_city: string; distance_km: number }>(`/serviceability?lat=${p.lat}&lng=${p.lng}`);
 
+// Location refused. After a "Don't Allow" the phone never asks again (canAskAgain false), so the
+// screen offers a way to Settings instead of a button that silently does nothing.
+export class LocationOffError extends Error {
+  constructor(public canAskAgain: boolean) {
+    super(canAskAgain ? 'Location access is off. Allow it to use your current location, or search for your town above.'
+      : 'Location access is turned off for OneCity. Turn it on in Settings, or search for your town above.');
+  }
+}
+
+// A fresh fix can take long indoors (or never come on a simulator), so wait at most 12 s, then
+// fall back to a recent known position, and say so plainly if there is none.
 export async function currentPoint(): Promise<Point> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') throw new Error('Location access is off. You can search for your area or move the pin instead.');
-  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+  if (status !== 'granted') throw new LocationOffError(canAskAgain);
+  const fresh = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+  const late = new Promise<null>(resolve => setTimeout(() => resolve(null), 12_000));
+  const pos = (await Promise.race([fresh, late]))
+    ?? (await Location.getLastKnownPositionAsync({ maxAge: 30 * 60_000 }).catch(() => null));
+  if (!pos) throw new Error('Couldn’t find where you are right now. Check that location is switched on, or search for your town above.');
   return { lat: pos.coords.latitude, lng: pos.coords.longitude };
 }
 
@@ -47,6 +62,37 @@ export function distanceKm(a: Point, b: Point) {
   const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
+
+// ---------- All of India (our own place list: free, no Google call) ----------
+export type IndiaPlace = Point & {
+  id: string; name: string; kind: 'city' | 'town' | 'locality' | 'village'; population: number;
+  district: string | null; state: string; state_code: string; district_code: string | null; distance_km?: number | null;
+};
+export const placeLine = (p: Pick<IndiaPlace, 'district' | 'state' | 'name'>) => [p.district && p.district !== p.name ? p.district : null, p.state].filter(Boolean).join(', ');
+export const searchIndia = (q: string, around?: Point | null) => apiGet<IndiaPlace[]>(`/india/search?q=${encodeURIComponent(q)}${near(around)}`);
+export const popularCities = () => apiGet<IndiaPlace[]>('/india/popular');
+export const listStates = () => apiGet<{ code: string; name: string }[]>('/india/states');
+export const listDistricts = (state: string) => apiGet<{ code: string; name: string }[]>(`/india/states/${state}`);
+export const listPlaces = (state: string, district: string) => apiGet<IndiaPlace[]>(`/india/states/${state}/${district}`);
+
+// What One Local offers at a point: live (we deliver), discover (local listings only), soon.
+export type Level = 'live' | 'discover' | 'soon';
+export type Coverage = {
+  level: Level; city: string | null; place: (IndiaPlace & { distance_km: number }) | null;
+  nearest_live: { city: string; name: string; distance_km: number };
+  services: { id: string; level: Level }[];
+};
+export const coverageAt = (p: Point) => apiGet<Coverage>(`/coverage?lat=${p.lat}&lng=${p.lng}`);
+
+export type NearbyKind = 'food' | 'grocery' | 'shops' | 'care';
+export type NearbyPlace = Point & {
+  id: string; name: string; type: string; distance_km: number; address: string | null; phone: string | null; phone_display: string | null;
+  cuisine: string | null; hours: string | null; open_now: boolean | null; rating: number | null; rating_count: number | null;
+  website: string | null; directions_url: string;
+};
+export type Nearby = { radius_km: number; groups: Record<NearbyKind, NearbyPlace[]>; source: 'Google' | 'OpenStreetMap' };
+export const nearbyAt = (p: Point) => apiGet<Nearby>(`/nearby?lat=${p.lat}&lng=${p.lng}`);
+export const requestLaunch = (placeId: string) => apiPost<{ id: string; place: string }>('/launch-requests', { place_id: placeId });
 
 // ---------- Recent searches (this device) ----------
 export type Recent = Point & { title: string; subtitle: string };

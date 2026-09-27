@@ -16,25 +16,26 @@ import { FloatingCart } from './floating-cart';
 import { BottomNavigation } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
 import { DeliveryLocationContext, Point } from '../delivery-location';
-import { useAuth } from '../auth';
+import { useQuery } from '@tanstack/react-query';
+import { CITY_CENTER, coverageAt } from '../places';
 import { OneGlyph } from './one-button';
 
 const BARE = ['/sign-in'];
 const IMMERSIVE = ['/product/', '/brand/'];
-const WELCOME_KEY = 'onecity.welcome-seen.v1';
+const LOCATION_ASKED_KEY = 'onecity.location-asked.v1';
 
-// First launch only: after the intro, offer sign-in once. Skipping is remembered, and browsing
-// never requires an account.
-function useWelcomeGate() {
-  const { ready, session } = useAuth(); const router = useRouter();
+// First launch only: after the intro, ask where the customer is (any place in India), because
+// what One Local offers depends on the town. Sign-in waits until they pay; browsing never needs it.
+function useLocationFirst(hasSavedLocation: boolean | null) {
+  const router = useRouter();
   useEffect(() => {
-    if (!ready || session) return;
-    AsyncStorage.getItem(WELCOME_KEY).then(seen => {
-      if (seen) return;
-      void AsyncStorage.setItem(WELCOME_KEY, '1');
-      router.push('/sign-in?welcome=1' as never);
+    if (hasSavedLocation !== false) return;
+    AsyncStorage.getItem(LOCATION_ASKED_KEY).then(asked => {
+      if (asked) return;
+      void AsyncStorage.setItem(LOCATION_ASKED_KEY, '1');
+      router.push('/location?first=1' as never);
     }).catch(() => {});
-  }, [ready, session, router]);
+  }, [hasSavedLocation, router]);
 }
 
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
@@ -54,21 +55,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const compactFrom = headerHeight - 70;
   useEffect(() => { const id = y.addListener(({ value }) => setCompact(headerHeight > 0 && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom]);
   const [location, setLocationText] = useState('Latur, Maharashtra'); const [point, setPoint] = useState<Point | null>(null);
+  const [hasSaved, setHasSaved] = useState<boolean | null>(null);
   useEffect(() => {
     AsyncStorage.multiGet(['one-latur-location', 'one-latur-location-point']).then(([[, text], [, saved]]) => {
       if (text) setLocationText(text);
       try { if (saved) setPoint(JSON.parse(saved)); } catch {}
-    }).catch(() => {});
+      setHasSaved(!!text);
+    }).catch(() => setHasSaved(true));
   }, []);
+  // What One Local offers where the customer is. No position yet means the Latur default.
+  const at = point ?? CITY_CENTER;
+  const { data: coverage = null } = useQuery({ queryKey: ['coverage', at.lat, at.lng], queryFn: () => coverageAt(at), staleTime: 10 * 60_000 });
   const setLocation = (value: string, next: Point | null = null) => {
     setLocationText(value); setPoint(next);
     AsyncStorage.multiSet([['one-latur-location', value], ['one-latur-location-point', next ? JSON.stringify(next) : '']]).catch(() => {});
   };
   const openLocation = () => router.push('/location' as never);
-  useWelcomeGate();
+  useLocationFirst(hasSaved);
   // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
-  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
-  return <DeliveryLocationContext.Provider value={{ location, point, setLocation, edit: openLocation }}><View style={styles.container}>
+  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
+  return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
     {!reels && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
         <View style={styles.topRow}>{!isHome && <Pressable testID="global-back-button" accessibilityLabel="Go to previous page" onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Pressable>}<Pressable testID="header-brand-home" accessibilityLabel="OneCity home" onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><Image testID="company-logo" accessibilityLabel="OneCity" source={mediaUrl('city-logo')} contentFit="contain" style={styles.logo} /></Pressable>

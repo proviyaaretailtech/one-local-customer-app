@@ -11,8 +11,17 @@ import { BrandSpotlight } from '@/src/components/brand-spotlight';
 import { StoreRail } from '@/src/components/store-rail';
 import { CityScroll } from '@/src/motion';
 import { BrandRail, CategoryRail, EventRail, LoadState, ProductGrid as ProductRail, SectionTitle } from '@/src/components/catalog-sections';
+import { ExploreTown } from '@/src/components/explore-town';
+import { useDeliveryLocation } from '@/src/delivery-location';
 
 export default function HomeScreen() {
+  // Outside our delivery cities, home becomes the town's real local places.
+  const { coverage } = useDeliveryLocation();
+  if (coverage && coverage.level !== 'live') return <ExploreTown />;
+  return <LiveHome />;
+}
+
+function LiveHome() {
   const { data, isLoading, isError, refetch } = useCatalog();
   const router = useRouter();
   const { isFollowing } = useFollowedStores();

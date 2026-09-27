@@ -19,7 +19,7 @@ export default function AddressMap() {
   const [center, setCenter] = useState<Point>(start);
   const [moveTo, setMoveTo] = useState<(Point & { at: number }) | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
-  const [hint, setHint] = useState(true); const [locating, setLocating] = useState(false);
+  const [hint, setHint] = useState(true); const [locating, setLocating] = useState(false); const [locError, setLocError] = useState('');
 
   // Look up the address after the map stops moving.
   useEffect(() => {
@@ -39,9 +39,10 @@ export default function AddressMap() {
   }, [center]);
 
   const recenter = async () => {
-    setLocating(true);
+    setLocating(true); setLocError('');
+    // A failed "locate me" keeps the pin and its address; it only explains why it couldn't move.
     try { const p = await currentPoint(); setMoveTo({ ...p, at: Date.now() }); setCenter(p); }
-    catch (e) { setStatus({ kind: 'error', message: (e as Error).message }); }
+    catch (e) { setLocError((e as Error).message); }
     finally { setLocating(false); }
   };
 
@@ -90,6 +91,7 @@ export default function AddressMap() {
         )}
         {status.kind === 'basic' && <Text style={styles.formatted}>Pinned at {status.point.lat.toFixed(5)}, {status.point.lng.toFixed(5)}. You'll type the street and area on the next step.</Text>}
         {status.kind === 'error' && <Text testID="map-error" style={styles.error}>{status.message}</Text>}
+        {!!locError && <Text testID="map-locate-error" style={styles.error}>{locError}</Text>}
         {status.kind !== 'loading' && status.kind !== 'error' && !serviceable && (
           <View testID="not-serviceable" style={styles.warning}><Icon name="alert-circle-outline" size={16} color={colors.warning} /><Text style={styles.warningText}>OneCity doesn't deliver here yet. We're live in {status.kind === 'place' ? status.place.nearest_city : status.nearest} — move the pin inside the city.</Text></View>
         )}
