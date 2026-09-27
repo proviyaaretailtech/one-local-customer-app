@@ -10,16 +10,23 @@ import { quote } from './pricing';
 import { features } from './features';
 import { placeById } from './geo';
 
-const PAYMENT_METHODS = ['cod', 'upi', 'card', 'netbanking'] as const;
-type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+// What the customer picks at checkout. 'cod' goes through POST /api/orders; every other choice
+// goes through POST /api/payments/order and is only a preference — the method Razorpay reports
+// for the actual payment (which can also be 'emi' or 'cardless_emi') is what gets stored.
+export const ONLINE_METHODS = ['upi', 'card', 'netbanking', 'wallet', 'paylater'] as const;
+export type PaymentMethod = 'cod' | (typeof ONLINE_METHODS)[number] | 'emi' | 'cardless_emi';
+export type PaymentStatus = 'not_charged' | 'pending' | 'paid' | 'failed' | 'refunded';
 
 export type OrderItem = { id: string; name: string; weight: string; price: number; mrp: number; image: string; qty: number };
 export type Order = {
   id: string; items: OrderItem[]; subtotal: number; discount: number; delivery_fee: number; gst: number; total: number;
-  coupon_code: string | null; payment_method: PaymentMethod; payment_status: 'not_charged'; status: string;
+  coupon_code: string | null; payment_method: PaymentMethod; payment_status: PaymentStatus; status: string;
   rider_name: string; rider_phone: string; eta_minutes: number; created_at: string;
 };
-type Stored = Order & { city_id: string; customer: string; user_id: string | null };
+// Razorpay references live on the stored row only; the app never needs them on an order.
+type RazorpayRefs = { razorpay_order_id: string | null; razorpay_payment_id: string | null; paid_at: string | null; payment_error: string | null };
+type Stored = Order & RazorpayRefs & { city_id: string; customer: string; user_id: string | null };
+const publicOrder = ({ city_id, customer, user_id, razorpay_order_id, razorpay_payment_id, paid_at, payment_error, ...order }: Stored): Order => order;
 
 // ---------- In-memory fallback (no database configured) ----------
 type Memory = { orders: Stored[]; replies: Map<string, { fingerprint: string; order: Order; at: number }>; enquiries: object[]; support: object[] };
@@ -35,7 +42,7 @@ async function freshenImages(order: Order): Promise<Order> {
 const rowToOrder = (row: Record<string, unknown>): Order => ({
   id: row.id as string, items: row.items as OrderItem[], subtotal: Number(row.subtotal), discount: Number(row.discount),
   delivery_fee: Number(row.delivery_fee), gst: Number(row.gst ?? 0), total: Number(row.total), coupon_code: (row.coupon_code as string) ?? null,
-  payment_method: row.payment_method as PaymentMethod, payment_status: 'not_charged', status: row.status as string,
+  payment_method: row.payment_method as PaymentMethod, payment_status: (row.payment_status as PaymentStatus) ?? 'not_charged', status: row.status as string,
   rider_name: (row.rider_name as string) ?? 'Sample rider', rider_phone: (row.rider_phone as string) ?? '',
   eta_minutes: (row.eta_minutes as number) ?? 10, created_at: row.created_at as string,
 });
@@ -47,7 +54,9 @@ async function requireCustomer(request: Request) {
 }
 
 // Prices, fees and discounts are always recomputed here; what the app sends is only a check.
-export async function createOrder(request: Request, city: string): Promise<Order> {
+// `online` is set by POST /api/payments/order: the order is saved with payment 'pending' and only
+// becomes real (shown in the customer's list) once Razorpay confirms the money (payments.ts).
+export async function createOrder(request: Request, city: string, online = false): Promise<Order> {
   const customer = await requireCustomer(request);
   limit(customer.hash, 'order', 5, 60_000);
   const body = await readBody<{ items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }>(request);
@@ -64,8 +73,8 @@ export async function createOrder(request: Request, city: string): Promise<Order
         return prior.order;
       }
     }
-    const order = await buildOrder(body, city);
-    mem.orders.push({ ...order, city_id: city, customer: customer.hash, user_id: customer.userId });
+    const order = await buildOrder(body, city, online);
+    mem.orders.push({ ...order, city_id: city, customer: customer.hash, user_id: customer.userId, razorpay_order_id: null, razorpay_payment_id: null, paid_at: null, payment_error: null });
     if (replyKey) mem.replies.set(replyKey, { fingerprint, order, at: Date.now() });
     return order;
   }
@@ -83,11 +92,11 @@ export async function createOrder(request: Request, city: string): Promise<Order
     }
   }
 
-  const order = await buildOrder(body, city);
+  const order = await buildOrder(body, city, online);
   const { data, error } = await db().from('ol_orders').insert({
     id: order.id, customer_hash: customer.hash, user_id: customer.userId, items: order.items,
     subtotal: order.subtotal, discount: order.discount, delivery_fee: order.delivery_fee, gst: order.gst, total: order.total,
-    coupon_code: order.coupon_code, payment_method: order.payment_method, payment_status: 'not_charged',
+    coupon_code: order.coupon_code, payment_method: order.payment_method, payment_status: order.payment_status,
     status: 'placed', rider_name: order.rider_name, rider_phone: order.rider_phone, eta_minutes: order.eta_minutes,
     idempotency_key: idempotencyKey || null, city_id: city, created_at: order.created_at,
   }).select().single();
@@ -121,35 +130,101 @@ export async function refundOrder(orderId: string, amount: number, reason: strin
   return data as { refund_id: string; amount: number; order_payment_status: string; refunded_so_far: number; order_total: number };
 }
 
+// ---------- Payment state (read and written by payments.ts) ----------
+export type PaymentRecord = RazorpayRefs & { id: string; customer: string; total: number; payment_method: PaymentMethod; payment_status: PaymentStatus };
+const PAYMENT_COLUMNS = 'id, customer_hash, total, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, paid_at, payment_error';
+
+export async function findPayment(by: 'id' | 'razorpay_order_id' | 'razorpay_payment_id', value: string): Promise<PaymentRecord | null> {
+  if (!value) return null;
+  if (!dbConfigured()) {
+    const o = mem.orders.find(x => x[by] === value);
+    return o ? { id: o.id, customer: o.customer, total: o.total, payment_method: o.payment_method, payment_status: o.payment_status,
+      razorpay_order_id: o.razorpay_order_id, razorpay_payment_id: o.razorpay_payment_id, paid_at: o.paid_at, payment_error: o.payment_error } : null;
+  }
+  if (by === 'id' && !/^[0-9a-f-]{36}$/i.test(value)) return null;
+  const { data, error } = await db().from('ol_orders').select(PAYMENT_COLUMNS).eq(by, value).maybeSingle();
+  if (error) fromDbError(error);
+  if (!data) return null;
+  const { customer_hash, total, ...rest } = data as Record<string, unknown>;
+  return { ...(rest as Omit<PaymentRecord, 'customer' | 'total'>), customer: customer_hash as string, total: Number(total) };
+}
+
+// Changes an order's payment fields, but only while its payment is in one of `from` — which is
+// what makes /verify and the webhook safe to repeat or to race each other. True if it changed.
+export async function updatePayment(id: string, patch: Partial<RazorpayRefs & { payment_method: PaymentMethod; payment_status: PaymentStatus }>, from: PaymentStatus[]): Promise<boolean> {
+  if (!dbConfigured()) {
+    const o = mem.orders.find(x => x.id === id);
+    if (!o || !from.includes(o.payment_status)) return false;
+    Object.assign(o, patch);
+    return true;
+  }
+  const { data, error } = await db().from('ol_orders').update(patch).eq('id', id).in('payment_status', from).select('id');
+  if (error) fromDbError(error);
+  return !!data?.length;
+}
+
+// A refund made in the Razorpay dashboard (or by a later refund API call) has already moved the
+// money, so it goes straight into the ledger as processed, whatever state the order is in. The
+// Razorpay refund id is the reference, so a repeated webhook cannot record it twice.
+export async function recordGatewayRefund(orderId: string, refundId: string, amount: number) {
+  if (!dbConfigured()) {
+    const o = mem.orders.find(x => x.id === orderId);
+    if (o && amount >= o.total) o.payment_status = 'refunded';
+    return;
+  }
+  const now = new Date().toISOString();
+  const { data: known } = await db().from('ol_refunds').select('id, status').eq('reference', refundId).maybeSingle();
+  if (known) {
+    if (known.status !== 'processed') await db().from('ol_refunds').update({ status: 'processed', processed_at: now }).eq('id', known.id);
+  } else {
+    const { error } = await db().from('ol_refunds').insert({ order_id: orderId, amount, reason: 'Refunded through Razorpay', method: 'original', status: 'processed', reference: refundId, created_at: now, processed_at: now });
+    if (error && error.code !== '23505') fromDbError(error);
+  }
+  const [{ data: order }, { data: refunds }] = await Promise.all([
+    db().from('ol_orders').select('total').eq('id', orderId).maybeSingle(),
+    db().from('ol_refunds').select('amount').eq('order_id', orderId).eq('status', 'processed'),
+  ]);
+  const refunded = (refunds ?? []).reduce((sum, r) => sum + Number(r.amount), 0);
+  if (order && refunded >= Number(order.total)) await db().from('ol_orders').update({ payment_status: 'refunded' }).eq('id', orderId);
+}
+
 // Same bill the cart showed (pricing.ts); the app's total is only a check that nothing changed.
-async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }, city: string): Promise<Order> {
+async function buildOrder(body: { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown }, city: string, online: boolean): Promise<Order> {
   const bill = await quote(city, body.items, body.coupon_code);
   if (bill.coupon && !bill.coupon.ok) throw new HttpError(409, bill.coupon.message || 'This coupon can no longer be used.');
   if (typeof body.total === 'number' && Math.abs(body.total - bill.total) > 0.5) throw new HttpError(409, 'Prices have changed. Please review your cart and try again.');
 
-  // Until online payments are live, every order is cash on delivery whatever the app sends.
-  const method = features().online_payments && PAYMENT_METHODS.includes(body.payment_method as PaymentMethod) ? (body.payment_method as PaymentMethod) : 'cod';
+  // A plain order is always cash on delivery whatever the app sends; an online method is only
+  // accepted on the payments path, so no order can claim 'upi' without a payment behind it.
+  if (online && !(features().online_payments && (ONLINE_METHODS as readonly string[]).includes(body.payment_method as string))) {
+    throw new HttpError(400, 'Choose how you want to pay.');
+  }
+  const method = online ? (body.payment_method as PaymentMethod) : 'cod';
   return {
     id: crypto.randomUUID(),
     items: bill.lines.map(l => ({ id: l.id, name: l.name, weight: l.weight, price: l.price, mrp: l.mrp, image: l.image, qty: l.qty })),
     subtotal: bill.item_total, discount: bill.discount, delivery_fee: bill.delivery_fee, gst: bill.gst_added.total, total: bill.total,
-    coupon_code: bill.discount > 0 ? bill.coupon!.code : null, payment_method: method, payment_status: 'not_charged', status: 'placed',
+    coupon_code: bill.discount > 0 ? bill.coupon!.code : null, payment_method: method, payment_status: online ? 'pending' : 'not_charged', status: 'placed',
     // No real rider exists yet; the tracking screen already says so.
     rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date().toISOString(),
   };
 }
 
-// Only the account (or device) that placed an order can list or open it.
+// Only the account (or device) that placed an order can list or open it. An online attempt that
+// was never paid is not an order yet, so it stays out of the list (it can still be opened by id,
+// which is how the checkout checks whether a payment went through after all).
+const UNPAID: PaymentStatus[] = ['pending', 'failed'];
 export async function listOrders(request: Request): Promise<Order[]> {
   const { matches } = await caller(request);
   if (!matches.length) return [];
 
   if (!dbConfigured()) {
-    return mem.orders.filter(o => matches.includes(o.customer)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200)
-      .map(({ city_id, customer, user_id, ...order }) => order);
+    return mem.orders.filter(o => matches.includes(o.customer) && !UNPAID.includes(o.payment_status)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200)
+      .map(publicOrder);
   }
 
-  const { data, error } = await db().from('ol_orders').select('*').in('customer_hash', matches).order('created_at', { ascending: false }).limit(200);
+  const { data, error } = await db().from('ol_orders').select('*').in('customer_hash', matches)
+    .not('payment_status', 'in', `(${UNPAID.join(',')})`).order('created_at', { ascending: false }).limit(200);
   if (error) fromDbError(error);
   const catalog = await getCatalog();
   return (data ?? []).map(row => {
@@ -164,8 +239,7 @@ export async function getOrder(request: Request, id: string): Promise<Order> {
   if (!dbConfigured()) {
     const order = mem.orders.find(o => o.id === id && matches.includes(o.customer));
     if (!order) throw new HttpError(404, 'Order not found');
-    const { city_id, customer, user_id, ...rest } = order;
-    return freshenImages(rest);
+    return freshenImages(publicOrder(order));
   }
 
   if (!matches.length || !/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(404, 'Order not found');
