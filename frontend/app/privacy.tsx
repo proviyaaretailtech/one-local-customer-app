@@ -39,7 +39,8 @@ export default function PrivacyScreen() {
   const [erased, setErased] = useState<{ reference: string; message: string } | null>(null);
 
   const refreshPhone = () => { void phoneSummary().then(setPhone).catch(() => setPhone([])); };
-  useEffect(refreshPhone, []);
+  // Again whenever a choice is saved (it is stored on the phone too).
+  useEffect(refreshPhone, [choices.history.length]);
   useEffect(() => { if (user?.id) void pullConsents(); }, [user?.id]);
   const signIn = () => router.push('/sign-in?next=/privacy' as never);
 
@@ -69,7 +70,8 @@ export default function PrivacyScreen() {
       setConfirm(''); setNote('Cleared. Everything One Local kept on this phone is gone; the place you shop for resets when you reopen the app.');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch { setError('Couldn’t clear everything. Please try again.'); }
-    finally { setBusy(''); refreshPhone(); }
+    // The emptied cart saves itself a moment later (an empty cart, nothing personal); list after that.
+    finally { setBusy(''); setTimeout(refreshPhone, 600); }
   };
 
   const deleteAccount = async () => {
@@ -97,7 +99,9 @@ export default function PrivacyScreen() {
         <View style={st.icon}><Icon name={user ? 'person-outline' : 'phone-portrait-outline'} size={18} color={colors.forest} /></View>
         <View style={s.flex}>
           <Text style={st.itemTitle}>{user ? 'Signed in' : 'Browsing as a guest'}</Text>
-          <Text style={s.hint} numberOfLines={2}>{user ? `${who}. Your choices and requests are kept with your account.` : 'Nothing about you is on our servers unless you place an order. What this phone keeps is listed below.'}</Text>
+          {user
+            ? <Text style={s.hint} numberOfLines={2}>{who}. Your choices and requests are kept with your account.</Text>
+            : <Text style={s.hint}>What this phone keeps is listed below. Orders placed without an account are on our servers under this phone’s private key: sign in on this phone to download or delete them too.</Text>}
         </View>
       </View>
       {!user && <Pressable testID="privacy-sign-in" accessibilityRole="button" onPress={signIn} style={st.secondary}><Text style={st.secondaryText}>Sign in to download, correct or delete account data</Text></Pressable>}

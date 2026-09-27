@@ -210,7 +210,7 @@ export default function SignIn() {
 
 // A plain, unticked-by-default checkbox (never pre-ticked for consent).
 function Check({ id, checked, onPress, label, hint }: { id: string; checked: boolean; onPress: () => void; label: string; hint?: string }) {
-  return <Pressable testID={id} accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={label} onPress={onPress} style={s.check}>
+  return <Pressable testID={id} accessibilityRole="checkbox" accessibilityState={{ checked }} aria-checked={checked} accessibilityLabel={label} onPress={onPress} style={s.check}>
     <View style={[s.box, checked && s.boxOn]}>{checked && <Icon name="checkmark" size={15} color={INK} />}</View>
     <View style={{ flex: 1 }}><Text style={s.checkLabel}>{label}</Text>{!!hint && <Text style={s.consentNote}>{hint}</Text>}</View>
   </Pressable>;
