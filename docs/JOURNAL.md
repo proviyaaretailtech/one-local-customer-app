@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: Fresh-slate plan — clear the demo data, run the catalogue from the Master, proper sign-out
+
+**The founder asked for a clean slate, with the Master portal as the one place where businesses, items and images are created. The demo catalogue is ready to remove, the design is written down, and the build has started on both sides.**
+
+- **Why:** Demo rows made it unclear what is real. The founder wants businesses, categories, items and photos created once in the Master portal and shown in One Local without copying.
+- **Structural decisions:** (1) Checked against the founder's documents (NotebookLM). The Master is the Proviyaa OS web app (Repo-1-: `/admin` for the platform, `/org` for each business). One Local shows the same item rows the POS uses (the "Item Master"), with a per-item "Live on One Local" switch; nothing is copied or synced. A super admin approves a business before its store goes live. (2) The Master manages listings, shoppers and demand through One Local's own admin API, as decision D6 says, so the rules live in one place. The contract is `docs/MASTER_CONTRACT_V1.md`. (3) The assistant does not delete production data. A guarded script removes One Local's 237 demo rows, all flagged demo and none linked to a business. It keeps every table, Latur's delivery area, and everything owned by the POS and OS. It stops if anything differs from today's count. A backup was taken first. (4) Sign-out now ends this phone's session only, where Supabase's default ended every device; "Sign out of all devices" is a separate choice.
+- **What works now:** A clear sign-out section with a confirm step at the end of the Account page, and a sign-in card for guests. If a delivery city has no stores (right after the cleanup), the app shows real local places instead of empty shelves. The script is in `db/cleanup/`. Repo-1- is on this Mac, on a local branch `feat/one-latur-workspace` (nothing pushed).
+- **Left undone (in progress):** One Local's admin API with the catalogue read from the Item Master; the Master's One Latur workspace (listings with approval, shoppers with block, demand) and the per-item switch in `/org`; DPDP Act privacy work. POS and OS demo businesses (9 organizations) are untouched until the founder says which are real.
+- **Open questions for the founder:** Run the cleanup script in the Supabase SQL editor? Which of the 9 organizations are real businesses to keep? Approve migrations 0025–0028 into the OS ledger when ready?
+
 ## 2026-09-27 — One Local: Food carts and shopping carts, sign-in at Pay, address on every order
 
 **The bag now holds two carts, like Swiggy: a Food cart from one restaurant, and a Shopping cart that can mix any stores and is split into one order per store but paid once. Customers sign in only when they tap Pay, and every order carries its delivery address and notes.**
