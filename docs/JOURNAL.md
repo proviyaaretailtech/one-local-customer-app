@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-27 — One Local: Real online payments through Razorpay (ready, switched off until keys are set)
+
+**Customers can pay by UPI, card, netbanking, wallets or Pay Later through Razorpay, from a Payment Options screen laid out like the ones Indian shoppers already know; it switches on by itself once the founder adds Razorpay keys.**
+
+- **Why:** Every order was cash on delivery. Online payment is expected by customers and was the first Phase 3 item; Razorpay was already the chosen provider.
+- **Structural decisions:** (1) The amount charged is always the server's own total; the app's number is only a check. (2) Razorpay's own page collects card numbers, UPI PINs and bank logins, so none of that ever touches our app or server. (3) Razorpay's direct notice to our server (the webhook) is the source of truth, so a customer who closes the app mid-payment still gets a paid order. (4) An online order is saved as "payment pending" and hidden from the order list until paid; if payment fails, the same order can switch to pay on delivery rather than a second order being created, so no one ends up with two. (5) On phones, Razorpay's page opens inside the app using a component already in the iOS build. The alternative, Razorpay's phone kit, gives a smoother UPI-app hand-off but needs a new app build and store release, so it waits for the next native release.
+- **What works now:** Nothing changes for customers today (no keys, so checkout stays cash on delivery exactly as before). With test keys: the cart shows "PAY USING" plus a "Pay ₹…" button, a full Payment Options screen (preferred method, UPI apps, UPI ID, cards, Pay Later, wallets, netbanking, pay on delivery), Razorpay's page opens on the chosen method, success marks the order paid, and failures show "Payment didn't go through. No money was taken. Try again or choose another way to pay." Refunds made in the Razorpay dashboard are recorded automatically. Checked end to end on the server with Razorpay's replies simulated (26 checks).
+- **Left undone:** The database change (`db/migrations/0025_ol_payments.sql`) is written but not applied — it needs the founder's approval and the OS repo's ledger. Restaurant (VINII POS) orders stay cash only; the POS still records "cash collected" on delivery, which must be fixed before they can be paid online. Refunds started from our own tools do not call Razorpay yet. Payment offers are not shown on our screen yet. No live payment has been tried (no keys).
+- **Open questions for the founder:** Create the Razorpay account and share test keys by setting them on the server (never in chat)? Approve migration 0025? Should restaurant orders get online payment next? Is a new iOS build for Razorpay's phone kit worth it soon, for smoother UPI-app payments?
+
 ## 2026-09-27 — One Local: District teardown and plan to cover all of India
 
 **District's app was studied screen by screen on the founder's iPhone (Mumbai, Latur and the village of Killari), and there is now a plan to move One Local from Latur-only to any place in India.**
