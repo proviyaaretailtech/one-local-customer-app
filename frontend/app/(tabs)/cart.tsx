@@ -58,12 +58,14 @@ export default function CartScreen() {
   // Where to deliver: the place chosen in the header (useDeliveryLocation). "Home: 12 MG Road, …"
   // splits into its label and address; a saved address also brings its delivery instructions.
   const { location, point, edit } = useDeliveryLocation();
-  const saved = addresses.find(a => addressText(a) === location);
+  // (The second form is how the older Saved Addresses screen writes the header line.)
+  const saved = addresses.find(a => addressText(a) === location || `${a.label}: ${a.line}, ${a.area}, ${a.pin}` === location);
   const cut = location.indexOf(': ');
   const label = saved?.label ?? (cut > 0 && cut <= 40 ? location.slice(0, cut) : '');
   const addressLine = cut > 0 && cut <= 40 ? location.slice(cut + 2) : location;
-  // Deliverable once there is a map point or a saved address; the starting "Latur, Maharashtra" is neither.
-  const hasAddress = !!point || !!saved;
+  // Paying needs a door-level address, i.e. a saved one. A town picked at first launch or "Current
+  // location" is enough to browse, but not for a rider to find the door.
+  const hasAddress = !!saved;
   const [notes, setNotes] = useState('');
   useEffect(() => { setNotes(saved?.instructions ?? ''); }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
   const [needAddress, setNeedAddress] = useState(false);
@@ -281,7 +283,7 @@ export default function CartScreen() {
               <View style={{ flex: 1 }}>
                 {hasAddress
                   ? <Text testID="cart-delivery-title" style={styles.deliverySub} numberOfLines={2}><Text style={styles.deliveryTitle}>Deliver to{label ? `: ${label}` : ''}</Text> · {addressLine}</Text>
-                  : <><Text testID="cart-delivery-title" style={styles.deliveryTitle}>Where should we deliver?</Text><Text style={styles.deliverySub}>Choose your address before you pay</Text></>}
+                  : <><Text testID="cart-delivery-title" style={styles.deliveryTitle}>Where should we deliver?</Text><Text testID="cart-delivery-notice" style={styles.deliverySub} numberOfLines={2}>{point ? `Shopping near ${addressLine}. ` : ''}Choose or add your full address before you pay</Text></>}
               </View>
               <Icon name="chevron-down" size={18} color={colors.onSurface} />
             </Pressable>

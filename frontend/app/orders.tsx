@@ -1,4 +1,6 @@
-import { useState, useCallback } from "react";
+// My Orders. Orders placed together (one per store, paid once) show as one checkout card with a
+// row per store; older orders and single-store checkouts look as they always did.
+import { useState, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -9,11 +11,24 @@ import { colors, radius, spacing } from "@/src/theme";
 import { api, Order } from "@/src/api";
 import { useCart } from "@/src/cart";
 
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { add } = useCart();
+  const { addMany } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
+  // Newest checkout first; its store orders in the order they were in the cart.
+  const checkouts = useMemo(() => {
+    const groups: { key: string; orders: Order[] }[] = [];
+    for (const o of orders) {
+      const key = o.checkout_id ?? o.id;
+      const group = groups.find(g => g.key === key);
+      if (group) group.orders.push(o); else groups.push({ key, orders: [o] });
+    }
+    for (const g of groups) g.orders.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    return groups;
+  }, [orders]);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [reordered, setReordered] = useState<string | null>(null);
@@ -29,12 +44,11 @@ export default function OrdersScreen() {
 
   useFocusEffect(useCallback(() => { fetchOrders(); }, [fetchOrders]));
 
-  const reorder = (o: Order) => {
+  // Everything from the checkout, into the right cart (food from another restaurant asks first).
+  const reorder = (key: string, list: Order[]) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    o.items.forEach((it) => {
-      for (let i = 0; i < it.qty; i++) add({ id: it.id, name: it.name, weight: it.weight, price: it.price, mrp: it.mrp, image: it.image });
-    });
-    setReordered(o.id);
+    addMany(list.flatMap(o => o.items.map(it => ({ product: { id: it.id, name: it.name, weight: it.weight, price: it.price, mrp: it.mrp, image: it.image, store_id: o.store_id ?? undefined }, qty: it.qty }))));
+    setReordered(key);
     setTimeout(() => setReordered(null), 1500);
   };
 
@@ -46,7 +60,7 @@ export default function OrdersScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>My Orders</Text>
-          <Text style={styles.sub}>{orders.length} order{orders.length === 1 ? "" : "s"}</Text>
+          <Text style={styles.sub}>{checkouts.length} order{checkouts.length === 1 ? "" : "s"}</Text>
         </View>
       </View>
       <ScrollView
@@ -64,47 +78,55 @@ export default function OrdersScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          orders.map((o) => (
-            <View key={o.id} style={styles.card} testID={`order-${o.id}`}>
+          checkouts.map(({ key, orders: list }) => {
+            const first = list[0]; const many = list.length > 1;
+            const track = (o: Order) => <TouchableOpacity style={styles.trackBtn} onPress={() => router.push(`/order/${o.id}` as any)} testID={`track-${o.id}`}>
+              <Icon name="location-outline" size={14} color={colors.onSurface} />
+              <Text style={styles.trackText}>Track</Text>
+            </TouchableOpacity>;
+            return <View key={key} style={styles.card} testID={many ? `checkout-${key}` : `order-${first.id}`}>
               <View style={styles.cardHead}>
-                <View>
-                  <Text style={styles.orderId}>#{o.id.slice(0, 8).toUpperCase()}</Text>
-                  <Text style={styles.orderDate}>{new Date(o.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.orderId} numberOfLines={1}>#{key.slice(0, 8).toUpperCase()}{many ? ` · ${list.length} stores` : first.store_name ? ` · ${first.store_name}` : ''}</Text>
+                  <Text style={styles.orderDate}>{new Date(first.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: colors.pastelGreen }]}>
-                  <Text style={styles.statusText}>{o.status}</Text>
+                  <Text style={styles.statusText}>{first.status}</Text>
                 </View>
               </View>
 
-              <View style={styles.imgRow}>
-                {o.items.slice(0, 4).map((i) => (
-                  <Image key={i.id} source={i.image} style={styles.itemImg} contentFit="cover" />
-                ))}
-                {o.items.length > 4 && (
-                  <View style={styles.moreBadge}>
-                    <Text style={styles.moreText}>+{o.items.length - 4}</Text>
-                  </View>
-                )}
-              </View>
+              {list.map(o => <View key={o.id} style={many ? styles.storePart : undefined} testID={many ? `order-${o.id}` : undefined}>
+                {many && <View style={styles.storeHead}>
+                  <View style={{ flex: 1 }}><Text style={styles.storeName} numberOfLines={1}>{o.store_name || 'Store'}</Text><Text style={styles.footerMeta}>₹{o.total} · {o.items.length} items</Text></View>
+                  {track(o)}
+                </View>}
+                <View style={styles.imgRow}>
+                  {o.items.slice(0, 4).map((i) => (
+                    <Image key={i.id} source={i.image} style={styles.itemImg} contentFit="cover" />
+                  ))}
+                  {o.items.length > 4 && (
+                    <View style={styles.moreBadge}>
+                      <Text style={styles.moreText}>+{o.items.length - 4}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>)}
 
               <View style={styles.footer}>
                 <View>
-                  <Text style={styles.total}>₹{o.total}</Text>
-                  <Text style={styles.footerMeta}>{o.items.length} items</Text>
+                  <Text style={styles.total}>₹{r2(list.reduce((s, o) => s + o.total, 0))}</Text>
+                  <Text style={styles.footerMeta}>{list.reduce((n, o) => n + o.items.length, 0)} items{many ? ' · paid together' : ''}</Text>
                 </View>
                 <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                  <TouchableOpacity style={styles.trackBtn} onPress={() => router.push(`/order/${o.id}` as any)} testID={`track-${o.id}`}>
-                    <Icon name="location-outline" size={14} color={colors.onSurface} />
-                    <Text style={styles.trackText}>Track</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.reorderBtn} onPress={() => reorder(o)} testID={`reorder-${o.id}`}>
-                    <Icon name={reordered === o.id ? "checkmark" : "repeat"} size={14} color={colors.onBrandPrimary} />
-                    <Text style={styles.reorderText}>{reordered === o.id ? "Added" : "Reorder"}</Text>
+                  {!many && track(first)}
+                  <TouchableOpacity style={styles.reorderBtn} onPress={() => reorder(key, list)} testID={`reorder-${first.id}`}>
+                    <Icon name={reordered === key ? "checkmark" : "repeat"} size={14} color={colors.onBrandPrimary} />
+                    <Text style={styles.reorderText}>{reordered === key ? "Added" : "Reorder"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          ))
+            </View>;
+          })
         )}
       </ScrollView>
     </View>
@@ -129,6 +151,9 @@ const styles = StyleSheet.create({
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
   statusText: { fontSize: 11, fontWeight: "800", color: colors.onSuccess, textTransform: "capitalize" },
   imgRow: { flexDirection: "row", gap: 6, marginTop: spacing.md },
+  storePart: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.divider },
+  storeHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  storeName: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
   itemImg: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceSecondary },
   moreBadge: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" },
   moreText: { fontSize: 12, fontWeight: "800", color: colors.onSurface },

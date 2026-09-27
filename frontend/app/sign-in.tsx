@@ -163,9 +163,10 @@ export default function SignIn() {
   </KeyboardAvoidingView>;
 }
 
-function Field({ icon, trailing, testID, ...input }: React.ComponentProps<typeof TextInput> & { icon: string; trailing?: React.ReactNode }) {
+function Field({ icon, prefix, trailing, testID, ...input }: React.ComponentProps<typeof TextInput> & { icon: string; prefix?: string; trailing?: React.ReactNode }) {
   return <View style={s.field}>
     <Icon name={icon as any} size={18} color={SOFT} />
+    {!!prefix && <Text style={s.prefix}>{prefix}</Text>}
     <TextInput testID={testID} accessibilityLabel={input.placeholder} placeholderTextColor="rgba(255,255,255,0.38)" style={s.input} autoCorrect={false} {...input} />
     {trailing}
   </View>;
@@ -192,6 +193,10 @@ const s = StyleSheet.create({
   card: { marginTop: 14, gap: 12 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 54, paddingHorizontal: 16, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: LINE },
   input: { flex: 1, color: '#fff', fontSize: 15, paddingVertical: 14 },
+  prefix: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  codeLinks: { flexDirection: 'row', justifyContent: 'space-between' },
+  link: { minHeight: 44, justifyContent: 'center' },
+  linkText: { color: colors.electricLime, fontSize: 13, fontWeight: '700' },
   eye: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 },
   error: { color: '#FF8A8A', fontSize: 12, lineHeight: 18 },
   notice: { color: colors.electricLime, fontSize: 12, lineHeight: 18 },

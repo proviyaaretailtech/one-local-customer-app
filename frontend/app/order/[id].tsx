@@ -8,7 +8,7 @@ import Icon from "@react-native-vector-icons/ionicons";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing, cancelAnimation } from "react-native-reanimated";
 import Svg, { Path, Circle } from "react-native-svg";
 import { colors, radius, spacing } from "@/src/theme";
-import { api, Order } from "@/src/api";
+import { api, Checkout, Order } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
 import { useMotionAllowed } from '@/src/motion';
 import { paymentLabel } from '@/src/components/payment-options';
@@ -75,6 +75,14 @@ export default function OrderTrackingScreen() {
     api<Order>(`/orders/${id}`).then(setOrder).catch(() => setError('Could not load this order. Please try again.'));
   }, [id, retry]);
 
+  // The other store orders paid for in the same checkout (a shopping cart split by store).
+  const [siblings, setSiblings] = useState<Order[]>([]);
+  useEffect(() => {
+    setSiblings([]);
+    if (!order?.checkout_id) return;
+    api<Checkout>(`/checkouts/${order.checkout_id}`).then(c => setSiblings(c.orders.filter(o => o.id !== order.id))).catch(() => {});
+  }, [order?.id, order?.checkout_id]);
+
   useEffect(() => {
     // For a delightful preview we animate the rider across the route in 24s (loops after)
     progress.value = 0;
@@ -130,7 +138,7 @@ export default function OrderTrackingScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text testID="tracking-title" style={styles.title}>Your delivery story</Text>
-          <Text testID="tracking-sample-notice" style={styles.sub}>Sample tracking · #{order.id.slice(0, 8).toUpperCase()}</Text>
+          <Text testID="tracking-sample-notice" style={styles.sub} numberOfLines={1}>Sample tracking · #{order.id.slice(0, 8).toUpperCase()}{order.store_name ? ` · ${order.store_name}` : ''}</Text>
         </View>
       </View>
 
@@ -139,6 +147,24 @@ export default function OrderTrackingScreen() {
         {elapsedS < 12 && <View testID="order-placed-moment" style={styles.placed}>
           <OneLottie name="order-success" size={72} />
           <View style={{ flex: 1 }}><Text style={styles.placedTitle}>Order placed!</Text><Text style={styles.placedSub}>₹{order.total} · the store has your order</Text></View>
+        </View>}
+        {!!order.address && <View testID="order-address" style={styles.addressCard}>
+          <Icon name="location" size={20} color={colors.forest} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.addressTitle}>Delivering to{order.address.label ? `: ${order.address.label}` : ''}</Text>
+            <Text style={styles.addressText}>{order.address.text}</Text>
+            {!!order.address.notes && <Text testID="order-address-notes" style={styles.addressNotes}>Note for the delivery partner: {order.address.notes}</Text>}
+          </View>
+        </View>}
+        {siblings.length > 0 && <View testID="order-checkout-siblings" style={styles.addressCard}>
+          <Icon name="storefront-outline" size={20} color={colors.forest} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={styles.addressTitle}>Paid together with {siblings.length} more store order{siblings.length === 1 ? '' : 's'}</Text>
+            {siblings.map(o => <TouchableOpacity key={o.id} testID={`order-sibling-${o.id}`} onPress={() => router.push(`/order/${o.id}` as any)} style={styles.siblingRow}>
+              <Text style={styles.addressText} numberOfLines={1}>{o.store_name || 'Store'} · {o.items.length} items · ₹{o.total}</Text>
+              <Icon name="chevron-forward" size={16} color={colors.muted} />
+            </TouchableOpacity>)}
+          </View>
         </View>}
         <VendorNote items={order.items} status={order.status} />
         {/* ETA hero */}
@@ -249,6 +275,11 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   placed: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: '#050605', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
   placedTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  addressCard: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  addressTitle: { fontSize: 14, fontWeight: '800', color: colors.onSurface },
+  addressText: { fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 2, flex: 1 },
+  addressNotes: { fontSize: 12, color: colors.muted, marginTop: 4 },
+  siblingRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.divider },
   placedSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
   etaCard: { backgroundColor: colors.brandPrimary, borderRadius: radius.lg, padding: spacing.lg, flexDirection: "row", alignItems: "center", marginBottom: spacing.md },
   etaLeft: { flex: 1 },
