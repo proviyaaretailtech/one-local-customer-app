@@ -18,7 +18,7 @@ import { db, dbConfigured, fromDbError } from './db';
 import { HttpError, limit, readBody, sha256 } from './http';
 import { memoryRecords } from './store';
 import {
-  CONSENT_SOURCES, ConsentPurpose, KEPT_BY_LAW, NOTICE_ITEMS, PRIVACY, RECORDED_PURPOSES, SHARED_WITH,
+  CONSENT_SOURCES, ConsentPurpose, KEPT_BY_LAW, NOTICE_ITEMS, OPTIONAL_PURPOSES, PRIVACY, RECORDED_PURPOSES, SHARED_WITH,
 } from '../constants/privacy';
 
 export type RequestKind = 'export' | 'erasure' | 'correction' | 'nominee' | 'grievance';
@@ -305,4 +305,176 @@ export async function currentConsents(request: Request) {
     notice_version: PRIVACY.noticeVersion,
     consents: [...newest.values()].map(r => ({ purpose: r.purpose, granted: r.granted, notice_version: r.notice_version, at: r.given_at ?? r.created_at })),
   };
+}
+
+// ---------- Erasure (delete my account) ----------
+// What can go, goes: booking enquiries are deleted; help-request messages are replaced; every order
+// and checkout loses its delivery address and its link to the person. What tax and payment law make
+// us keep (amounts, taxes, items, Razorpay references) stays, but no longer points to anyone: the
+// rows get one random stand-in owner that nothing else records.
+//
+// The login itself (Supabase Auth) is shared by every Proviyaa app (docs/PLATFORM_FOUNDATIONS.md D1):
+// the same person may be a restaurant's staff member or a rider. Deleting it is switched off unless
+// PRIVACY_HARD_DELETE=on, and even then skipped while the person has another membership. Otherwise
+// every session is ended now and the request waits for the team to delete the login by hand.
+export type ErasureCounts = { orders_anonymised: number; checkouts_anonymised: number; refunds_unlinked: number; enquiries_deleted: number; help_requests_anonymised: number };
+const ERASED_MESSAGE = 'Erased at the customer’s request.';
+const hardDeleteOn = () => process.env.PRIVACY_HARD_DELETE?.trim().toLowerCase() === 'on';
+const RECENT_ORDER_MS = DAY;
+
+// An order placed in the last day that is not yet delivered or cancelled still needs its address.
+async function ordersOnTheWay(p: Person): Promise<number> {
+  const since = new Date(Date.now() - RECENT_ORDER_MS).toISOString();
+  if (!dbConfigured()) {
+    return memoryRecords().orders.filter(o => isMine(p, o) && OPEN_ORDER.includes(o.status) && o.created_at > since
+      && !['pending', 'failed'].includes(o.payment_status)).length;
+  }
+  const { count, error } = await db().from('ol_orders').select('id', { head: true, count: 'exact' }).or(mine(p))
+    .in('status', OPEN_ORDER).gt('created_at', since).not('payment_status', 'in', '(pending,failed)');
+  if (error) fromDbError(error);
+  return count ?? 0;
+}
+
+function eraseInMemory(p: Person, standIn: string): ErasureCounts {
+  const store = memoryRecords();
+  const counts: ErasureCounts = { orders_anonymised: 0, checkouts_anonymised: 0, refunds_unlinked: 0, enquiries_deleted: 0, help_requests_anonymised: 0 };
+  for (const o of store.orders) if (isMine(p, o)) { Object.assign(o, { address: null, customer: standIn, user_id: null }); counts.orders_anonymised++; }
+  for (const c of store.checkouts) if (isMine(p, c)) { Object.assign(c, { customer: standIn, user_id: null }); counts.checkouts_anonymised++; }
+  for (let i = store.enquiries.length - 1; i >= 0; i--) if (isMine(p, store.enquiries[i])) { store.enquiries.splice(i, 1); counts.enquiries_deleted++; }
+  for (const s of store.support) {
+    if (!isMine(p, s) || s.reference.startsWith('privacy:')) continue;
+    // A "launch here" request names a town, not a person: it stays, unlinked, so the demand still counts.
+    if (!isLaunch(s)) Object.assign(s, { message: ERASED_MESSAGE, reference: '' });
+    Object.assign(s, { customer: null, user_id: null });
+    counts.help_requests_anonymised++;
+  }
+  // Remembered checkout replies (for retried requests) hold a copy of the delivery address.
+  for (const key of [...store.replies.keys()]) if (p.matches.some(m => key.startsWith(`${m}:`))) store.replies.delete(key);
+  return counts;
+}
+
+async function eraseInDatabase(p: Person, standIn: string): Promise<ErasureCounts> {
+  const run = async (query: PromiseLike<{ data: unknown[] | null; error: { message?: string; code?: string } | null }>) => {
+    const { data, error } = await query;
+    if (error) fromDbError(error);
+    return data?.length ?? 0;
+  };
+  const orders = await run(db().from('ol_orders').update({ delivery_address: null, user_id: null, customer_hash: standIn, idempotency_key: null }).or(mine(p)).select('id'));
+  const checkouts = (await tableReady('ol_checkouts'))
+    ? await run(db().from('ol_checkouts').update({ user_id: null, customer_hash: standIn, idempotency_key: null }).or(mine(p)).select('id')) : 0;
+  const refunds = await run(db().from('ol_refunds').update({ requested_by: null }).eq('requested_by', p.userId).select('id'));
+  const enquiries = await run(db().from('ol_booking_enquiries').delete().or(mine(p)).select('id'));
+  const help = await run(db().from('ol_support_requests').update({ message: ERASED_MESSAGE, reference: '', user_id: null, customer_hash: null })
+    .or(mine(p)).not('reference', 'like', 'launch:%').not('reference', 'like', 'privacy:%').select('id'));
+  const launches = await run(db().from('ol_support_requests').update({ user_id: null, customer_hash: null }).or(mine(p)).like('reference', 'launch:%').select('id'));
+  return { orders_anonymised: orders, checkouts_anonymised: checkouts, refunds_unlinked: refunds, enquiries_deleted: enquiries, help_requests_anonymised: help + launches };
+}
+
+// Other Proviyaa memberships of the same login (staff, rider, our own team). null = could not tell.
+async function otherMemberships(userId: string): Promise<string[] | null> {
+  const found: string[] = [];
+  for (const table of ['org_users', 'riders', 'platform_admins']) {
+    const { data, error } = await db().from(table).select('user_id').eq('user_id', userId).limit(1);
+    if (error) { if (['PGRST205', '42P01'].includes(error.code ?? '')) continue; return null; }
+    if (data?.length) found.push(table);
+  }
+  return found;
+}
+
+type LoginOutcome = 'deleted' | 'kept_for_review' | 'kept_other_apps';
+async function endLogin(p: Person): Promise<LoginOutcome> {
+  if (hardDeleteOn() && dbConfigured()) {
+    const others = await otherMemberships(p.userId);
+    if (others && others.length) return 'kept_other_apps';
+    if (others) {
+      const { error } = await db().auth.admin.deleteUser(p.userId);
+      if (!error) return 'deleted';
+      console.error('[privacy] login delete failed', p.tag, error.message);
+    }
+  }
+  // Not deleted: end every session on every phone now (the app also signs out on this one).
+  const { url, apikey } = authConfig();
+  if (url && apikey && p.token) {
+    await fetch(`${url}/auth/v1/logout?scope=global`, { method: 'POST', headers: { apikey, Authorization: `Bearer ${p.token}` }, signal: AbortSignal.timeout(5000) })
+      .catch(() => null);
+  }
+  return 'kept_for_review';
+}
+
+export async function requestErasure(request: Request) {
+  const p = await person(request, 'delete your account');
+  limit(p.tag, 'privacy-erasure', 3, DAY);
+  const body = await readBody<{ confirm?: unknown }>(request);
+  if (body.confirm !== 'DELETE') throw new HttpError(400, 'Please confirm that you want to delete your account.');
+  if (await ordersOnTheWay(p)) throw new HttpError(409, 'You have an order on its way. Once it is delivered or cancelled, you can delete your account.');
+
+  const saved = await saveRequest(p, 'erasure', 'in_progress', { asked_at: new Date().toISOString() }, PRIVACY.responseDays);
+  audit('erasure_started', p, { reference: saved.reference, stored: saved.stored });
+  const standIn = `erased:${crypto.randomUUID()}`;
+  const counts = dbConfigured() ? await eraseInDatabase(p, standIn) : eraseInMemory(p, standIn);
+  const login = await endLogin(p);
+  // Their optional consents are withdrawn too; the history stays as evidence (see KEPT_BY_LAW).
+  const withdrawn: ConsentRecord[] = OPTIONAL_PURPOSES.map(purpose => ({ purpose, granted: false, notice_version: PRIVACY.noticeVersion, source: 'privacy_screen', given_at: null, user_id: p.userId, created_at: new Date().toISOString() }));
+  if (!dbConfigured()) mem.consents.push(...withdrawn);
+  else if (await tableReady('ol_consents')) { const { error } = await db().from('ol_consents').insert(withdrawn); if (error) fromDbError(error); }
+
+  const status: RequestStatus = login === 'deleted' ? 'completed' : 'partially_completed';
+  const done = await updateRequest(saved, { status, resolved_at: status === 'completed' ? new Date().toISOString() : null, details: { ...saved.details, outcome: { ...counts, login } } });
+  audit('erasure_done', p, { reference: done.reference, status, login, ...counts });
+  return {
+    reference: done.reference, status, erased: counts, login,
+    kept: KEPT_BY_LAW,
+    message: login === 'deleted'
+      ? 'Your account and personal details have been deleted. Records the law makes us keep no longer point to you.'
+      : `Your personal details have been removed and you are signed out everywhere. Our team will close your login within ${PRIVACY.responseDays} days; quote ${done.reference} if you contact us.`,
+  };
+}
+
+// ---------- Grievances and correction requests ----------
+// s.13: a person must be able to complain to us first, and we answer within the published period
+// (PRIVACY.responseDays, at most 90 days under Rule 14). A correction request is the same form for
+// things the person cannot fix in the app themselves (their profile they can edit directly).
+const ABOUT = ['consent', 'access', 'correction', 'erasure', 'marketing', 'security', 'other'] as const;
+
+function answerBy(saved: Saved) {
+  return {
+    reference: saved.reference, kind: saved.kind, status: saved.status, due_at: saved.due_at, respond_within_days: PRIVACY.responseDays,
+    contact: { name: PRIVACY.grievanceOfficer.name, email: PRIVACY.grievanceOfficer.email, phone: PRIVACY.grievanceOfficer.phone },
+    board: PRIVACY.board.name,
+  };
+}
+
+export async function raiseGrievance(request: Request) {
+  const p = await person(request, 'raise a privacy concern');
+  limit(p.tag, 'privacy-grievance', 5, DAY);
+  const b = await readBody<{ message?: unknown; kind?: unknown; about?: unknown }>(request);
+  const kind: RequestKind = b.kind === 'correction' ? 'correction' : 'grievance';
+  const about = (ABOUT as readonly unknown[]).includes(b.about) ? (b.about as string) : kind === 'correction' ? 'correction' : 'other';
+  const message = typeof b.message === 'string' ? b.message.trim() : '';
+  if (message.length < 10 || message.length > 2000) throw new HttpError(400, 'Please describe it in 10 to 2,000 characters.');
+  const saved = await saveRequest(p, kind, 'received', { about, message }, PRIVACY.responseDays);
+  audit(kind, p, { reference: saved.reference, stored: saved.stored, about });
+  return answerBy(saved);
+}
+
+// ---------- Nomination ----------
+// s.14: someone who can use these rights for the person if they die or cannot act. Recorded as a
+// request the team confirms; a newer nomination replaces an older one.
+const RELATIONSHIPS = ['spouse', 'parent', 'child', 'sibling', 'relative', 'friend', 'other'] as const;
+
+export async function nominate(request: Request) {
+  const p = await person(request, 'nominate someone');
+  limit(p.tag, 'privacy-nominee', 5, DAY);
+  const b = await readBody<{ name?: unknown; relationship?: unknown; phone?: unknown; email?: unknown }>(request);
+  const name = typeof b.name === 'string' ? b.name.replace(/\s+/g, ' ').trim() : '';
+  if (name.length < 2 || name.length > 80) throw new HttpError(400, 'Enter your nominee’s full name.');
+  if (!(RELATIONSHIPS as readonly unknown[]).includes(b.relationship)) throw new HttpError(400, 'Choose how your nominee is related to you.');
+  const phone = typeof b.phone === 'string' ? b.phone.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '') : '';
+  const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+  if (phone && !/^[6-9]\d{9}$/.test(phone)) throw new HttpError(400, 'Enter a valid 10-digit mobile number for your nominee.');
+  if (email && (email.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new HttpError(400, 'Enter a valid email for your nominee.');
+  if (!phone && !email) throw new HttpError(400, 'Give a mobile number or an email so we can reach your nominee.');
+  const saved = await saveRequest(p, 'nominee', 'received', { nominee: { name, relationship: b.relationship, phone: phone || null, email: email || null } }, PRIVACY.responseDays);
+  audit('nominee', p, { reference: saved.reference, stored: saved.stored });
+  return answerBy(saved);
 }
