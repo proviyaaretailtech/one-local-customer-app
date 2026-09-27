@@ -25,11 +25,14 @@ export type Profile = {
 type CustomerData = { profile: Profile; addresses: Address[]; payment: PaymentMethod; upiApp?: UpiApp; referral: string };
 const KEY = 'onecity.customer.v1';
 const SAVED_KEY = 'onecity.saved-products.v1';
+// "Offers near me" is marketing, so it starts off: under the DPDP Act consent must be a clear
+// yes, never a pre-ticked box (docs/DPDP.md). Order and booking updates are part of the service.
 const defaults: CustomerData = {
-  profile: { name: '', email: '', phone: '', avatar: 'person', photo: '', birthday: '', diet: '', language: 'en', notifications: { orders: true, offers: true, bookings: true } },
+  profile: { name: '', email: '', phone: '', avatar: 'person', photo: '', birthday: '', diet: '', language: 'en', notifications: { orders: true, offers: false, bookings: true } },
   addresses: [], payment: 'cod', referral: '',
 };
-type Context = CustomerData & { ready: boolean; saved: string[]; error: string; clearError: () => void; update: (patch: Partial<CustomerData>) => Promise<void>; toggleSaved: (id: string) => Promise<void> };
+const newReferral = () => `ONE${Math.random().toString(36).slice(2, 9).toUpperCase()}`;
+type Context = CustomerData & { ready: boolean; saved: string[]; error: string; clearError: () => void; update: (patch: Partial<CustomerData>) => Promise<void>; toggleSaved: (id: string) => Promise<void>; reset: () => Promise<void> };
 const CustomerContext = createContext<Context | null>(null);
 export function CustomerProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<CustomerData>(defaults); const [saved, setSaved] = useState<string[]>([]);
@@ -39,7 +42,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     try {
       const [stored, favourites] = await Promise.all([AsyncStorage.getItem(KEY), AsyncStorage.getItem(SAVED_KEY)]);
       const parsed = stored ? JSON.parse(stored) : {};
-      const next = { ...defaults, ...parsed, profile: { ...defaults.profile, ...parsed.profile }, referral: parsed.referral || `ONE${Math.random().toString(36).slice(2, 9).toUpperCase()}` };
+      const next = { ...defaults, ...parsed, profile: { ...defaults.profile, ...parsed.profile }, referral: parsed.referral || newReferral() };
       const ids = favourites ? JSON.parse(favourites) : [];
       current.current = next; currentSaved.current = Array.isArray(ids) ? ids.filter(x => typeof x === 'string') : [];
       setData(next); setSaved(currentSaved.current); await AsyncStorage.setItem(KEY, JSON.stringify(next));
@@ -61,6 +64,13 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     const next = currentSaved.current.includes(id) ? currentSaved.current.filter(x => x !== id) : [...currentSaved.current, id];
     await AsyncStorage.setItem(SAVED_KEY, JSON.stringify(next)); currentSaved.current = next; setSaved(next); setError('');
   });
-  return <CustomerContext.Provider value={{ ...data, ready, saved, error, clearError: () => setError(''), update, toggleSaved }}>{children}</CustomerContext.Provider>;
+  // Privacy & your data → "Clear this phone" / "Delete my account": forget the profile, addresses
+  // and wishlist here too, not only in storage (src/privacy.ts clearPhone removes the stored copies).
+  const reset = () => enqueue(async () => {
+    const next = { ...defaults, referral: newReferral() };
+    await AsyncStorage.multiRemove([KEY, SAVED_KEY]);
+    current.current = next; currentSaved.current = []; setData(next); setSaved([]); setError('');
+  });
+  return <CustomerContext.Provider value={{ ...data, ready, saved, error, clearError: () => setError(''), update, toggleSaved, reset }}>{children}</CustomerContext.Provider>;
 }
 export function useCustomer() { const value = useContext(CustomerContext); if (!value) throw new Error('CustomerProvider missing'); return value; }
