@@ -3,7 +3,7 @@
 // the credit). Fetched through the public Overpass API: one query per area for all four kinds,
 // one query at a time (Overpass allows a client only a couple of slots), cached for hours, so a
 // busy town costs one query per cache period. The search area fits the place: a couple of km in a
-// metro (anything wider is tens of thousands of shops), wider around towns, and 15 → 40 km around
+// metro (anything wider is tens of thousands of shops), wider around towns, and 15 → 30 km around
 // a village, so the page is never empty; every listing carries its distance.
 import { distanceKm, nearestPlace } from './geo';
 import { HttpError } from './http';
@@ -22,9 +22,10 @@ const TAGS: Record<NearbyKind, { amenity?: string[]; shop?: string[] }> = {
   care: { amenity: ['pharmacy', 'clinic', 'hospital', 'doctors', 'dentist'], shop: ['chemist', 'beauty', 'cosmetics', 'hairdresser'] },
 };
 const KINDS = Object.keys(TAGS) as NearbyKind[];
+// Any other named shop (tailor, kirana with an odd tag, puja items…) still counts as a shop.
 const kindOf = (t: Record<string, string>): NearbyKind | null =>
-  KINDS.find(k => (t.amenity && TAGS[k].amenity?.includes(t.amenity)) || (t.shop && TAGS[k].shop?.includes(t.shop))) ?? null;
-const all = (key: 'amenity' | 'shop') => [...new Set(KINDS.flatMap(k => TAGS[k][key] ?? []))].join('|');
+  KINDS.find(k => (t.amenity && TAGS[k].amenity?.includes(t.amenity)) || (t.shop && TAGS[k].shop?.includes(t.shop))) ?? (t.shop ? 'shops' : null);
+const AMENITIES = KINDS.flatMap(k => TAGS[k].amenity ?? []).join('|');
 
 // Search radii by how built-up the place is.
 function radiiFor(point: { lat: number; lng: number }): number[] {
@@ -34,7 +35,7 @@ function radiiFor(point: { lat: number; lng: number }): number[] {
     if (p.kind === 'city' || p.kind === 'locality' || p.population >= 100_000) return [4_000, 12_000];
     if (p.kind === 'town') return [8_000, 25_000];
   } catch { /* outside the place list: treat as rural */ }
-  return [15_000, 40_000];
+  return [15_000, 30_000];
 }
 const PER_KIND = 40;
 const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
@@ -55,10 +56,10 @@ async function overpass(query: string): Promise<Element[]> {
   let last: unknown;
   for (const url of ENDPOINTS) {
     try {
-      const response = await fetch(url, {
-        method: 'POST', signal: AbortSignal.timeout(28_000),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'OneLocal/1.0 (city marketplace app)' },
-        body: `data=${encodeURIComponent(query)}`,
+      // GET, not POST: the Expo server's fetch shim mangles form bodies and Overpass answers
+      // with an XML error. Overpass requires a User-Agent (406 without one).
+      const response = await fetch(`${url}?data=${encodeURIComponent(query)}`, {
+        signal: AbortSignal.timeout(28_000), headers: { 'User-Agent': 'OneLocal/1.0 (city marketplace app)' },
       });
       if (!response.ok) throw new Error(`overpass ${response.status}`);
       // An overloaded server answers 200 with an XML "remark" instead of JSON.
@@ -81,14 +82,24 @@ const latin = (s?: string) => !!s && /^[\x20-\x7e]+$/.test(s);
 async function search(at: { lat: number; lng: number }): Promise<NearbyResult> {
   let result: NearbyResult | null = null;
   for (const radius of radiiFor(at)) {
-    const around = `(around:${radius},${at.lat},${at.lng})`;
-    const elements = await queued(() => overpass(
-      `[out:json][timeout:25];(nwr["amenity"~"^(${all('amenity')})$"]["name"]${around};nwr["shop"~"^(${all('shop')})$"]["name"]${around};);out center 600;`,
-    ));
+    // A bounding box and "any shop" are cheap for Overpass; a long list of shop types or a
+    // circle times out on the public server. Types and the circle are applied here instead.
+    const dLat = radius / 111_000, dLng = radius / (111_000 * Math.cos((at.lat * Math.PI) / 180));
+    const box = `(${(at.lat - dLat).toFixed(4)},${(at.lng - dLng).toFixed(4)},${(at.lat + dLat).toFixed(4)},${(at.lng + dLng).toFixed(4)})`;
+    let elements: Element[];
+    try {
+      elements = await queued(() => overpass(
+        `[out:json][timeout:25];(nwr["shop"]["name"]${box};nwr["amenity"~"^(${AMENITIES})$"]["name"]${box};);out center 1500;`,
+      ));
+    } catch (e) {
+      if (result) break; // the wider search failed: the nearer, smaller answer is still useful
+      throw e;
+    }
     const groups = Object.fromEntries(KINDS.map(k => [k, [] as NearbyPlace[]])) as Record<NearbyKind, NearbyPlace[]>;
     for (const e of elements) {
       const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon, t = e.tags ?? {}, kind = kindOf(t);
       if (lat == null || lng == null || !t.name || !kind) continue;
+      if (distanceKm(at, { lat, lng }) > radius / 1000) continue;
       groups[kind].push({
         id: `osm-${e.type[0]}${e.id}`, name: latin(t['name:en']) ? t['name:en'] : t.name, type: label(t), lat, lng,
         distance_km: Math.round(distanceKm(at, { lat, lng }) * 10) / 10,

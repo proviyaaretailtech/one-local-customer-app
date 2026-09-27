@@ -6,7 +6,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "web"],
       "cwd": "frontend",
-      "port": 19006
+      "port": 8081
     }
   ]
 }
