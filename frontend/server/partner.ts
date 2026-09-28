@@ -23,22 +23,27 @@ export async function requirePartnerAuth(request: Request): Promise<Staff> {
   const userId = await signedInUserId(request);
   if (!userId) throw new HttpError(401, 'Sign in to continue.');
 
+  // Column names follow the OS schema (Repo-1- 0004): `full_name`, `status`, and roles matched by
+  // `slug`. A person on staff at several restaurants gets their earliest membership until the app
+  // lets them choose one.
   const { data, error } = await db().from('org_users')
-    .select('user_id, email, name, role:roles(name), organization:organizations(id, name)')
+    .select('user_id, email, full_name, role:roles(slug), organization:organizations(id, name)')
     .eq('user_id', userId)
-    .eq('is_active', true)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle();
   if (error) fromDbError(error);
   if (!data) throw new HttpError(403, 'You are not a staff member of any restaurant on One Local.');
 
-  const roleName = (data.role as { name?: string } | null)?.name ?? '';
+  const roleName = (data.role as { slug?: string } | null)?.slug ?? '';
   const org = data.organization as { id?: string; name?: string } | null;
   if (!org?.id) throw new HttpError(403, 'Restaurant not found.');
 
   return {
     userId,
     email: data.email ?? '',
-    name: data.name ?? '',
+    name: data.full_name ?? '',
     role: roleName,
     organizationId: org.id,
     organizationName: org.name ?? '',

@@ -1,5 +1,37 @@
 # One Local Mobile App Development Journal
 
+## 2026-09-28 — One Local: Aligned with the platform contract ("many apps, one truth")
+
+**The outside architecture review the founder shared is now written into our rules as ten new decisions (D16–D25). Every app was checked against it, and the one broken link found in this repo, the restaurant app's staff sign-in, is fixed.**
+
+- **Why:** The founder wants many apps (One Local, the POS, the restaurant phone app, the Master, the rider app) running on one database without it becoming a mess. The review says the apps are only screens and the platform holds the truth. It matches the founder's own Product Architecture document point for point, so the job was to turn it into rules and check the code against them.
+- **Structural decisions:** All are in `docs/PLATFORM_FOUNDATIONS.md` section 6.
+  - (1) **One owner per kind of record.** Only the owner changes it. Everyone else reads it or asks the owner.
+  - (2) **A restaurant order from One Local is one order with two sides**, linked one-to-one. One Local keeps the customer's side (what was bought, paid, and where it goes). The POS keeps the kitchen's side. Merging them into one table lost, because each app needs very different details.
+  - (3) **The database itself refuses bad states**, such as negative amounts or an order moving backwards, instead of trusting each app.
+  - (4) **A retried request never makes a second order.**
+  - (5) **Every important change leaves an event** (for example "order.created") in the same save, which other apps listen to. A separate messaging system lost for now: extra cost with nothing to solve at today's size.
+  - (6) **Every request says who is asking, from which app, with a trace number.**
+  - (7) **Permissions are actions** ("refund an order"), not pages.
+  - (8) **Support sees what a merchant sees through a read-only "view as"**, time-limited and logged, never through the merchant's password.
+  - (9) **Each API has one written contract** that the other apps' code is generated from.
+  - (10) **Seven version numbers**, each kept in one place.
+  - Where we depart from the review, deliberately: no separate gateway server yet, the customer app stays Expo, and "view as" is read-only.
+  - This lines up with a parallel session that aligned the restaurant phone app the same day. Its order rules for the POS were adopted, not duplicated.
+- **What works now:** The restaurant phone app's staff sign-in reads the database's real column names. Before, on the real database, it asked for columns that don't exist, and every staff sign-in would have failed. The "is this shopper a restaurant's staff member" check before blocking someone had the same fault and is fixed too. Production's layout was checked, read only. The type check is clean and all 194 automated checks pass. Neither fix has been tried with a real staff login.
+- **Left undone:** Everything else in the gap list (section 6.6) is written down with its owner and order (section 6.8), not built. Most important before the first real restaurant goes live:
+  - Checkout still does not create the kitchen's side of an order.
+  - Checkout saves in three separate steps instead of one.
+  - The Master's web POS can change a kitchen ticket without checking which restaurant it belongs to (in the OS repository, not edited here).
+  - The Windows POS has a draft table open to anyone. It is not in production and must not be applied as written.
+
+  NotebookLM could not be asked: its sign-in has expired. The founder's architecture document on disk was used instead.
+- **Open questions for the founder:**
+  - Agree that the Windows POS reads the shared orders table for online orders instead of keeping its own?
+  - Approve one database change in the OS repository for the POS order rules and the shared-access fixes, and one in One Local for single-step checkout?
+  - Is running without a separate gateway server acceptable until outside partners call us?
+  - Please re-sign NotebookLM.
+
 ## 2026-09-27 — One Local: Clean slate in production; Master and One Local joined up
 
 **One Local's demo catalogue is gone from production and the app now waits for real businesses from the Master. Payments, carts, sign-in, all-India location, the admin API and DPDP work are merged on one branch.**

@@ -691,7 +691,7 @@ async function isPlatformAdmin(userId: string) {
 
 async function isMerchantStaff(userId: string) {
   if (!dbConfigured()) return !!market.memory().users.find(u => u.id === userId)?.staff;
-  const { data, error } = await db().from('org_users').select('user_id').eq('user_id', userId).eq('is_active', true).limit(1);
+  const { data, error } = await db().from('org_users').select('user_id').eq('user_id', userId).eq('status', 'active').limit(1);
   if (error && !['PGRST205', '42P01'].includes(error.code ?? '')) fromDbError(error);
   return !!data?.length;
 }
