@@ -296,8 +296,10 @@ ol_place_checkout()   ── one database transaction ────────�
 ──────────────────────────────────────────────────────────────────────────────┘
       Realtime / cursor ──► VINII Partner · Windows POS · KDS · rider app · analytics
 
-Kitchen moves (accept, ready, out, delivered) → ol_partner_act → pos_set_order_status
+Kitchen moves (accept, ready, delivered) → ol_partner_act → pos_set_order_status
+Handover to the rider (out)              → ol_partner_act → pos_mark_handed_over
       → order_events on the kitchen side, ol_orders status + ol_order_events on the customer side
+      (each call passes the previous reply's updated_at as expected_updated_at)
 ```
 
 Both sides are written in one transaction, so an order exists on both sides or on neither. This is
@@ -313,7 +315,9 @@ is what joins them:
 | delivered | delivered | `order.fulfilled` |
 | cancelled | cancelled | `order.cancelled` (`meta.reason`) |
 
-What One Local asks of `pos_place_order` (agreed with the Partner alignment, 2026-09-28):
+What One Local asks of `pos_place_order` (agreed with the Partner alignment, 2026-09-28). The exact
+inputs and the one reply shape every caller gets (read `id`, not `order_id`) are in that document's
+§4.1 and §4.3. Plan `ol_place_checkout` and `ol_partner_act` against those sections.
 - **The kitchen sees an online order only once it is real.** A cash order reaches the POS at checkout.
   An online order reaches it only after Razorpay confirms payment, followed by
   `pos_record_payment` (key: the Razorpay payment id).
@@ -325,8 +329,13 @@ What One Local asks of `pos_place_order` (agreed with the Partner alignment, 202
   fee inside `orders.total` (0023:83).
 - **The kitchen gets only what it needs.** It gets the name for handover and the phone only if the
   founder decides the restaurant needs it. It never gets the delivery address, which is for the rider.
-- **Item availability honours the One Local switch.** Availability is checked for the `one_local`
-  channel (`item_channel_status`). Each size or variant is priced from its own variant row.
+- **Item availability honours the One Local switch.** `sales_channel: 'one_local'` (service role
+  only) checks `item_channel_status`. It is not the same as `channel`, which is the service mode
+  (`online`). Each size or variant is priced from its own variant row.
+- **The label is One Local's, the number is the restaurant's.** `display_prefix: 'OL'` changes only
+  the label; the number comes from the restaurant's one sequence.
+- **Cash and online payment are recorded by the POS.** `'online'` is added to `payments.method` and
+  `orders.payment_method`, service role only. The Razorpay id goes in `payments.reference`.
 
 The Windows POS's own `online_orders` table stores display strings and a free-text status. It must
 not become a third truth. Its Online Orders screen reads `orders` where the channel is `online`. The
