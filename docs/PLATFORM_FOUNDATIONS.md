@@ -313,6 +313,21 @@ is what joins them:
 | delivered | delivered | `order.fulfilled` |
 | cancelled | cancelled | `order.cancelled` (`meta.reason`) |
 
+What One Local asks of `pos_place_order` (agreed with the Partner alignment, 2026-09-28):
+- **The kitchen sees an online order only once it is real.** A cash order reaches the POS at checkout.
+  An online order reaches it only after Razorpay confirms payment, followed by
+  `pos_record_payment` (key: the Razorpay payment id).
+- **No kitchen ticket before the restaurant accepts.** `fire_kot: false` at placement; the KOT is
+  created on accept.
+- **The kitchen order is the restaurant's bill.** `orders.total` = items + GST from the POS's bill
+  settings. The delivery fee belongs to One Latur and stays on `ol_orders` / `ol_checkouts`. The
+  customer side copies the POS's line prices and GST exactly. This replaces today's fixed 5% and the
+  fee inside `orders.total` (0023:83).
+- **The kitchen gets only what it needs.** It gets the name for handover and the phone only if the
+  founder decides the restaurant needs it. It never gets the delivery address, which is for the rider.
+- **Item availability honours the One Local switch.** Availability is checked for the `one_local`
+  channel (`item_channel_status`). Each size or variant is priced from its own variant row.
+
 The Windows POS's own `online_orders` table stores display strings and a free-text status. It must
 not become a third truth. Its Online Orders screen reads `orders` where the channel is `online`. The
 table is not in production (checked 2026-09-28).
