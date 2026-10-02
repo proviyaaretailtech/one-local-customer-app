@@ -1,5 +1,37 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-02 — One Local: Every successful order now pings the rider pool
+
+**When a delivery order is successful, One Local creates one delivery job and offers it to riders, one at a time, until a driver accepts. The tables and the endpoints for it are built and tested on the local database. Nothing is applied to production.**
+
+- **Why:** The founder asked that every successfully placed cart order ping the One Rider app's pool so a driver is assigned. The agreed contract existed on paper (in the Delivery app's docs); this builds the schema and the endpoints for it.
+- **Structural decisions:**
+  - (1) **One job per order, forever.** Sending the same order twice returns the first job, so a retry can never send two riders. The alternative, letting the order carry its own delivery status, lost because the order and the delivery have different owners and different words.
+  - (2) **Successful means:** a cash order the moment it is placed; an online order only once the payment is confirmed. An unpaid online order never reaches a rider.
+  - (3) **Offers go to one rider at a time, 30 seconds each:** riders linked to the store first, then the nearest. Three offers with no taker, or three times 30 seconds with nobody online, alerts the restaurant and operations. The alternative, ringing every rider at once, lost because the first tap would win and the rest would see dead cards.
+  - (4) **The database refuses two winners itself** (a unique rule, not just careful code), so two riders tapping Accept at the same moment cannot both get the job.
+  - (5) **An order never fails because dispatch is down.** The order is saved first; a "sweep" creates any job that is missing. It only looks at the last 24 hours, so deploying this can never ring riders for old orders (found while testing).
+  - (6) **The customer's 4-digit delivery code is worked out from the order, not stored.** The database keeps only a fingerprint to check it against; the rider never receives it.
+  - (7) **A rider sees the area before pickup and the street address only after.** The customer's phone only while the job is live. Never item prices.
+  - (8) **Other services call a signed, server-only door** (a secret token plus a signature that expires in 5 minutes). A customer's or rider's login cannot use it.
+  - (9) **Distances are straight-line within 8 km**, not map zones yet. Zones come later without changing any caller.
+- **What works now:** On the local database, a placed cash order becomes a job, the nearest linked rider's phone is rung, a decline moves it to the next rider, the first accept assigns it, and a second accept is harmless. Cancel works before pickup and is refused after. A rider who comes online later is offered a waiting job. Riders on "auto-accept" are assigned instantly. The order side can read the job (rider's first name, position, ETA, timeline). Checked three ways: 45 automatic checks with no database, a rehearsal in SQL that is rolled back, and 37 checks through the real server code against the local database. The earlier suites (checkout 42, admin 96, privacy 56) still pass.
+- **Left undone:**
+  - Migration `0029_ol_dispatch.sql` is a draft applied nowhere (it needs 0025 and 0026 first). The local database now has 0025 and 0026 applied; 0029 was tried there and removed.
+  - Everything after a rider accepts: stepping through pickup and drop, proof of delivery, exceptions, cash and earnings. The job stops at "assigned".
+  - Rider sign-up and verification. Riders must be approved by hand in the database for now.
+  - The customer still sees "Sample rider"; the tracking screen is not yet connected to the real job.
+  - Rider pay per delivery is not set, so the offer shows no earning.
+  - A restaurant that never answers cancels its job up to one sweep late, not instantly.
+  - Nothing was tried with a real phone, a real rider, push alerts, or production. A scheduler must call the sweep every 15 to 30 seconds once this is live.
+- **Open questions for the founder:**
+  - Ping riders when the order is placed (built as the default, as you described) or only once the restaurant accepts (saves wasted rider trips)? It is one setting per restaurant.
+  - Approve migration 0029, and send it to the OS ledger for its real number?
+  - Who issues the service token and signing secret, and where do they live (the server's settings only)?
+  - What does a rider earn per delivery? The offer card needs a number.
+  - May the dispatch service hold the customer's address and phone, shown to the rider only after pickup (the Delivery app's alignment doc keeps them off the kitchen side)?
+  - Should riders belong to one restaurant, or be shared across restaurants later? Today a rider can be linked to a restaurant and to several stores.
+
 ## 2026-09-28 — One Local: Aligned with the platform contract ("many apps, one truth")
 
 **The outside architecture review the founder shared is now written into our rules as ten new decisions (D16–D25). Every app was checked against it, and the one broken link found in this repo, the restaurant app's staff sign-in, is fixed.**

@@ -3,6 +3,7 @@
 import { db, fromDbError, rpc } from './db';
 import { HttpError } from './http';
 import { pushToRestaurant } from './push';
+import { onRestaurantAccepted, onRestaurantRejected } from './dispatch';
 import type { Staff } from './partner';
 
 export type Tab = 'new' | 'preparing' | 'ready' | 'past';
@@ -85,6 +86,10 @@ export async function act(staff: Staff, posOrderId: string, action: 'accept' | '
     p_prep: action === 'accept' ? Number(body.prep_minutes) : null,
     p_reason: action === 'reject' ? String(body.reason ?? '').slice(0, 200) : null,
   });
+  // Dispatch follows the kitchen: an accept releases a job held for it, a reject withdraws the job and
+  // any rider offer (a timeout is caught by the dispatch sweep). Dispatch problems never undo the action.
+  if (action === 'accept') await onRestaurantAccepted(posOrderId, Number(body.prep_minutes));
+  if (action === 'reject') await onRestaurantRejected(posOrderId, String(body.reason ?? ''));
   return getOrder(staff, posOrderId);
 }
 

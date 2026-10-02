@@ -2,13 +2,15 @@
 // nothing in /server is ever bundled into the app.
 
 export class HttpError extends Error {
-  constructor(public status: number, public detail: string, public headers?: Record<string, string>) { super(detail); }
+  // `code` is a machine-readable reason ('offer_expired'); apps that only know `detail` ignore it.
+  constructor(public status: number, public detail: string, public headers?: Record<string, string>, public code?: string) { super(detail); }
 }
 
 export const json = (body: unknown, init: ResponseInit = {}) => Response.json(body, init);
 
 // The app reads `detail` from error bodies, so errors keep the shape the old backend used.
-export const fail = (status: number, detail: string, headers?: Record<string, string>) => Response.json({ detail }, { status, headers });
+export const fail = (status: number, detail: string, headers?: Record<string, string>, code?: string) =>
+  Response.json(code ? { detail, code } : { detail }, { status, headers });
 
 type Handler = (request: Request, params: Record<string, string>) => Response | Promise<Response>;
 
@@ -17,7 +19,7 @@ export function route(handler: Handler): Handler {
     try {
       return await handler(request, params ?? {});
     } catch (error) {
-      if (error instanceof HttpError) return fail(error.status, error.detail, error.headers);
+      if (error instanceof HttpError) return fail(error.status, error.detail, error.headers, error.code);
       console.error('[api]', request.method, new URL(request.url).pathname, error);
       return fail(500, 'Something went wrong. Please try again.');
     }
@@ -64,4 +66,19 @@ export function customerKey(request: Request): string | null {
 export async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// HMAC-SHA256 checks. crypto.subtle.verify recomputes the signature and compares in constant time, so a
+// forged one cannot be guessed byte by byte from timings. Used for Razorpay's webhook and for the
+// dispatch service's signed calls (dispatch.ts).
+export async function signatureOk(secret: string, message: string, signature: unknown): Promise<boolean> {
+  if (!secret || typeof signature !== 'string' || !/^[0-9a-f]{64}$/i.test(signature)) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  const bytes = new Uint8Array(signature.match(/../g)!.map(h => parseInt(h, 16)));
+  return crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(message));
+}
+
+export async function hmacHex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return Array.from(new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message))), b => b.toString(16).padStart(2, '0')).join('');
 }

@@ -14,6 +14,7 @@ import { customerKey, HttpError, limit, readBody } from './http';
 import { CartKind, cartKindOf, quote } from './pricing';
 import { features } from './features';
 import { placeById } from './geo';
+import { dispatchOrders } from './dispatch';
 
 // What the customer picks at checkout. 'cod' goes through POST /api/checkouts; every other choice
 // goes through POST /api/payments/order and is only a preference — the method Razorpay reports
@@ -217,6 +218,10 @@ export async function createCheckout(request: Request, city: string, online = fa
   const { error: lineError } = await db().from('ol_order_items').insert(orders.flatMap(o =>
     o.items.map(i => ({ order_id: o.id, product_id: i.id, name: i.name, weight: i.weight, image: i.image, price: i.price, mrp: i.mrp, qty: i.qty }))));
   if (lineError) console.error('[store] ol_order_items insert failed for checkout', head.id, lineError.message);
+
+  // A cash order is successful the moment it is placed: ping the rider pool. An online order waits for
+  // its payment (payments.ts markPaid). A retried request returned above, so this runs once per checkout.
+  if (!online) await dispatchOrders(orders.map(o => o.id));
 
   return ready ? checkout : fromOrders(orders[0].id, orders.map(o => ({ ...o, checkout_id: null })));
 }

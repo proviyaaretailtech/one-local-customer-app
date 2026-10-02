@@ -16,7 +16,8 @@
 import { caller } from './auth';
 import { db, dbConfigured } from './db';
 import { features } from './features';
-import { customerKey, HttpError, limit, readBody } from './http';
+import { customerKey, HttpError, limit, readBody, signatureOk } from './http';
+import { dispatchOrders } from './dispatch';
 import { createCheckout, findPayment, ONLINE_METHODS, PaymentMethod, PaymentRecord, recordGatewayRefund, updatePayment } from './store';
 
 const RAZORPAY = 'https://api.razorpay.com/v1';
@@ -53,14 +54,8 @@ async function razorpay<T>(path: string, body?: unknown): Promise<T> {
 }
 
 // ---------- Signatures ----------
-// Razorpay signs with HMAC-SHA256 and sends the result as hex. crypto.subtle.verify recomputes it and
-// compares in constant time, so a forged signature cannot be guessed byte by byte from timings.
-export async function signatureOk(secret: string, message: string, signature: unknown): Promise<boolean> {
-  if (!secret || typeof signature !== 'string' || !/^[0-9a-f]{64}$/i.test(signature)) return false;
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-  const bytes = new Uint8Array(signature.match(/../g)!.map(h => parseInt(h, 16)));
-  return crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(message));
-}
+// Razorpay signs with HMAC-SHA256 and sends the result as hex; the check lives in http.ts.
+export { signatureOk };
 
 // ---------- What Razorpay Checkout opens on ----------
 // The row the customer tapped (UPI app, card, net banking…) goes first as its own block; Razorpay's
@@ -154,6 +149,9 @@ async function markPaid(record: PaymentRecord, paymentId: string, method: Paymen
   const changed = await updatePayment(record.id, {
     payment_status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), payment_error: null, ...(method ? { payment_method: method } : {}),
   }, [...PAYABLE]);
+  // The orders are now successful: ping the rider pool (idempotent, so the app's verify and Razorpay's
+  // webhook both landing is safe).
+  if (changed) await dispatchOrders(record.order_ids);
   // Paid twice for one checkout (two tabs, two phones): keep the first, flag the second for a refund.
   if (!changed && record.razorpay_payment_id && record.razorpay_payment_id !== paymentId) {
     console.error('[payments] second payment on an already-paid checkout — refund it from the Razorpay dashboard', record.id, paymentId);
@@ -190,7 +188,9 @@ export async function switchToCash(request: Request) {
   const b = await readBody<Record<string, unknown>>(request);
   const record = await ownedCheckout(request, b.checkout_id ?? b.order_id);
   if (record.payment_status === 'paid') return reply(record, 'paid');
-  await updatePayment(record.id, { payment_method: 'cod', payment_status: 'not_charged', payment_error: null }, ['pending', 'failed']);
+  const switched = await updatePayment(record.id, { payment_method: 'cod', payment_status: 'not_charged', payment_error: null }, ['pending', 'failed']);
+  // A cash order is successful the moment it is placed, so it goes to the rider pool now.
+  if (switched) await dispatchOrders(record.order_ids);
   const now = await findPayment('id', record.id);
   return reply(record, now?.payment_status ?? 'not_charged');
 }
