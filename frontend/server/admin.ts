@@ -2,8 +2,8 @@
 // Contract: docs/MASTER_CONTRACT_V1.md. The Master calls it with the signed-in admin's own Supabase
 // access token (same Supabase project), so every change goes through One Local's own checks (D14).
 //
-//   * Who: a user with a platform_admins row. Reads: any platform role. Writes: master_admin,
-//     onboarding_admin or operations. 401 without a valid token, 403 without the role.
+//   * Who: a user with a platform_admins row. Reads: any platform role. Writes: super_admin (live),
+//     master_admin, onboarding_admin or operations (development tokens). 401 without a valid token, 403 without the role.
 //   * CORS: the Master calls server-side, so it needs none; browsers on the Master's origin(s) from
 //     MASTER_APP_URL (comma-separated, localhost too outside production) are allowed anyway, and
 //     every route answers the preflight OPTIONS. Calls from any other website are refused.
@@ -35,7 +35,8 @@ const bad = (detail: string, code = 'invalid_request') => err(400, code, detail)
 const notFound = (what: string) => err(404, 'not_found', `${what} not found`);
 
 // ---------- Who is calling ----------
-export const WRITE_ROLES = ['master_admin', 'onboarding_admin', 'operations'];
+// 'super_admin' is the one role the live platform_roles table holds; the others are the development-token roles.
+export const WRITE_ROLES = ['super_admin', 'master_admin', 'onboarding_admin', 'operations'];
 export type Admin = { userId: string; email: string; fullName: string | null; role: string; canWrite: boolean };
 
 const production = () => process.env.NODE_ENV === 'production';
@@ -46,12 +47,26 @@ const asAdmin = (row: { user_id: string; email: string | null; full_name: string
   ({ userId: row.user_id, email: row.email ?? '', fullName: row.full_name ?? null, role: row.role, canWrite: WRITE_ROLES.includes(row.role) });
 
 // The platform_admins row, cached for 30 seconds (a removed admin loses access within that time).
+// Live columns: user_id, role_id (-> platform_roles.key), first_name, last_name, status. The email lives in auth.users.
+// Only an Active admin gets in; a Suspended, Inactive or Pending one counts as not an admin.
+type AdminRow = { user_id: string; status: string; first_name: string | null; last_name: string | null; platform_roles: { key: string } | { key: string }[] | null };
+export const adminFromRow = (row: AdminRow, email: string | null): Admin | null => {
+  if (row.status !== 'Active') return null;
+  const role = (Array.isArray(row.platform_roles) ? row.platform_roles[0] : row.platform_roles)?.key;
+  if (!role) return null; // no role assigned: nothing to authorise against
+  const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ') || null;
+  return asAdmin({ user_id: row.user_id, email, full_name: fullName, role });
+};
 async function platformAdmin(userId: string): Promise<Admin | null> {
   const hit = admins.get(userId);
   if (hit && hit.until > Date.now()) return hit.admin;
-  const { data, error } = await db().from('platform_admins').select('user_id, email, full_name, role').eq('user_id', userId).maybeSingle();
+  const { data, error } = await db().from('platform_admins').select('user_id, status, first_name, last_name, platform_roles(key)').eq('user_id', userId).maybeSingle();
   if (error) fromDbError(error);
-  const admin = data ? asAdmin(data) : null;
+  let admin: Admin | null = null;
+  if (data) {
+    const email = (await db().auth.admin.getUserById(userId).catch(() => null))?.data?.user?.email ?? null;
+    admin = adminFromRow(data as unknown as AdminRow, email);
+  }
   if (admins.size > 1000) admins.clear();
   admins.set(userId, { admin, until: Date.now() + 30_000 });
   return admin;
