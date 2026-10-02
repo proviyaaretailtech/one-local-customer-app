@@ -9,7 +9,7 @@ Every successful delivery order pings the rider pool until a driver is assigned.
 ```
 cash order placed ──────────────┐
 online order, payment confirmed ┴─► dispatchOrders()  (store.ts / payments.ts, in-process)
-                                       │ one job per order (idempotent), the customer's 4-digit code derived, not stored
+                                       │ one job per order (idempotent), the customer's 6-digit code derived (HMAC, OTP_HMAC_SECRET), not stored
                                        ▼
                      delivery_jobs  created ─► released (trigger "placed": at once; "accepted": when the restaurant accepts)
                                        │
@@ -42,7 +42,7 @@ What a rider sees: the area before pickup, the street address, exact point and i
 ## 3. To switch it on
 
 1. The founder approves migration `0029` (it needs 0025 and 0026 first) and sends it to the OS ledger for its real number.
-2. Set `DISPATCH_SERVICE_TOKEN`, `DISPATCH_SIGNING_SECRET` (and optionally `DISPATCH_OTP_SECRET`, `DISPATCH_ALLOWED_ORGS`) on the server only. Until `DISPATCH_SIGNING_SECRET` is set, orders are placed and no rider is pinged.
+2. Set `DISPATCH_SERVICE_TOKEN`, `DISPATCH_SIGNING_SECRET` and `OTP_HMAC_SECRET` (the key of the delivery code; required in production and never the same as the signing secret; outside production it falls back to a local value). Optionally `DISPATCH_ALLOWED_ORGS`. Jobs created before the 6-digit code keep their 4-digit `sha256_v1` code (`delivery_jobs.otp_scheme`/`otp_digits`) on the server only. Until `DISPATCH_SIGNING_SECRET` is set, orders are placed and no rider is pinged.
 3. Schedule `POST /api/dispatch/sweep` every 15–30 seconds. Rider heartbeats also move offers on while any rider is online, but only the sweep escalates an empty pool.
 4. Riders need an `approved` row in `riders` (there is no onboarding endpoint yet) and, for a restaurant's own riders, a row in `rider_store_links` or `riders.organization_id`.
 5. A store needs a map point: `ol_stores.lat/lng` (migration 0028) or `ol_merchant_channels.lat/lng`. Without one the job is refused with `no_pickup_location` and the order shows in `delivery_orders_needing_rider`.
