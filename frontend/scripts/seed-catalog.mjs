@@ -7,7 +7,8 @@
 //
 // Reads SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY from frontend/.env.local (falls back to
 // frontend/.env). Run against the LOCAL database only — .env.local is what
-// `scripts/db.py local-env` writes, and this script refuses to run without it.
+// `scripts/db.py local-env` writes, and this script refuses to run without it. Any project that is not
+// on this machine (including --production) also needs ALLOW_REMOTE=1, and SUPABASE_ACCESS_TOKEN is never read.
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -23,9 +24,23 @@ function loadEnv(file) {
     const t = line.trim();
     if (!t || t.startsWith('#') || !t.includes('=')) continue;
     const i = t.indexOf('=');
-    out[t.slice(0, i).trim()] = t.slice(i + 1).trim().replace(/^"|"$/g, '');
+    const name = t.slice(0, i).trim();
+    // SEC-1: a Supabase management token (can read every project's keys and run SQL) has no use here. It is never copied out of the file.
+    if (name === 'SUPABASE_ACCESS_TOKEN') continue;
+    out[name] = t.slice(i + 1).trim().replace(/^"|"$/g, '');
   }
   return out;
+}
+
+// SEC-1: only a local Supabase (loopback) unless ALLOW_REMOTE=1 is set on purpose. Names the host, never a key.
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|[a-z0-9-]+\.localhost)$/i;
+function refuseRemote(url) {
+  let host = '';
+  try { host = new URL(String(url)).hostname; } catch { /* not a URL at all: refused below */ }
+  if (host && LOCAL_HOST.test(host)) return;
+  if (process.env.ALLOW_REMOTE === '1') return;
+  console.error(`❌ Refusing to use the Supabase project at ${host || '(no valid SUPABASE_URL)'}: it is not a local database. Set ALLOW_REMOTE=1 to allow it.`);
+  process.exit(1);
 }
 
 const envLocalPath = path.join(FRONTEND, '.env.local');
@@ -37,6 +52,7 @@ const env = PRODUCTION
   : { ...loadEnv(path.join(FRONTEND, '..', '.env')), ...loadEnv(envLocalPath) };
 
 if (PRODUCTION) {
+  refuseRemote(env.SUPABASE_URL); // before anything is announced or touched
   console.log(`⚠️  Seeding PRODUCTION (${env.SUPABASE_URL}). Demo rows only (is_demo = true), upserted.`);
 } else {
   if (!existsSync(envLocalPath)) {
@@ -53,6 +69,7 @@ if (PRODUCTION) {
 const url = env.SUPABASE_URL;
 const key = env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) { console.error('❌ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing'); process.exit(1); }
+refuseRemote(url);
 
 const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const catalog = JSON.parse(readFileSync(path.join(FRONTEND, 'server', 'data', 'catalog.json'), 'utf8'));

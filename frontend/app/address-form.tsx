@@ -7,16 +7,18 @@ import Icon from '@react-native-vector-icons/ionicons';
 import { randomId } from '@/src/api';
 import { Address, useCustomer } from '@/src/customer';
 import { useDeliveryLocation } from '@/src/delivery-location';
+import { useTranslation } from '@/src/i18n';
 import { addressText } from '@/src/places';
 import { colors } from '@/src/theme';
 
 type Kind = NonNullable<Address['kind']>;
-const KINDS: { id: Kind; label: string; icon: string }[] = [
-  { id: 'home', label: 'Home', icon: 'home-outline' }, { id: 'work', label: 'Work', icon: 'briefcase-outline' }, { id: 'other', label: 'Other', icon: 'location-outline' },
-];
+// The kind is a code that is stored; the chip words come from the catalogue.
+const KINDS = [
+  { id: 'home', label: 'address.kind.home', icon: 'home-outline' }, { id: 'work', label: 'address.kind.work', icon: 'briefcase-outline' }, { id: 'other', label: 'address.kind.other', icon: 'location-outline' },
+] as const satisfies readonly { id: Kind; label: string; icon: string }[];
 
 export default function AddressForm() {
-  const router = useRouter(); const insets = useSafeAreaInsets(); const delivery = useDeliveryLocation();
+  const router = useRouter(); const insets = useSafeAreaInsets(); const delivery = useDeliveryLocation(); const { t } = useTranslation();
   const { addresses, profile, update } = useCustomer();
   const p = useLocalSearchParams<{ lat?: string; lng?: string; locality?: string; formatted?: string; pincode?: string; id?: string; manual?: string }>();
   const existing = useMemo(() => addresses.find(a => a.id === p.id), [addresses, p.id]);
@@ -32,16 +34,16 @@ export default function AddressForm() {
 
   const save = async () => {
     setError('');
-    if (name.trim().length < 2) return setError("Add the receiver's name.");
-    if (!/^[6-9]\d{9}$/.test(phone.replace(/\D/g, '').slice(-10))) return setError('Add a 10-digit mobile number for the delivery partner.');
-    if (building.trim().length < 2) return setError('Add your house, flat or building and floor.');
-    if (manual && area.trim().length < 2) return setError('Add your area or locality.');
-    if (pin && !/^\d{6}$/.test(pin.trim())) return setError('Pincode should have 6 digits.');
-    if (kind === 'other' && saveAs.trim().length < 2) return setError('Give this address a name, like "Mom\'s place".');
+    if (name.trim().length < 2) return setError(t('address.form.errName'));
+    if (!/^[6-9]\d{9}$/.test(phone.replace(/\D/g, '').slice(-10))) return setError(t('address.form.errPhone'));
+    if (building.trim().length < 2) return setError(t('address.form.errBuilding'));
+    if (manual && area.trim().length < 2) return setError(t('address.form.errArea'));
+    if (pin && !/^\d{6}$/.test(pin.trim())) return setError(t('address.form.errPin'));
+    if (kind === 'other' && saveAs.trim().length < 2) return setError(t('address.form.errSaveAs'));
     const lat = p.lat ? Number(p.lat) : existing?.lat; const lng = p.lng ? Number(p.lng) : existing?.lng;
     const address: Address = {
       id: existing?.id ?? `address-${randomId(6)}`,
-      label: kind === 'other' ? saveAs.trim() : kind === 'work' ? 'Work' : 'Home', kind,
+      label: kind === 'other' ? saveAs.trim() : kind === 'work' ? 'Work' : 'Home', kind, // i18n-ignore: stored label for the Home/Work code (user data; shown as stored)
       name: name.trim(), phone: phone.replace(/\D/g, '').slice(-10),
       building: building.trim(), street: street.trim(), line: [building.trim(), street.trim()].filter(Boolean).join(', '),
       locality: area.trim(), area: area.trim(), formatted: p.formatted || existing?.formatted, pin: pin.trim(),
@@ -53,55 +55,55 @@ export default function AddressForm() {
       delivery.setLocation(addressText(address), lat != null && lng != null ? { lat, lng } : null);
       // Back to where shopping was (home), closing the location, map and form screens.
       router.dismissTo('/(tabs)' as never);
-    } catch { setError('Could not save this address. Please try again.'); }
+    } catch { setError(t('address.form.saveFailed')); }
     finally { setBusy(false); }
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable testID="address-form-back" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><Icon name="arrow-back" size={21} color={colors.onSurface} /></Pressable>
-        <View style={styles.flex}><Text style={styles.title} numberOfLines={1}>{p.locality || (existing ? 'Edit address' : 'Add address details')}</Text>{!!p.formatted && <Text style={styles.subtitle} numberOfLines={1}>{p.formatted}</Text>}</View>
+        <Pressable testID="address-form-back" accessibilityLabel={t('common.goBack')} onPress={() => router.back()} style={styles.back}><Icon name="arrow-back" size={21} color={colors.onSurface} /></Pressable>
+        <View style={styles.flex}><Text style={styles.title} numberOfLines={2}>{p.locality || (existing ? t('address.editTitle') : t('address.form.addTitle'))}</Text>{!!p.formatted && <Text style={styles.subtitle} numberOfLines={1}>{p.formatted}</Text>}</View>
       </View>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 110 }]} keyboardShouldPersistTaps="handled">
-        <Text style={styles.section}>Receiver</Text>
+        <Text style={styles.section}>{t('address.form.receiver')}</Text>
         <View style={styles.card}>
-          <Field id="receiver-name" label="Name *" value={name} onChange={setName} />
-          <Field id="receiver-phone" label="Mobile number *" value={phone} onChange={setPhone} keyboard="phone-pad" />
-          <Text style={styles.help}>Our delivery partner calls this number if they can't find you.</Text>
+          <Field id="receiver-name" label={t('address.form.name')} value={name} onChange={setName} />
+          <Field id="receiver-phone" label={t('address.form.mobile')} value={phone} onChange={setPhone} keyboard="phone-pad" />
+          <Text style={styles.help}>{t('address.form.mobileHelp')}</Text>
         </View>
 
-        <Text style={styles.section}>Address</Text>
+        <Text style={styles.section}>{t('address.form.addressSection')}</Text>
         <View style={styles.card}>
           <View style={styles.kinds}>{KINDS.map(k => (
             <Pressable key={k.id} testID={`address-kind-${k.id}`} onPress={() => setKind(k.id)} style={[styles.kind, kind === k.id && styles.kindOn]}>
-              <Icon name={k.icon as never} size={15} color={kind === k.id ? colors.surface : colors.onSurface} /><Text style={[styles.kindText, kind === k.id && styles.kindTextOn]}>{k.label}</Text>
+              <Icon name={k.icon as never} size={15} color={kind === k.id ? colors.surface : colors.onSurface} /><Text style={[styles.kindText, kind === k.id && styles.kindTextOn]}>{t(k.label)}</Text>
             </Pressable>
           ))}</View>
-          <Field id="address-building" label="House / flat / building & floor *" value={building} onChange={setBuilding} />
-          <Field id="address-street" label="Street or landmark (recommended)" value={street} onChange={setStreet} />
+          <Field id="address-building" label={t('address.form.building')} value={building} onChange={setBuilding} />
+          <Field id="address-street" label={t('address.form.street')} value={street} onChange={setStreet} />
           {manual ? (
             <>
-              <Field id="address-area" label="Area / locality *" value={area} onChange={setArea} />
-              <Field id="address-pin" label="Pincode" value={pin} onChange={setPin} keyboard="number-pad" />
+              <Field id="address-area" label={t('address.form.area')} value={area} onChange={setArea} />
+              <Field id="address-pin" label={t('address.form.pincode')} value={pin} onChange={setPin} keyboard="number-pad" />
             </>
           ) : (
             <View style={styles.pinned}>
-              <View style={styles.flex}><Text style={styles.pinnedLabel}>Area (from the map pin)</Text><Text testID="address-area-pinned" style={styles.pinnedText}>{p.formatted}</Text></View>
-              <Pressable testID="change-pin" onPress={() => router.back()} style={styles.change}><Icon name="location" size={18} color={colors.forest} /><Text style={styles.changeText}>Change</Text></Pressable>
+              <View style={styles.flex}><Text style={styles.pinnedLabel}>{t('address.form.pinnedLabel')}</Text><Text testID="address-area-pinned" style={styles.pinnedText}>{p.formatted}</Text></View>
+              <Pressable testID="change-pin" onPress={() => router.back()} style={styles.change}><Icon name="location" size={18} color={colors.forest} /><Text style={styles.changeText}>{t('address.form.change')}</Text></Pressable>
             </View>
           )}
-          {kind === 'other' && <Field id="address-save-as" label="Save address as *" value={saveAs} onChange={setSaveAs} />}
+          {kind === 'other' && <Field id="address-save-as" label={t('address.form.saveAs')} value={saveAs} onChange={setSaveAs} />}
         </View>
 
-        <Text style={styles.section}>Directions for the delivery partner (optional)</Text>
+        <Text style={styles.section}>{t('address.form.directions')}</Text>
         <View style={styles.card}>
-          <TextInput testID="address-instructions" value={instructions} onChangeText={setInstructions} placeholder="E.g. Ring the bell twice, blue gate opposite the temple" placeholderTextColor={colors.muted} multiline maxLength={200} style={[styles.input, styles.multiline]} />
+          <TextInput testID="address-instructions" value={instructions} onChangeText={setInstructions} placeholder={t('address.form.directionsHint')} placeholderTextColor={colors.muted} multiline maxLength={200} style={[styles.input, styles.multiline]} />
         </View>
         {!!error && <Text testID="address-form-error" style={styles.error}>{error}</Text>}
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Pressable testID="save-address" disabled={busy} onPress={save} style={[styles.cta, busy && { opacity: 0.6 }]}><Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save address'}</Text></Pressable>
+        <Pressable testID="save-address" disabled={busy} onPress={save} style={[styles.cta, busy && { opacity: 0.6 }]}><Text style={styles.ctaText}>{busy ? t('address.form.saving') : t('address.save')}</Text></Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: 18, backgroundColor: colors.surface, padding: 14, gap: 12, borderWidth: 1, borderColor: colors.border },
   help: { fontSize: 11, color: colors.muted, marginTop: -4 },
   kinds: { flexDirection: 'row', gap: 8, padding: 4, borderRadius: 14, backgroundColor: colors.surfaceSecondary },
-  kind: { flex: 1, height: 40, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  kind: { flex: 1, minHeight: 40, paddingVertical: 6, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   kindOn: { backgroundColor: colors.forestDeep },
   kindText: { fontSize: 13, fontWeight: '600', color: colors.onSurface },
   kindTextOn: { color: colors.surface },
@@ -143,6 +145,6 @@ const styles = StyleSheet.create({
   changeText: { fontSize: 11, fontWeight: '700', color: colors.forest, marginTop: 2 },
   error: { marginTop: 6, fontSize: 13, color: colors.error },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
-  cta: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.forest },
+  cta: { minHeight: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.forest },
   ctaText: { color: colors.surface, fontSize: 16, fontWeight: '700' },
 });

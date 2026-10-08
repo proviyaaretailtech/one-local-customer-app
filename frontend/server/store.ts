@@ -10,11 +10,13 @@
 import { getCatalog } from './catalog';
 import { caller } from './auth';
 import { db, dbConfigured, fromDbError } from './db';
-import { customerKey, HttpError, limit, readBody } from './http';
+import { customerKey, HttpError, readBody } from './http';
+import { limitCaller } from './limits';
 import { CartKind, cartKindOf, quote } from './pricing';
 import { features } from './features';
+import { codRule } from './payment-provider';
 import { placeById } from './geo';
-import { dispatchOrders } from './dispatch';
+import { adoptOrders, assertFulfillable, deliveryOtp, dispatchConfigured, dispatchOrders, listingMenuItemId } from './dispatch';
 
 // What the customer picks at checkout. 'cod' goes through POST /api/checkouts; every other choice
 // goes through POST /api/payments/order and is only a preference — the method Razorpay reports
@@ -32,18 +34,33 @@ export type Order = {
   items: OrderItem[]; subtotal: number; discount: number; delivery_fee: number; gst: number; total: number;
   coupon_code: string | null; payment_method: PaymentMethod; payment_status: PaymentStatus; status: string;
   rider_name: string; rider_phone: string; eta_minutes: number; created_at: string; address: DeliveryAddress | null;
+  // The 4-digit code the customer tells the rider at the door (SRV-1). Only ever present on what the order's own customer reads, and only
+  // while a rider has the delivery; never on an order that is not theirs, not yet with a rider, delivered or cancelled.
+  delivery_code?: string | null;
 };
 export type Checkout = {
   id: string; kind: CartKind; item_total: number; discount: number; delivery_fee: number; total: number; coupon_code: string | null;
   payment_method: PaymentMethod; payment_status: PaymentStatus; created_at: string; orders: Order[];
 };
-// Razorpay references live on the stored checkout only; the app never needs them.
-type RazorpayRefs = { razorpay_order_id: string | null; razorpay_payment_id: string | null; paid_at: string | null; payment_error: string | null };
+// Gateway references live on the stored checkout only; the app never needs them. Razorpay ids as before; Cashfree's ids and the
+// provider that took the payment were added by migration 0238 (payment_provider, provider_order_id = the order id WE sent to Cashfree).
+export type PaymentProviderName = 'razorpay' | 'cashfree';
+export type FailureCode = 'dropped' | 'declined' | 'expired' | 'unknown';
+type GatewayRefs = {
+  razorpay_order_id: string | null; razorpay_payment_id: string | null; paid_at: string | null; payment_error: string | null;
+  payment_provider: PaymentProviderName | null; provider_order_id: string | null; cf_order_id: string | null; cf_payment_id: string | null;
+  payment_group: string | null; payment_reference_masked: string | null; payment_failure_code: FailureCode | null; payment_attempts: number; payment_checked_at: string | null;
+};
+const NO_GATEWAY: GatewayRefs = {
+  razorpay_order_id: null, razorpay_payment_id: null, paid_at: null, payment_error: null,
+  payment_provider: null, provider_order_id: null, cf_order_id: null, cf_payment_id: null, payment_group: null, payment_reference_masked: null,
+  payment_failure_code: null, payment_attempts: 0, payment_checked_at: null,
+};
 type Owner = { city_id: string; customer: string; user_id: string | null };
 type StoredOrder = Order & Owner & { paid_at: string | null; payment_error: string | null };
-type StoredCheckout = Omit<Checkout, 'orders'> & RazorpayRefs & Owner & { refunds: { id: string; amount: number }[] };
+type StoredCheckout = Omit<Checkout, 'orders'> & GatewayRefs & Owner & { refunds: { id: string; amount: number }[] };
 const publicOrder = ({ city_id, customer, user_id, paid_at, payment_error, ...order }: StoredOrder): Order => order;
-const publicCheckout = ({ city_id, customer, user_id, razorpay_order_id, razorpay_payment_id, paid_at, payment_error, refunds, ...checkout }: StoredCheckout, orders: Order[]): Checkout => ({ ...checkout, orders });
+const publicCheckout = ({ city_id, customer, user_id, razorpay_order_id, razorpay_payment_id, paid_at, payment_error, payment_provider, provider_order_id, cf_order_id, cf_payment_id, payment_group, payment_reference_masked, payment_failure_code, payment_attempts, payment_checked_at, refunds, ...checkout }: StoredCheckout, orders: Order[]): Checkout => ({ ...checkout, orders });
 
 // ---------- In-memory fallback (no database configured) ----------
 // Enquiries and help requests carry their owner like orders do, so a person's data can be found
@@ -140,6 +157,26 @@ function readAddress(raw: unknown): DeliveryAddress | null {
   return { label, text, lat: hasPoint ? (a.lat as number) : null, lng: hasPoint ? (a.lng as number) : null, notes };
 }
 
+// Order placement limits (SRV-7). A signed-in customer is counted by account; everyone is also counted by network address, which a
+// caller cannot choose. A caller with no account (only a device key, which anyone can invent) gets the strict address limits on top:
+// per minute and per hour. ORDERS_REQUIRE_SIGN_IN=1 closes that door altogether (answer 401 to anyone not signed in).
+async function limitOrders(request: Request) {
+  const who = await limitCaller(request, 'order', 5, 60_000, { anonIpMax: 8 });
+  if (who.userId) return;
+  if (process.env.ORDERS_REQUIRE_SIGN_IN === '1') throw new HttpError(401, 'Please sign in to place an order.');
+  await limitCaller(request, 'order-hour', 12, 3_600_000, { verify: false, anonIpMax: 30 });
+}
+
+// Does a retry carry the same basket as the checkout the key already made? Compared by product and total quantity, whatever the order.
+function sameBasket(raw: unknown, orders: Order[]): boolean {
+  const tally = (lines: { id?: unknown; qty?: unknown }[]) => {
+    const m = new Map<string, number>();
+    for (const l of lines) if (typeof l?.id === 'string') m.set(l.id, (m.get(l.id) ?? 0) + (Number(l.qty) || 0));
+    return [...m].sort(([a], [b]) => a.localeCompare(b)).map(([id, q]) => `${id}:${q}`).join(',');
+  };
+  return Array.isArray(raw) && tally(raw) === tally(orders.flatMap(o => o.items));
+}
+
 type CheckoutBody = { items?: unknown; total?: unknown; coupon_code?: unknown; payment_method?: unknown; address?: unknown };
 
 // Prices, fees and discounts are always recomputed here; what the app sends is only a check.
@@ -147,7 +184,7 @@ type CheckoutBody = { items?: unknown; total?: unknown; coupon_code?: unknown; p
 // becomes real (its orders shown in the customer's list) once Razorpay confirms the money.
 export async function createCheckout(request: Request, city: string, online = false): Promise<Checkout> {
   const customer = await requireCustomer(request);
-  limit(customer.hash, 'order', 5, 60_000);
+  await limitOrders(request);
   const body = await readBody<CheckoutBody>(request);
 
   const idempotencyKey = request.headers.get('idempotency-key');
@@ -166,7 +203,7 @@ export async function createCheckout(request: Request, city: string, online = fa
     const checkout = await buildCheckout(body, city, online);
     const { orders, ...head } = checkout;
     const owner = { city_id: city, customer: customer.hash, user_id: customer.userId };
-    mem.checkouts.push({ ...head, ...owner, razorpay_order_id: null, razorpay_payment_id: null, paid_at: null, payment_error: null, refunds: [] });
+    mem.checkouts.push({ ...head, ...owner, ...NO_GATEWAY, refunds: [] });
     mem.orders.push(...orders.map(o => ({ ...o, ...owner, paid_at: null, payment_error: null })));
     if (replyKey) mem.replies.set(replyKey, { fingerprint, checkout, at: Date.now() });
     return checkout;
@@ -178,9 +215,15 @@ export async function createCheckout(request: Request, city: string, online = fa
   // retry with the same key returns what the first attempt created.
   const earlier = async () => (!idempotencyKey ? null : ready ? checkoutByKey(customer.hash, idempotencyKey) : legacyByKey(customer.hash, idempotencyKey));
   const prior = await earlier();
-  if (prior) return prior;
+  if (prior) {
+    // The same key must mean the same basket (SRV-9 P3-12); the memory path above compares the whole request.
+    if (!sameBasket(body.items, prior.orders)) throw new HttpError(409, 'This checkout was already used for a different order.');
+    return prior;
+  }
 
   const checkout = await buildCheckout(body, city, online);
+  // Nothing is charged, and no order is created, for a basket no restaurant can take (SRV-2).
+  await assertFulfillable(checkout.orders, checkout.orders[0]?.address ?? null, online);
   const { orders, ...head } = checkout;
   if (ready) {
     const { error } = await db().from('ol_checkouts').insert({
@@ -215,13 +258,18 @@ export async function createCheckout(request: Request, city: string, online = fa
   // Normalized lines alongside the jsonb cache on ol_orders.items — the source for refunds,
   // per-item analytics and reconciliation. Best-effort: the orders themselves are already committed
   // above, so a failure here is logged, not surfaced to the customer.
+  // A line sold under an Item Master listing has no ol_products row (its id is made up from the store and the menu item), so it is stored by the
+  // menu item instead: that is what lets the restaurant's side adopt the order, and ol_order_items.product_id would refuse a product that is not there.
   const { error: lineError } = await db().from('ol_order_items').insert(orders.flatMap(o =>
-    o.items.map(i => ({ order_id: o.id, product_id: i.id, name: i.name, weight: i.weight, image: i.image, price: i.price, mrp: i.mrp, qty: i.qty }))));
+    o.items.map(i => {
+      const menuItem = listingMenuItemId(o.store_id, i.id);
+      return { order_id: o.id, product_id: menuItem ? null : i.id, menu_item_id: menuItem, name: i.name, weight: i.weight, image: i.image, price: i.price, mrp: i.mrp, qty: i.qty };
+    })));
   if (lineError) console.error('[store] ol_order_items insert failed for checkout', head.id, lineError.message);
 
   // A cash order is successful the moment it is placed: ping the rider pool. An online order waits for
   // its payment (payments.ts markPaid). A retried request returned above, so this runs once per checkout.
-  if (!online) await dispatchOrders(orders.map(o => o.id));
+  if (!online) { await dispatchOrders(await adoptOrders(orders.map(o => o.id))); }
 
   return ready ? checkout : fromOrders(orders[0].id, orders.map(o => ({ ...o, checkout_id: null })));
 }
@@ -261,7 +309,12 @@ async function buildCheckout(body: CheckoutBody, city: string, online: boolean):
   // A plain checkout is always cash on delivery whatever the app sends; an online method is only
   // accepted on the payments path, so no order can claim 'upi' without a payment behind it.
   if (online && !(features().online_payments && (ONLINE_METHODS as readonly string[]).includes(body.payment_method as string))) {
-    throw new HttpError(400, 'Choose how you want to pay.');
+    throw new HttpError(400, 'Choose how you want to pay.', undefined, 'choose_method');
+  }
+  // Cash on delivery has its own rule (payment-provider.ts codRule: FEATURE_COD, COD_MAX_TOTAL): the server decides, the app only shows it.
+  if (!online) {
+    const cod = codRule(bill.total);
+    if (!cod.available) throw new HttpError(409, cod.reason === 'over_limit' ? 'Pay on delivery is not available for an order this size. Please pay online.' : 'Pay on delivery is not available right now.', undefined, 'cod_unavailable');
   }
   const method = online ? (body.payment_method as PaymentMethod) : 'cod';
   const payment_status: PaymentStatus = online ? 'pending' : 'not_charged';
@@ -295,19 +348,22 @@ export async function refundOrder(orderId: string, amount: number, reason: strin
 
 // ---------- Payment state (read and written by payments.ts) ----------
 // Payment belongs to the checkout: `id` is the checkout id, `order_ids` its store orders.
-export type PaymentRecord = RazorpayRefs & { id: string; customer: string; total: number; payment_method: PaymentMethod; payment_status: PaymentStatus; order_ids: string[] };
-const PAYMENT_COLUMNS = 'id, customer_hash, total, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, paid_at, payment_error';
+export type PaymentRecord = GatewayRefs & { id: string; customer: string; total: number; payment_method: PaymentMethod; payment_status: PaymentStatus; order_ids: string[]; created_at: string };
+const PAYMENT_COLUMNS = 'id, customer_hash, total, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, paid_at, payment_error, payment_provider, provider_order_id, cf_order_id, cf_payment_id, payment_group, payment_reference_masked, payment_failure_code, payment_attempts, payment_checked_at, created_at';
 
 // By 'id', the value may be the checkout's id or one of its orders' (older app versions only know
 // their order).
-export async function findPayment(by: 'id' | 'razorpay_order_id' | 'razorpay_payment_id', value: string): Promise<PaymentRecord | null> {
+export async function findPayment(by: 'id' | 'razorpay_order_id' | 'razorpay_payment_id' | 'provider_order_id' | 'cf_payment_id', value: string): Promise<PaymentRecord | null> {
   if (!value) return null;
   if (!dbConfigured()) {
     const viaOrder = by === 'id' ? mem.orders.find(o => o.id === value)?.checkout_id : undefined;
     const c = mem.checkouts.find(x => x[by] === value || (!!viaOrder && x.id === viaOrder));
     return c ? {
-      id: c.id, customer: c.customer, total: c.total, payment_method: c.payment_method, payment_status: c.payment_status,
+      id: c.id, customer: c.customer, total: c.total, payment_method: c.payment_method, payment_status: c.payment_status, created_at: c.created_at,
       razorpay_order_id: c.razorpay_order_id, razorpay_payment_id: c.razorpay_payment_id, paid_at: c.paid_at, payment_error: c.payment_error,
+      payment_provider: c.payment_provider, provider_order_id: c.provider_order_id, cf_order_id: c.cf_order_id, cf_payment_id: c.cf_payment_id,
+      payment_group: c.payment_group, payment_reference_masked: c.payment_reference_masked, payment_failure_code: c.payment_failure_code,
+      payment_attempts: c.payment_attempts, payment_checked_at: c.payment_checked_at,
       order_ids: mem.orders.filter(o => o.checkout_id === c.id).map(o => o.id),
     } : null;
   }
@@ -330,7 +386,7 @@ export async function findPayment(by: 'id' | 'razorpay_order_id' | 'razorpay_pay
 // what makes /verify and the webhook safe to repeat or to race each other. True if it changed.
 // Every order in the checkout shows the same payment state: in memory it is copied here; in the
 // database a trigger copies it in the same transaction (migration 0026).
-export async function updatePayment(id: string, patch: Partial<RazorpayRefs & { payment_method: PaymentMethod; payment_status: PaymentStatus }>, from: PaymentStatus[]): Promise<boolean> {
+export async function updatePayment(id: string, patch: Partial<GatewayRefs & { payment_method: PaymentMethod; payment_status: PaymentStatus }>, from: PaymentStatus[]): Promise<boolean> {
   if (!dbConfigured()) {
     const c = mem.checkouts.find(x => x.id === id);
     if (!c || !from.includes(c.payment_status)) return false;
@@ -358,11 +414,11 @@ export async function recordGatewayRefund(checkoutId: string, refundId: string, 
   }
   const now = new Date().toISOString();
   const state = async () => {
-    const { data: orders } = await db().from('ol_orders').select('id, total').eq('checkout_id', checkoutId).order('created_at');
+    const { data: orders } = await db().from('ol_orders').select('id, total, payment_method').eq('checkout_id', checkoutId).order('created_at');
     const ids = (orders ?? []).map(o => o.id as string);
     const { data: refunds } = ids.length ? await db().from('ol_refunds').select('order_id, amount').in('order_id', ids).eq('status', 'processed') : { data: [] };
     const refunded = (id: string) => (refunds ?? []).filter(r => r.order_id === id).reduce((s, r) => s + Number(r.amount), 0);
-    return (orders ?? []).map(o => ({ id: o.id as string, total: Number(o.total), refunded: refunded(o.id as string) }));
+    return (orders ?? []).map(o => ({ id: o.id as string, total: Number(o.total), refunded: refunded(o.id as string), cod: o.payment_method === 'cod' }));
   };
   const { data: known } = await db().from('ol_refunds').select('id, status').eq('reference', refundId).maybeSingle();
   if (known) {
@@ -375,9 +431,22 @@ export async function recordGatewayRefund(checkoutId: string, refundId: string, 
     if (error && error.code !== '23505') fromDbError(error);
   }
   const orders = await state();
-  for (const o of orders) if (o.refunded >= o.total) await db().from('ol_orders').update({ payment_status: 'refunded' }).eq('id', o.id);
-  const { data: checkout } = await db().from('ol_checkouts').select('total').eq('id', checkoutId).maybeSingle();
-  if (checkout && orders.reduce((s, o) => s + o.refunded, 0) >= Number(checkout.total)) await db().from('ol_checkouts').update({ payment_status: 'refunded' }).eq('id', checkoutId);
+  // A cash order that is still going ahead (the customer switched to cash and a late online payment was returned) stays a cash order:
+  // the refund is in the ledger, but it is not marked "refunded", because the cash is still to be collected.
+  for (const o of orders) if (o.refunded >= o.total && !o.cod) await db().from('ol_orders').update({ payment_status: 'refunded' }).eq('id', o.id);
+  const { data: checkout } = await db().from('ol_checkouts').select('total, payment_method').eq('id', checkoutId).maybeSingle();
+  if (checkout && checkout.payment_method !== 'cod' && orders.reduce((s, o) => s + o.refunded, 0) >= Number(checkout.total)) await db().from('ol_checkouts').update({ payment_status: 'refunded' }).eq('id', checkoutId);
+}
+
+// The delivery code for the orders that have a rider on them, added to what the order's customer reads. Callers pass only orders
+// they already matched to the caller's own account or device, so the code reaches the owner and nobody else.
+const WITH_RIDER = ['assigned', 'at_pickup', 'picked_up', 'at_drop', 'exception'];
+async function withDeliveryCodes(orders: Order[]): Promise<Order[]> {
+  if (!orders.length || !dbConfigured() || !dispatchConfigured()) return orders;
+  const { data, error } = await db().from('delivery_jobs').select('ol_order_id, status').in('ol_order_id', orders.map(o => o.id));
+  if (error) fromDbError(error);
+  const live = new Set((data ?? []).filter(j => WITH_RIDER.includes(j.status as string)).map(j => j.ol_order_id as string));
+  return Promise.all(orders.map(async o => (live.has(o.id) ? { ...o, delivery_code: await deliveryOtp(o.id) } : o)));
 }
 
 // Only the account (or device) that placed an order can list or open it. An online attempt that
@@ -396,7 +465,7 @@ export async function listOrders(request: Request): Promise<Order[]> {
   const { data, error } = await db().from('ol_orders').select('*').in('customer_hash', matches)
     .not('payment_status', 'in', `(${UNPAID.join(',')})`).order('created_at', { ascending: false }).limit(200);
   if (error) fromDbError(error);
-  return Promise.all((data ?? []).map(row => decorate(rowToOrder(row))));
+  return withDeliveryCodes(await Promise.all((data ?? []).map(row => decorate(rowToOrder(row)))));
 }
 
 export async function getOrder(request: Request, id: string): Promise<Order> {
@@ -412,7 +481,27 @@ export async function getOrder(request: Request, id: string): Promise<Order> {
   const { data, error } = await db().from('ol_orders').select('*').eq('id', id).in('customer_hash', matches).maybeSingle();
   if (error) fromDbError(error);
   if (!data) throw new HttpError(404, 'Order not found');
-  return decorate(rowToOrder(data));
+  return (await withDeliveryCodes([await decorate(rowToOrder(data))]))[0];
+}
+
+// The caller's own order for the live tracking read (server/tracking.ts): the same ownership rule as getOrder (404 for anyone else's),
+// but the stored row, because tracking needs fields the public Order does not carry (promised_eta_at, prep_minutes). `row` is null
+// when there is no database (the in-memory demo store): such an order has no delivery job, so tracking is "not live".
+export async function ownOrderForTracking(request: Request, id: string): Promise<{ row: Record<string, any> | null; status: string }> {
+  const { matches } = await caller(request);
+
+  if (!dbConfigured()) {
+    const order = mem.orders.find(o => o.id === id && matches.includes(o.customer));
+    if (!order) throw new HttpError(404, 'Order not found');
+    return { row: null, status: order.status };
+  }
+
+  if (!matches.length || !UUID.test(id)) throw new HttpError(404, 'Order not found');
+  const { data, error } = await db().from('ol_orders')
+    .select('id, status, created_at, eta_minutes, prep_minutes, promised_eta_at').eq('id', id).in('customer_hash', matches).maybeSingle();
+  if (error) fromDbError(error);
+  if (!data) throw new HttpError(404, 'Order not found');
+  return { row: data, status: data.status as string };
 }
 
 // A checkout and all its store orders, for its owner only (like getOrder).
@@ -429,12 +518,12 @@ export async function getCheckout(request: Request, id: string): Promise<Checkou
   const { data, error } = await db().from('ol_checkouts').select('*').eq('id', id).in('customer_hash', matches).maybeSingle();
   if (error) fromDbError(error);
   if (!data) throw new HttpError(404, 'Order not found');
-  return rowToCheckout(data, await ordersOf(id));
+  return rowToCheckout(data, await withDeliveryCodes(await ordersOf(id)));
 }
 
 // ---------- Book It enquiries ----------
 export async function createEnquiry(request: Request) {
-  limit(customerKey(request) ?? 'anonymous', 'enquiry', 5, 3_600_000);
+  await limitCaller(request, 'enquiry', 5, 3_600_000, { anonIpMax: 10 });
   const b = await readBody<Record<string, unknown>>(request);
   const catalog = await getCatalog();
   const event = catalog.events.find(e => e.id === b.event_id);
@@ -463,7 +552,7 @@ export async function createEnquiry(request: Request) {
 const TOPICS = ['order', 'payment', 'profile', 'other'];
 
 export async function createSupportRequest(request: Request) {
-  limit(customerKey(request) ?? 'anonymous', 'support', 5, 3_600_000);
+  await limitCaller(request, 'support', 5, 3_600_000, { anonIpMax: 10 });
   const b = await readBody<Record<string, unknown>>(request);
   if (typeof b.topic !== 'string' || !TOPICS.includes(b.topic)) throw new HttpError(400, 'Choose a topic');
   if (typeof b.message !== 'string' || b.message.trim().length < 10 || b.message.length > 2000) throw new HttpError(400, 'Please describe your question in at least 10 characters');
@@ -484,7 +573,7 @@ export async function createSupportRequest(request: Request) {
 // 'other', reference 'launch:<place id>') so the demand list needs no new table yet; the Master
 // can count requests per place with one query.
 export async function createLaunchRequest(request: Request) {
-  limit(customerKey(request) ?? 'anonymous', 'launch', 3, 86_400_000);
+  await limitCaller(request, 'launch', 3, 86_400_000, { anonIpMax: 10 });
   const b = await readBody<Record<string, unknown>>(request);
   const place = placeById(typeof b.place_id === 'string' ? b.place_id : '');
   const where = [place.name, place.district, place.state].filter(Boolean).join(', ');

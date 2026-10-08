@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme, radius, spacing } from '../theme';
 import { GlassButton } from './glass-button';
+import { useTranslation } from '@/src/i18n';
 
 interface PremiumCartCelebrationProps {
   productName: string;
@@ -33,6 +34,7 @@ export function PremiumCartCelebration({
   autoDismissMs = 2200,
 }: PremiumCartCelebrationProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = makeStyles(colors);
   
   // Character scale animation
@@ -95,7 +97,7 @@ export function PremiumCartCelebration({
         </Animated.View>
 
         {/* Celebration text */}
-        <Text style={styles.title}>Added to Cart!</Text>
+        <Text style={styles.title}>{t('cart.celebration.added')}</Text>
         <Text style={styles.subtitle}>
           {quantity} × {productName}
         </Text>
@@ -108,13 +110,13 @@ export function PremiumCartCelebration({
         {/* Action buttons */}
         <View style={styles.actions}>
           <GlassButton
-            label="Continue Shopping"
+            label={t('cart.celebration.continue')}
             variant="ghost"
             size="sm"
             onPress={onDismiss}
           />
           <GlassButton
-            label="View Cart"
+            label={t('cart.celebration.view')}
             variant="primary"
             size="sm"
             onPress={onViewCart}

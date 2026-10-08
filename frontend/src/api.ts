@@ -47,21 +47,23 @@ export async function identity(): Promise<Record<string, string>> {
   return token ? { 'X-Customer-Key': key, Authorization: `Bearer ${token}` } : { 'X-Customer-Key': key };
 }
 
+// `code` is the server's machine-readable reason ('outside_delivery_area'); screens show a translated sentence for
+// it with useErrorMessage() / errorMessage() from src/i18n instead of the English `message`.
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 
 // Like api(), but failures carry the server's own message (the `detail` field).
 export async function apiGet<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, { headers: await identity() });
   const body = await r.json().catch(() => null);
-  if (!r.ok) throw new ApiError(r.status, typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.');
+  if (!r.ok) throw new ApiError(r.status, typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.', typeof body?.code === 'string' ? body.code : undefined); // i18n-ignore (fallback for the English detail; screens map status/code)
   return resolveMedia(body);
 }
 
 export async function api<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, { headers: await identity() });
-  if (!r.ok) throw new Error(`API ${path} ${r.status}`);
+  if (!r.ok) throw new ApiError(r.status, `API ${path} ${r.status}`);
   return resolveMedia(await r.json());
 }
 
@@ -148,7 +150,7 @@ export async function apiPost<T>(path: string, body: unknown, headers: Record<st
     body: JSON.stringify(body),
   });
   // Surface the server's own message ("Prices have changed…") instead of a bare status code.
-  if (!r.ok) { const detail = await r.json().then(b => b?.detail).catch(() => null); throw new Error(typeof detail === 'string' ? detail : `API ${path} ${r.status}`); }
+  if (!r.ok) { const body = await r.json().catch(() => null); const detail = body?.detail; throw new ApiError(r.status, typeof detail === 'string' ? detail : `API ${path} ${r.status}`, typeof body?.code === 'string' ? body.code : undefined); }
   return resolveMedia(await r.json());
 }
 
@@ -185,6 +187,7 @@ export async function uploadSearch(mode: 'image' | 'voice', uri: string, name: s
   else form.append('file', { uri, name, type } as any);
   const response = await fetch(`${API}/search/${mode}`, { method: 'POST', body: form, signal });
   const payload = await response.json();
-  if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'Search is unavailable. Please try again.');
+  // Carries status + code so screens show a translated line (useErrorMessage) instead of the English `detail`.
+  if (!response.ok) throw new ApiError(response.status, typeof payload.detail === 'string' ? payload.detail : 'Search is unavailable. Please try again.', typeof payload.code === 'string' ? payload.code : undefined); // i18n-ignore (English fallback behind the code mapping)
   return payload;
 }

@@ -12,10 +12,20 @@ const TAB_STATUSES: Record<Tab, string[]> = {
 };
 
 const ORDER_FIELDS =
-  'id, status, total, subtotal, gst, delivery_fee, prep_minutes, eta_minutes, restaurant_deadline, cancel_reason, created_at, items, delivery_address, ' +
+  'id, status, total, subtotal, gst, delivery_fee, prep_minutes, eta_minutes, restaurant_deadline, cancel_reason, created_at, items, delivery_address, payment_method, payment_status, ' +
   'orders!inner(id, display_no, status, updated_at, customer_name, customer_phone, notes, total, created_at, order_items(name, qty, unit_price, notes, status))';
 
 type Row = Record<string, any>;
+
+// How the customer pays, as staff should read it (SRV-4). This used to say "Cash on delivery" for every order, online ones too, which
+// sent staff to collect cash that had already been paid.
+const METHOD_NAME: Record<string, string> = { upi: 'UPI', card: 'card', netbanking: 'net banking', wallet: 'wallet', paylater: 'Pay Later', emi: 'EMI', cardless_emi: 'cardless EMI' };
+function paymentLabel(row: Row): string {
+  if (row.payment_method === 'cod') return row.payment_status === 'paid' ? 'Cash collected' : 'Cash on delivery';
+  if (row.payment_status === 'paid') return `Paid online${METHOD_NAME[row.payment_method] ? ` (${METHOD_NAME[row.payment_method]})` : ''}`;
+  if (row.payment_status === 'refunded') return 'Refunded';
+  return 'Online payment not completed';
+}
 
 // What staff see. Customer phone and full address only while the order is active (PRD §6).
 function shape(row: Row) {
@@ -39,7 +49,9 @@ function shape(row: Row) {
     items: (pos.order_items ?? []).map((i: Row) => ({ name: i.name, qty: i.qty, price: Number(i.unit_price), notes: i.notes })),
     item_count: (pos.order_items ?? []).reduce((n: number, i: Row) => n + i.qty, 0),
     subtotal: Number(row.subtotal), gst: Number(row.gst), delivery_fee: Number(row.delivery_fee), total: Number(row.total),
-    payment: 'Cash on delivery',
+    payment: paymentLabel(row),
+    payment_method: row.payment_method ?? 'cod', payment_status: row.payment_status ?? 'not_charged',
+    collect_cash: (row.payment_method ?? 'cod') === 'cod' && row.payment_status !== 'paid', // false for an order already paid online: no cash is taken at the door
     prep_minutes: row.prep_minutes,
     cancel_reason: row.cancel_reason,
   };
@@ -81,6 +93,16 @@ export async function act(staff: Staff, posOrderId: string, action: 'accept' | '
   const { data } = await db().from('orders').select('organization_id').eq('id', posOrderId).maybeSingle();
   if (!data || data.organization_id !== staff.organizationId) throw new HttpError(404, 'Order not found');
   if (typeof body.version !== 'string') throw new HttpError(400, 'Refresh the order and try again.');
+  if (action === 'delivered') {
+    // Marking an order delivered books the full total as CASH collected (ol_partner_act). For an order the customer already paid online that
+    // would record the same money twice and send staff to collect it again, so it is refused here until the database function learns to book
+    // an online order correctly (db-requests-server.md). A delivery by a rider is closed by the rider's proof, which books it right.
+    const { data: paid, error } = await db().from('ol_orders').select('payment_method, payment_status').eq('pos_order_id', posOrderId).maybeSingle();
+    if (error) fromDbError(error);
+    if (paid && !(paid.payment_method === 'cod' && paid.payment_status !== 'paid')) {
+      throw new HttpError(409, 'This order is already paid, so there is no cash to collect and it cannot be closed from here yet. The rider closes it when they hand it over.', undefined, 'already_paid');
+    }
+  }
   await rpc('ol_partner_act', {
     p_order: posOrderId, p_action: action, p_actor: staff.userId, p_actor_name: staff.name, p_expected: body.version,
     p_prep: action === 'accept' ? Number(body.prep_minutes) : null,

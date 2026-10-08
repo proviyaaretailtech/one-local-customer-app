@@ -2,12 +2,13 @@ import { ReactNode } from 'react';
 import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 
 export function AccountLayout({ title, subtitle, children, id }: { title: string; subtitle?: string; children: ReactNode; id: string }) {
-  const router = useRouter();
+  const router = useRouter(); const { t } = useTranslation();
   return <KeyboardAvoidingView testID={`${id}-screen`} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.screen}>
-    <View style={s.header}><Pressable testID={`${id}-back`} accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/account')} style={s.back}><Icon name="arrow-back" size={22} color={colors.onSurface} /></Pressable><Text testID={`${id}-title`} style={s.heading}>{title}</Text></View>
+    <View style={s.header}><Pressable testID={`${id}-back`} accessibilityLabel={t('common.goBack')} onPress={() => router.canGoBack() ? router.back() : router.replace('/account')} style={s.back}><Icon name="arrow-back" size={22} color={colors.onSurface} /></Pressable><Text testID={`${id}-title`} style={s.heading}>{title}</Text></View>
     <ScrollView testID={`${id}-scroll`} keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>{subtitle && <Text testID={`${id}-subtitle`} style={s.subtitle}>{subtitle}</Text>}{children}</ScrollView>
   </KeyboardAvoidingView>;
 }

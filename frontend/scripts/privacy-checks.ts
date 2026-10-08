@@ -5,12 +5,15 @@
 // Run from frontend/:  npx tsx scripts/privacy-checks.ts
 for (const k of ['SUPABASE_SERVICE_ROLE_KEY', 'PRIVACY_HARD_DELETE', 'FEATURE_ONLINE_PAYMENTS']) delete process.env[k];
 // Sign-in is simulated (below); with no service-role key the server stays in memory mode.
-Object.assign(process.env, { SUPABASE_URL: 'https://auth.test', SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key' });
+// auth.test is a made-up REMOTE host that stands in for Supabase Auth, so ALLOW_REMOTE=1 is needed for the server to talk to it at all (SEC-1).
+Object.assign(process.env, { SUPABASE_URL: 'https://auth.test', SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key', ALLOW_REMOTE: '1' });
 
 const ASHA = { id: '0a5e1a00-0000-4000-8000-00000000a5a1', token: 'token-asha-0123456789abcdef', device: 'device-asha-000000000000000000', email: 'asha@example.com', phone: '919876543210', name: 'Asha Patil' };
 const RAVI = { id: '0a5e1a00-0000-4000-8000-00000000fa71', token: 'token-ravi-0123456789abcdef', device: 'device-ravi-000000000000000000', email: 'ravi@example.com', phone: '919812345678', name: 'Ravi Kale' };
 const MEERA = { id: '0a5e1a00-0000-4000-8000-0000000e3e7a', token: 'token-meera-0123456789abcdef', device: 'device-meera-00000000000000000', email: 'meera@example.com', phone: '919800000000', name: 'Meera Joshi' };
-const people = [ASHA, RAVI, MEERA];
+const NEWA = { id: '0a5e1a00-0000-4000-8000-0000000ae111', token: 'token-newa-0123456789abcdef', device: 'device-newa-000000000000000000', email: 'newa@example.com', phone: '919800000111', name: 'Neha Pawar' };
+const NEWB = { id: '0a5e1a00-0000-4000-8000-0000000ae222', token: 'token-newb-0123456789abcdef', device: 'device-newb-000000000000000000', email: 'newb@example.com', phone: '919800000222', name: 'Nitin Pawar' };
+const people = [ASHA, RAVI, MEERA, NEWA, NEWB];
 const logouts: string[] = [];
 
 globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -77,6 +80,12 @@ async function main() {
   const ashaOrderIds = [...guest.orders, ...ashaCheckout.orders].map(o => o.id);
   const raviOrderIds = raviCheckout.orders.map(o => o.id);
   check('setup: Asha has 3 store orders (1 as a guest, 2 signed in), Ravi has 1', ashaOrderIds.length === 3 && raviOrderIds.length === 1);
+
+  // ---------- SEC-1: no remote Supabase unless ALLOW_REMOTE=1 ----------
+  delete process.env.ALLOW_REMOTE;
+  await refused('a remote Supabase is not asked who is signed in without ALLOW_REMOTE=1 (so the token counts as not signed in)', 401, () => privacy.exportMyData(request('privacy/export', undefined, NEWA)));
+  process.env.ALLOW_REMOTE = '1';
+  check('with ALLOW_REMOTE=1 the same kind of sign-in works', (await privacy.exportMyData(request('privacy/export', undefined, NEWB))).account.email === NEWB.email);
 
   // ---------- Signed-in only ----------
   await refused('download without signing in is refused (401)', 401, () => privacy.exportMyData(request('privacy/export', undefined, null)));

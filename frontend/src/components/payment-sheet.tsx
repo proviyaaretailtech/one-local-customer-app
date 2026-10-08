@@ -4,6 +4,7 @@
 // own Pay button, so the last-used method is one tap. Card numbers, UPI ids and bank logins are all
 // entered on Razorpay's page afterwards (razorpay-checkout.tsx) — this screen never asks for them.
 import { useState } from 'react';
+import type { ParseKeys } from 'i18next';
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet, Switch, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -12,6 +13,7 @@ import { colors } from '../theme';
 import { useFeatures } from '../features';
 import { useDeliveryLocation } from '../delivery-location';
 import { paymentLabel, UPI_APPS } from './payment-options';
+import { useFormat, useTranslation } from '@/src/i18n';
 
 export type PaymentChoice = { method: PaymentMethod; app?: UpiApp };
 const same = (a: PaymentChoice, b: PaymentChoice) => a.method === b.method && (a.method !== 'upi' || (a.app ?? '') === (b.app ?? ''));
@@ -21,21 +23,23 @@ type Props = {
   itemCount: number; total: number; savings: number;
 };
 
-const MORE: { method: PaymentMethod; title: string; sub: string; icon: string }[] = [
-  { method: 'paylater', title: 'Pay Later', sub: 'Simpl, LazyPay, card EMI & more, where you are eligible', icon: 'calendar-outline' },
-  { method: 'wallet', title: 'Wallets', sub: 'PhonePe, Amazon Pay & more', icon: 'wallet-outline' },
-  { method: 'netbanking', title: 'Netbanking', sub: 'Select from a list of banks', icon: 'business-outline' },
-  { method: 'cod', title: 'Pay on Delivery', sub: 'Pay in cash when your order arrives', icon: 'cash-outline' },
+// Catalogue keys, looked up while rendering so the rows follow the language.
+const MORE: { method: PaymentMethod; title: ParseKeys; sub: ParseKeys; icon: string }[] = [
+  { method: 'paylater', title: 'payment.sheet.laterTitle', sub: 'payment.sheet.laterSub', icon: 'calendar-outline' },
+  { method: 'wallet', title: 'payment.wallet.title', sub: 'payment.wallet.sub', icon: 'wallet-outline' },
+  { method: 'netbanking', title: 'payment.sheet.netbankingTitle', sub: 'payment.sheet.netbankingSub', icon: 'business-outline' },
+  { method: 'cod', title: 'payment.sheet.codTitle', sub: 'payment.sheet.codSub', icon: 'cash-outline' },
 ];
 
 // Mounted only while open, so it always starts on the customer's last-used method.
 export function PaymentSheet({ onClose, choice, onPay, paying, itemCount, total, savings }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const fmt = useFormat();
   const { wallet, coins } = useFeatures();
   const { location } = useDeliveryLocation();
   const [picked, setPicked] = useState<PaymentChoice>(choice);
   const [offers, setOffers] = useState(false);
-  const rupees = (n: number) => `₹${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
   // One row; when it is the selected one it opens with its own Pay button. A plain render function
   // (not a component), so rows keep their identity between renders.
@@ -52,55 +56,55 @@ export function PaymentSheet({ onClose, choice, onPay, paying, itemCount, total,
       </Pressable>
       {showPay && <View style={s.payWrap}>
         <Pressable testID="payment-sheet-pay" accessibilityRole="button" disabled={paying} onPress={() => onPay(picked)} style={({ pressed }) => [s.payBtn, (pressed || paying) && s.pressed]}>
-          {paying ? <ActivityIndicator color={colors.onBrandSecondary} /> : <Text style={s.payText}>{c.method === 'cod' ? `Place order · ${rupees(total)}` : `Pay ${rupees(total)}`}</Text>}
+          {paying ? <ActivityIndicator color={colors.onBrandSecondary} /> : <Text style={s.payText}>{c.method === 'cod' ? t('checkout.placeOrder', { amount: fmt.money(total) }) : t('checkout.pay', { amount: fmt.money(total) })}</Text>}
         </Pressable>
-        <Text style={s.payNote}>{c.method === 'cod' ? 'Keep cash ready for the delivery partner.' : 'You finish paying on Razorpay’s secure page. We never see your card, UPI PIN or bank login.'}</Text>
+        <Text style={s.payNote}>{c.method === 'cod' ? t('payment.sheet.cashNote') : t('payment.sheet.onlineNote')}</Text>
       </View>}
     </View>;
   };
 
-  const initials = (t: string) => t.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const initials = (name: string) => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
     <View testID="payment-options-screen" style={[s.screen, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <Pressable testID="payment-options-back" accessibilityLabel="Back to cart" onPress={onClose} style={s.back}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Pressable>
+        <Pressable testID="payment-options-back" accessibilityLabel={t('payment.sheet.backA11y')} onPress={onClose} style={s.back}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Pressable>
         <View style={s.copy}>
-          <Text style={s.title}>Payment Options</Text>
-          <Text testID="payment-options-summary" style={s.subline}>{itemCount} item{itemCount === 1 ? '' : 's'} · Total: {rupees(total)}{savings > 0 ? <Text style={s.save}> · Savings of {rupees(savings)}</Text> : null}</Text>
+          <Text style={s.title}>{t('payment.sheet.title')}</Text>
+          <Text testID="payment-options-summary" style={s.subline}>{t('payment.sheet.summary', { count: itemCount, total: fmt.money(total) })}{savings > 0 ? <Text style={s.save}> {t('payment.sheet.savings', { amount: fmt.money(savings) })}</Text> : null}</Text>
         </View>
       </View>
       <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 32 }]}>
         <View style={s.route}>
           <View style={s.routeDot}><Icon name="storefront" size={14} color={colors.surface} /></View>
-          <View style={s.copy}><Text style={s.routeTitle}>One Local</Text><Text style={s.routeSub}>Delivery in 10–15 mins</Text></View>
+          <View style={s.copy}><Text style={s.routeTitle}>One Local</Text><Text style={s.routeSub}>{t('payment.sheet.routeEta')}</Text></View>
           <Icon name="arrow-forward" size={16} color={colors.muted} />
-          <View style={[s.copy, { alignItems: 'flex-end' }]}><Text style={s.routeTitle}>Deliver to</Text><Text numberOfLines={1} style={s.routeSub}>{location}</Text></View>
+          <View style={[s.copy, { alignItems: 'flex-end' }]}><Text style={s.routeTitle}>{t('payment.sheet.deliverTo')}</Text><Text numberOfLines={1} style={s.routeSub}>{location}</Text></View>
         </View>
 
         <Pressable testID="payment-offers" onPress={() => setOffers(v => !v)} style={s.offers}>
-          <Icon name="pricetags" size={16} color={colors.onSuccess} /><Text style={s.offersText}>Save more with payment offers</Text><Icon name={offers ? 'chevron-up' : 'chevron-forward'} size={16} color={colors.onSuccess} />
+          <Icon name="pricetags" size={16} color={colors.onSuccess} /><Text style={s.offersText}>{t('payment.sheet.offers')}</Text><Icon name={offers ? 'chevron-up' : 'chevron-forward'} size={16} color={colors.onSuccess} />
         </Pressable>
-        {offers && <Text testID="payment-offers-list" style={s.offersNote}>No bank or UPI offers are running right now. Any offer set up with Razorpay shows on the payment page automatically.</Text>}
+        {offers && <Text testID="payment-offers-list" style={s.offersNote}>{t('payment.sheet.offersNone')}</Text>}
 
         {(wallet || coins) && <View style={[s.row, s.walletRow]}>
           <View style={s.badge}><Icon name="wallet" size={20} color={colors.forest} /></View>
-          <View style={s.copy}><Text style={s.rowTitle}>{wallet ? 'OneCity Wallet' : 'OneLocal Coins'}</Text><Text style={s.rowSub}>Can’t be used at checkout yet</Text></View>
-          <Switch value={false} disabled accessibilityLabel="Use wallet balance (not available yet)" />
+          <View style={s.copy}><Text style={s.rowTitle}>{wallet ? 'OneCity Wallet' : 'OneLocal Coins'}</Text><Text style={s.rowSub}>{t('payment.sheet.walletNote')}</Text></View>
+          <Switch value={false} disabled accessibilityLabel={t('payment.sheet.walletA11y')} />
         </View>}
 
-        <Text style={s.section}>Preferred Payment</Text>
-        {row({ testID: "payment-preferred", c: choice, title: paymentLabel(choice.method, choice.method === 'upi' ? choice.app : undefined), sub: "Last used", icon: MORE.find(m => m.method === choice.method)?.icon ?? (choice.method === 'card' ? 'card-outline' : 'phone-portrait-outline') })}
+        <Text style={s.section}>{t('payment.sheet.sectionPreferred')}</Text>
+        {row({ testID: "payment-preferred", c: choice, title: paymentLabel(choice.method, choice.method === 'upi' ? choice.app : undefined), sub: t('payment.sheet.lastUsed'), icon: MORE.find(m => m.method === choice.method)?.icon ?? (choice.method === 'card' ? 'card-outline' : 'phone-portrait-outline') })}
 
-        <Text style={s.section}>Pay by any UPI App</Text>
+        <Text style={s.section}>{t('payment.sheet.sectionUpi')}</Text>
         {UPI_APPS.map(a => row({ testID: `payment-upi-${a.id}`, c: { method: 'upi', app: a.id }, title: a.title, badge: { text: initials(a.title), tint: a.tint } }))}
-        {row({ testID: "payment-upi-id", c: { method: 'upi', app: 'id' }, title: "Add UPI ID", sub: "You’ll enter it on the secure payment page", icon: "add-circle-outline" })}
+        {row({ testID: "payment-upi-id", c: { method: 'upi', app: 'id' }, title: t('payment.sheet.addUpiId'), sub: t('payment.sheet.upiIdNote'), icon: "add-circle-outline" })}
 
-        <Text style={s.section}>Credit & Debit Cards</Text>
-        {row({ testID: "payment-card", c: { method: 'card' }, title: "Add New Card", sub: "Save and pay via cards", icon: "add-circle-outline" })}
+        <Text style={s.section}>{t('payment.sheet.sectionCards')}</Text>
+        {row({ testID: "payment-card", c: { method: 'card' }, title: t('payment.sheet.addCard'), sub: t('payment.sheet.cardNote'), icon: "add-circle-outline" })}
 
-        <Text style={s.section}>More Payment Options</Text>
-        {MORE.map(m => row({ testID: `payment-more-${m.method}`, c: { method: m.method }, title: m.title, sub: m.sub, icon: m.icon }))}
+        <Text style={s.section}>{t('payment.sheet.sectionMore')}</Text>
+        {MORE.map(m => row({ testID: `payment-more-${m.method}`, c: { method: m.method }, title: t(m.title), sub: t(m.sub), icon: m.icon }))}
       </ScrollView>
     </View>
   </Modal>;

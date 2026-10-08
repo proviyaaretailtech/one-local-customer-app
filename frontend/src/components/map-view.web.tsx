@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import Icon from '@react-native-vector-icons/ionicons';
 import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps';
 import type { MapViewProps } from './map-view';
+import { useTranslation } from '../i18n';
 import { colors } from '../theme';
 
 const KEY: string | undefined = Constants.expoConfig?.extra?.googleMapsBrowserKey;
@@ -19,18 +20,21 @@ function Mover({ moveTo }: Pick<MapViewProps, 'moveTo'>) {
 }
 
 export function MapView({ initial, moveTo, onSettle, style }: MapViewProps) {
+  const { t, i18n } = useTranslation();
+  // The map's own labels follow the app language (Google loads one language per page: the one active when the map first opens).
+  const mapLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'en').startsWith('hi') ? 'hi' : 'en';
   if (!KEY) {
     return (
       <View testID="address-map-missing" style={[style, styles.missing]}>
         <Icon name="map-outline" size={34} color={colors.muted} />
-        <Text style={styles.title}>The map is not switched on yet</Text>
-        <Text style={styles.body}>It needs a Google Maps key. You can still search for your area or type your address.</Text>
+        <Text style={styles.title}>{t('address.map.missingTitle')}</Text>
+        <Text style={styles.body}>{t('address.map.missingBody')}</Text>
       </View>
     );
   }
   return (
     <View testID="address-map" style={style}>
-      <APIProvider apiKey={KEY} language="en" region="IN">
+      <APIProvider apiKey={KEY} language={mapLanguage} region="IN">
         <Map
           style={{ width: '100%', height: '100%' }}
           defaultCenter={initial}

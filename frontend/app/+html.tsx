@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
+import { WEB_FONT_STACK } from "../src/i18n/typography";
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -22,6 +23,9 @@ export default function Root({ children }: PropsWithChildren) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              html, body { font-family: ${WEB_FONT_STACK}; }
+              /* Devanagari: letter-spacing pulls conjuncts apart, and Hindi has no capitals to track out. */
+              html:lang(hi) *, html:lang(hi) *::placeholder { letter-spacing: normal !important; }
               body > div:first-child { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
               [role="heading"], [role="heading"] * { overflow: visible !important; }

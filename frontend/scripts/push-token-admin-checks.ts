@@ -86,8 +86,31 @@ async function main() {
     g.__onecityAdmins?.clear();
     r = await call(meRoute.GET, 0, 'GET');
     check('a rider who is not an admin is refused', r.status === 403, r);
+
+    // ---- SRV-5: only the active super_admin role is a platform admin; a platform_admins table that cannot be read lets nobody in ----
+    const limited = must(await d.from('platform_roles').insert({ key: 'zz_support_ro', name: 'ZZ Support (checks)', permissions: 'orgs:view', is_active: true }).select('id'))[0];
+    must(await d.from('platform_admins').update({ status: 'Active', role_id: limited.id }).eq('user_id', u[adminUser].id));
+    g.__onecityAdmins?.clear();
+    r = await call(meRoute.GET, adminUser, 'GET');
+    check('SRV-5: an Active admin on a limited role is refused (the database counts only super_admin as a platform admin)', r.status === 403 && r.body.code === 'not_platform_admin', r);
+    must(await d.from('platform_admins').update({ role_id: role.id }).eq('user_id', u[adminUser].id));
+    g.__onecityAdmins?.clear();
+    r = await call(meRoute.GET, adminUser, 'GET');
+    check('SRV-5: the same admin on super_admin is let in, reading and writing', r.status === 200 && r.body.role === 'super_admin' && r.body.can_write === true, r);
+    // The lookup fails (a column the code expects is gone, or the database is down): refused with 503, and the failure is not remembered.
+    g.__onecityAdmins?.clear();
+    const realFrom = d.from.bind(d);
+    (d as any).from = (table: string) => table === 'platform_admins'
+      ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: '42703', message: 'column platform_admins.email does not exist' } }) }) }) }
+      : realFrom(table);
+    r = await call(meRoute.GET, adminUser, 'GET');
+    check('SRV-5: when the platform_admins lookup fails nobody is let in: 503 admin_unavailable, not a 500 and not access', r.status === 503 && r.body.code === 'admin_unavailable', r);
+    (d as any).from = realFrom;
+    r = await call(meRoute.GET, adminUser, 'GET');
+    check('SRV-5: ...and once the table can be read again access returns at once (the failure was not cached)', r.status === 200 && r.body.role === 'super_admin', r);
   } finally {
     await d.from('platform_admins').delete().like('first_name', 'PT').eq('last_name', 'Admin');
+    await d.from('platform_roles').delete().eq('key', 'zz_support_ro');
     if (riderIds.length) await d.from('riders').delete().in('id', riderIds); // push_tokens cascade
   }
   console.log(`${passed} checks passed`);

@@ -6,6 +6,7 @@
 // Run from frontend/:  npx tsx scripts/admin-checks.ts
 for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY']) delete process.env[k];
 process.env.MASTER_APP_URL = 'https://master.example.com, https://console.example.com';
+process.env.ADMIN_DEV_TOKENS = '1'; // development tokens are off unless asked for (SRV-9 P3-4); the checks below ask
 
 let passed = 0;
 function check(what: string, ok: boolean, detail?: unknown) {
@@ -64,6 +65,26 @@ async function main() {
   check('read-only role can list listings', (await call(listings, 'GET', 'admin/listings', { token: SALES })).status === 200);
   const readOnlyWrite = await call(listings, 'POST', 'admin/listings', { token: SALES, body: {} });
   check('read-only role cannot create a listing: 403 read_only_role', readOnlyWrite.status === 403 && readOnlyWrite.body.code === 'read_only_role', readOnlyWrite);
+
+  // ---------- SRV-5 / SRV-9 P3-4: who counts as a platform admin ----------
+  delete process.env.ADMIN_DEV_TOKENS;
+  const noFlag = await call(me, 'GET', 'admin/me', { token: MASTER });
+  check('development tokens are refused unless ADMIN_DEV_TOKENS=1 (503, not a sign-in)', noFlag.status === 503 && noFlag.body.code === 'database_not_connected', noFlag);
+  process.env.ADMIN_DEV_TOKENS = '1';
+  const nodeEnv = process.env.NODE_ENV;
+  Object.assign(process.env, { NODE_ENV: 'production' });
+  const inProd = await call(me, 'GET', 'admin/me', { token: MASTER });
+  check('development tokens never work in production, flag or not', inProd.status === 503 && inProd.body.code === 'database_not_connected', inProd);
+  if (nodeEnv === undefined) Reflect.deleteProperty(process.env, "NODE_ENV"); else process.env.NODE_ENV = nodeEnv;
+  const admin = await import('../server/admin');
+  const adminRow = (over: Record<string, unknown> = {}, role: unknown = { key: 'super_admin', is_active: true }) => ({ user_id: 'u1', status: 'Active', first_name: 'A', last_name: 'B', platform_roles: role, ...over }) as any;
+  const liveAdmin = admin.adminFromRow(adminRow(), 'a@example.com');
+  check('live: an Active admin on the active super_admin role is an admin who can write', liveAdmin?.role === 'super_admin' && liveAdmin.canWrite === true && liveAdmin.fullName === 'A B', liveAdmin);
+  check('live: an array-shaped role embed is read the same way', admin.adminFromRow(adminRow({}, [{ key: 'super_admin', is_active: true }]), null)?.role === 'super_admin');
+  check('live: a limited role is not a One Local admin, whatever it is called', admin.adminFromRow(adminRow({}, { key: 'support_ro', is_active: true }), null) === null && admin.adminFromRow(adminRow({}, { key: 'operations', is_active: true }), null) === null && admin.adminFromRow(adminRow({}, { key: 'master_admin', is_active: true }), null) === null);
+  check('live: a deactivated super_admin role is refused', admin.adminFromRow(adminRow({}, { key: 'super_admin', is_active: false }), null) === null && admin.adminFromRow(adminRow({}, { key: 'super_admin' }), null) === null);
+  check('live: Suspended, Inactive and Pending admins are refused', ['Suspended', 'Inactive', 'Pending'].every(status => admin.adminFromRow(adminRow({ status }), null) === null));
+  check('live: no role, or a row of an unexpected shape, is refused (fails closed)', admin.adminFromRow(adminRow({}, null), null) === null && admin.adminFromRow({ user_id: 'u1' } as any, null) === null && admin.adminFromRow(adminRow({ status: undefined }), null) === null);
 
   // ---------- CORS ----------
   const pre = await call(listings, 'OPTIONS', 'admin/listings', { origin: ALLOWED, headers: { 'access-control-request-method': 'POST' } });

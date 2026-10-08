@@ -9,9 +9,11 @@ import { ProductCard } from './product-card';
 import { Tap } from './tap';
 import { OneLottie } from './one-lottie';
 import { CornerGlow } from './corner-glow';
+import { useFormat, useTranslation } from '../i18n';
 
 export function SectionTitle({ title, subtitle, onPress, id }: { title: string; subtitle?: string; onPress?: () => void; id: string }) {
-  return <View style={styles.heading}><View style={styles.headingText}><Text testID={`${id}-heading`} style={styles.title}>{title}</Text>{subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}</View>{onPress && <Pressable testID={`${id}-see-all`} accessibilityLabel={`See all ${title}`} onPress={onPress} style={styles.seeAll}><Text style={styles.seeText}>See all</Text><Icon name="arrow-forward" size={14} color={colors.forest} /></Pressable>}</View>;
+  const { t } = useTranslation();
+  return <View style={styles.heading}><View style={styles.headingText}><Text testID={`${id}-heading`} style={styles.title}>{title}</Text>{subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}</View>{onPress && <Pressable testID={`${id}-see-all`} accessibilityLabel={t('home.seeAllLabel', { title })} onPress={onPress} style={styles.seeAll}><Text style={styles.seeText}>{t('common.seeAll')}</Text><Icon name="arrow-forward" size={14} color={colors.forest} /></Pressable>}</View>;
 }
 export function ProductRail({ products, scope }: { products: Product[]; scope: string }) {
   return <ScrollView horizontal testID={`${scope}-rail`} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{products.map(p => <ProductCard key={p.id} product={p} scope={scope} />)}</ScrollView>;
@@ -36,14 +38,18 @@ export function CategoryRail({ categories, scope }: { categories: Category[]; sc
   const router = useRouter();
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{categories.map(c => <Tap key={c.id} testID={`${scope}-category-${c.id}`} onPress={() => router.push(`/category/${c.id}` as any)} style={styles.category}><Image source={c.image} style={styles.categoryImage} contentFit="cover" /><Text style={styles.categoryName}>{c.name}</Text></Tap>)}</ScrollView>;
 }
+// The server's event kind ('movies' | 'events' | 'activities') shown as the tag in the visitor's language; an unknown kind shows as sent.
+const EVENT_KIND_KEYS = { movies: 'departments.filters.movies', events: 'departments.filters.events', activities: 'departments.filters.activities' } as const;
 export function EventRail({ events, scope }: { events: EventListing[]; scope: string }) {
-  const router = useRouter();
+  const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat();
+  const kindLabel = (kind: string) => { const key = (EVENT_KIND_KEYS as Record<string, (typeof EVENT_KIND_KEYS)[keyof typeof EVENT_KIND_KEYS]>)[kind]; return (key ? t(key) : kind).toUpperCase(); };
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{events.map(e => <Tap key={e.id} testID={`${scope}-event-${e.id}`} style={styles.event} onPress={() => router.push(`/booking/${e.id}` as any)}>
-    <CornerGlow color={colors.book} corner="bottom-right" size={200} strength={0.18} /><Image source={e.image} style={styles.eventImage} contentFit="cover" /><View style={styles.eventTag}><Text style={styles.eventTagText}>{e.kind.toUpperCase()}</Text></View><View style={styles.eventContent}><Text style={styles.eventTitle}>{e.title}</Text><Text style={styles.subtitle}>{e.subtitle}</Text><View style={styles.eventBottom}><Text style={styles.eventPrice}>From ₹{e.price}</Text><Icon name="arrow-forward" size={18} color={colors.book} /></View></View>
+    <CornerGlow color={colors.book} corner="bottom-right" size={200} strength={0.18} /><Image source={e.image} style={styles.eventImage} contentFit="cover" /><View style={styles.eventTag}><Text style={styles.eventTagText}>{kindLabel(e.kind)}</Text></View><View style={styles.eventContent}><Text style={styles.eventTitle}>{e.title}</Text><Text style={styles.subtitle}>{e.subtitle}</Text><View style={styles.eventBottom}><Text style={styles.eventPrice}>{t('home.fromPrice', { price: fmt.money(e.price) })}</Text><Icon name="arrow-forward" size={18} color={colors.book} /></View></View>
   </Tap>)}</ScrollView>;
 }
 export function LoadState({ error, retry }: { error?: boolean; retry?: () => void }) {
-  return <View style={styles.loading} testID={error ? 'catalog-error' : 'catalog-loading'}>{error ? <><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={styles.title}>Couldn’t load this right now</Text><Pressable testID="catalog-retry" style={styles.retry} onPress={retry}><Text style={styles.seeText}>Try again</Text></Pressable></> : <OneLottie testID="catalog-loader" name="neon-loader" size={88} loop />}</View>;
+  const { t } = useTranslation();
+  return <View style={styles.loading} testID={error ? 'catalog-error' : 'catalog-loading'}>{error ? <><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={styles.title}>{t('home.loadFailed')}</Text><Pressable testID="catalog-retry" style={styles.retry} onPress={retry}><Text style={styles.seeText}>{t('common.retry')}</Text></Pressable></> : <OneLottie testID="catalog-loader" name="neon-loader" size={88} loop />}</View>;
 }
 const styles = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 26, marginBottom: 13, gap: 8 }, headingText: { flex: 1 },

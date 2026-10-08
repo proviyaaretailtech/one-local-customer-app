@@ -1,4 +1,101 @@
-# Online payments (Razorpay)
+# Online payments (Cashfree, with Razorpay kept as a fallback)
+
+## App API (Cashfree)
+
+Contract for the customer app. Written 2026-10-08 before the server code, then built exactly to it.
+Everything lives under `${API}/payments/…` (`API = BACKEND + '/api'`). Every call carries the same identity
+headers as the rest of the app (`identity()`); money moves only on the server. The app never sees a secret: it
+gets a short-lived `payment_session_id` and a page address. Errors are `{ "detail": "<plain words>", "code"?: "<machine code>" }`.
+
+**Which provider.** Cashfree if `CASHFREE_PG_APP_ID` + `CASHFREE_PG_SECRET_KEY` are set, else Razorpay if its keys are set, else cash only. Every response says `"provider"`. Razorpay responses keep their old shape.
+
+**Rules the screen must follow**
+1. The result a payment page or the browser reports is only a cue. After any return, call `GET /payments/status` and believe only that.
+2. UPI app / QR / card / netbanking / wallet go through Cashfree. Typing a UPI ID (collect) is offered last: NPCI is switching it off on Android and desktop (Cashfree blocks it since 28 Feb 2026, iOS still works). Main UPI path = hosted page (shows UPI apps, intent and QR itself) or `POST /payments/upi` with `mode: "intent" | "qr"`.
+3. Never let the customer pay twice: while `outcome` is `pending`, show "we are confirming with your bank, do not pay again" and keep polling; do not offer a new attempt.
+4. A failed, dropped or expired payment never loses the order: the checkout stays; retry with `POST /payments/order` (same `Idempotency-Key`, same basket) or switch it to cash with `POST /payments/cod`.
+
+**1. `GET /payments/methods?total=<rupees>`** (total optional; needed for the cash-on-delivery limit)
+```json
+{ "provider": "cashfree", "online": true, "environment": "sandbox",
+  "cod":  { "available": true, "reason": null, "max_total": null, "note": "Pay cash to the rider at your door, keep exact change" },
+  "upi":  { "available": true, "hosted": true, "apps": ["google_pay","phonepe","paytm","bhim"], "intent": true, "qr": true, "collect": true, "collect_note": "May not work on Android phones" },
+  "card": { "available": true, "hosted": true }, "netbanking": { "available": true, "hosted": true }, "wallet": { "available": true, "hosted": true } }
+```
+`cod.reason` when not available: `"over_limit"` (with `max_total`) or `"disabled"`. `environment: "sandbox"` means test money: show a "Test mode" ribbon. With no provider: `online:false`, everything else `available:false`, cod stays available.
+
+**2. `POST /payments/order`** (header `Idempotency-Key` required, as today)
+Body: `{ items, total, coupon_code, address, payment_method: "upi"|"card"|"netbanking"|"wallet", upi_app?: "google_pay"|"phonepe"|"paytm"|"bhim"|null, prefill: { name, email, contact } }` (`contact` = 10-digit mobile; Cashfree needs it on every order).
+Row mapping: UPI -> `upi`; Cards -> `card`; "Netbanking and wallets" -> `netbanking`.
+```json
+{ "provider": "cashfree", "environment": "sandbox", "checkout_id": "<uuid>", "order_id": "<first store order>", "order_ids": ["…"],
+  "payment_status": "pending", "amount": 123400, "amount_rupees": 1234, "currency": "INR",
+  "payment_session_id": "session_…", "cf_order_id": "…", "expires_at": "2026-10-08T12:30:00+05:30",
+  "checkout_url": "https://<api host>/api/payments/checkout-page?checkout=<id>&t=<token>",
+  "return_url":   "https://<api host>/api/payments/return?checkout=<id>&t=<token>",
+  "poll": { "status_path": "/payments/status?checkout_id=<id>", "every_ms": 3000, "give_up_after_ms": 300000 } }
+```
+`amount` is paise, the server's own total. If already paid: `payment_status:"paid"`, no session fields: go straight to the success screen.
+Errors: 400 `choose_method`; 400 `phone_required` (ask for the mobile number); 409 `price_changed`; 409 `switched_to_cash`; 409 `payment_in_progress` (an earlier attempt is still being confirmed); 502 `gateway_unavailable` ("No money was taken"); 503 `online_payments_off`.
+
+**3. Open the hosted page** (cards, netbanking, wallets, and UPI apps/QR): open `checkout_url` in the in-app browser (phone WebView) or a new tab/modal (web). `t` is a signed token bound to this checkout (30 min), so no headers are needed (a WebView that still sends identity headers also works). The page loads Cashfree's own checkout (`https://sdk.cashfree.com/js/v3/cashfree.js`, mode from `CASHFREE_ENV`); card numbers and PINs never reach our server. When Cashfree finishes it sends the browser to `return_url`, a plain result page that (a) posts `{ "type": "done"|"failed"|"dismiss", "checkout_id": "<id>", "hint": "paid"|"pending"|"failed" }` to `window.ReactNativeWebView` (phone) or `window.parent` / `window.opener` (web), and (b) shows a button to the deep link `onecity://payment-result?checkout_id=<id>&status=<hint>`. Close the browser on any message, then call status (rule 1). If the customer closes the browser by hand: call status once, then treat `pending` as "cancelled", back to the method list with the cart intact.
+
+**4. `POST /payments/upi`** (optional direct UPI, no hosted page). Body `{ checkout_id, mode: "intent"|"qr"|"collect", app?: "google_pay"|"phonepe"|"paytm"|"bhim", upi_id? }`.
+```json
+{ "checkout_id": "<id>", "mode": "intent", "payment_status": "pending", "cf_payment_id": "…",
+  "intent":  { "links": { "google_pay": "tez://upi/pay?…", "phonepe": "phonepe://…", "paytm": "paytmmp://…", "bhim": "upi://pay?…", "default": "upi://pay?…" }, "url": null },
+  "qr":      { "image": "data:image/png;base64,…", "upi_uri": "upi://pay?…" },
+  "collect": { "upi_id_masked": "te***@gocash", "expires_at": "…", "expires_in_s": 300 },
+  "poll": { "status_path": "/payments/status?checkout_id=<id>", "every_ms": 3000, "give_up_after_ms": 300000 } }
+```
+Only the block for the chosen mode is present. `intent`: open `links[app]` (or `default`) with `Linking.openURL`, then poll. `collect`: show a 5-minute countdown "approve the request in your UPI app". Errors: 400 `upi_id_invalid`; 409 `session_expired` (call `POST /payments/order` again); 409 `payment_in_progress`; 502 `upi_direct_unavailable` (Cashfree has not enabled direct UPI for this account: fall back to the hosted page).
+
+**5. `GET /payments/status?checkout_id=<id>`** (the only source of truth for the screen; safe to call as often as every 2 s; asks Cashfree itself when the answer is still pending)
+```json
+{ "provider": "cashfree", "checkout_id": "<id>", "order_id": "…", "order_ids": ["…"], "amount": 123400,
+  "payment_status": "pending|paid|failed|refunded|not_charged",
+  "outcome": "pending|paid|failed|dropped|expired|refunded|cod",
+  "method": "upi", "message": "plain words for a failure, else null", "retry_ok": true, "poll_after_ms": 3000 }
+```
+`paid`: success screen. `pending`: "confirming with your bank", keep polling (`poll_after_ms`), never "pay again". `failed`/`dropped`/`expired`: reason in `message`, "try another method" (rule 4). `poll_after_ms` is `null` once final.
+
+**6. `POST /payments/verify`** `{ checkout_id }`: same re-read as status, answers `{ order_id, checkout_id, order_ids, payment_status }` (kept for older code paths; Razorpay still needs its signature fields).
+**7. `POST /payments/cod`** `{ checkout_id }`: unchanged. Switches a pending/failed online checkout to pay on delivery. A payment that still lands later is refunded automatically.
+**8. `GET /payments/refund-status?checkout_id=<id>` (or `order_id=`)**: for the refund line on the order screen.
+```json
+{ "checkout_id": "<id>", "refunded_total": 0, "refunds": [ { "id": "<uuid>", "order_id": "<uuid>", "amount": 250, "state": "initiated|processed|failed",
+  "method": "original|credit|manual|cash", "created_at": "…", "processed_at": null, "eta_text": "3-5 working days" } ] }
+```
+`initiated` = queued or accepted by the gateway; `processed` = confirmed by the gateway; `failed` = our team is retrying (show the support link). Cash orders never show a gateway refund; a manual/credit entry is shown as `method: "manual"|"credit"`.
+**9. Server to server (the app never calls these):** `POST /payments/webhook` (Cashfree, signed), `GET /payments/webhook` (health, answers `{ok:true}`), `GET /payments/return` (result page, step 3).
+
+---
+
+## Cashfree in plain English (2026-10-08)
+
+**What it does.** Customers can pay by UPI (Google Pay, PhonePe, Paytm, BHIM, QR), debit or credit card, netbanking and wallets, or choose cash on delivery. Cards, netbanking and wallets are typed on Cashfree's own page, so card numbers never reach us. The server decides the amount from the cart; the app's number is only a check.
+
+**Switching it on.** Put `CASHFREE_PG_APP_ID`, `CASHFREE_PG_SECRET_KEY`, `CASHFREE_ENV` (`sandbox` for test money, `production` for real money) and `CASHFREE_API_VERSION` (`2026-01-01`) on the server. With these set, Cashfree is used. Razorpay keeps working for payments that were started with it. Set `PUBLIC_BASE_URL` to the public https address of the API so Cashfree can send results back. `FEATURE_COD=off` hides cash on delivery; `COD_MAX_TOTAL=<rupees>` refuses larger cash baskets.
+
+**Tell Cashfree where to report (webhook).** Dashboard, Payment Gateway, Developers, Webhooks: address `https://<api address>/api/payments/webhook`, events Payment success, Payment failed, Payment user dropped, Refund status. A laptop cannot receive webhooks; there the app asks Cashfree directly, and the server re-checks any payment still pending after 2 minutes.
+
+**When something goes wrong.**
+- Customer closes the page or the bank declines: the order is kept, the screen says no money was taken, and they can try another way or choose cash.
+- Payment is slow: the screen says "we are confirming with your bank, do not pay again" and a second payment cannot be opened meanwhile.
+- Customer pays after choosing cash: the money is refunded automatically.
+
+**Refunds.** A cancelled or failed paid order is refunded in full to the original payment method (3-5 working days) through Cashfree, the gateway that took the money. Partial refunds work the same way and can never add up to more than was paid. A refund shows "initiated" until Cashfree confirms it. If Cashfree refuses, the refund stays in the retry queue and, after the last try, is shown to operations. Cash orders never go to the gateway.
+
+**Not done yet.** Guest-bill and POS online payments (Partner app): `server/pos-payments.ts` is a placeholder that answers "unknown order". UPI collect (typing a UPI ID) is offered last because Android and desktop are switching it off. The live sandbox test could not run: Cashfree answered 401 "authentication Failed" to the supplied test keys.
+
+### Developer notes (Cashfree)
+- Code: `server/cashfree.ts` (API client, webhook check), `server/payment-provider.ts` (interface, provider choice, cash rule, refund gateways), `server/cashfree-checkout.ts` (order, status, UPI, hosted and return pages, webhook, sweep, refund status), `server/refunds.ts` (refunds by provider, worker, poll), routes in `app/api/payments/`.
+- Database: migration `0238_cashfree_payments.sql` (provider and Cashfree ids on `ol_checkouts`, `payment_webhook_events` unique `(provider, event_id)`, refund provider columns, `ol_refund_events` history, `ol_refund_provider_update`). Rollback `database/rollback/0238_down.sql`.
+- Webhook: signature `base64(HMAC-SHA256(secret, x-webhook-timestamp + raw body))`, constant-time compare, timestamp within 5 minutes; event id = hash of the raw body (identical on every retry).
+- Cashfree order id = checkout id (a later attempt after expiry: `<checkout id>-<n>`). Refund id `olr_<24 hex>`: stable per order and amount already refunded, so a retry never makes a second refund; a new id only after Cashfree itself reports CANCELLED or REJECTED.
+- Checks: `npx tsx scripts/cashfree-checks.ts` (fake Cashfree; the refund part uses the local database).
+
+---
 
 The One Local app can now take real online payments through Razorpay: UPI (Google Pay, PhonePe,
 Paytm, BHIM, WhatsApp, or a UPI ID / QR code), debit and credit cards, netbanking, wallets, and

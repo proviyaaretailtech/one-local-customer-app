@@ -3,7 +3,8 @@ import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { usePathname, useRouter } from 'expo-router';
 import { colors } from '../theme';
-import { departments } from '../departments';
+import { departments, departmentName } from '../departments';
+import { useTranslation } from '../i18n';
 import { mediaUrl } from '../api';
 import { nativeDriver, useMotionAllowed } from '../motion';
 
@@ -17,11 +18,11 @@ function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean
   return <Animated.View style={[styles.circle, selected && styles.selected, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v2`)} style={[styles.icon, { borderRadius: 18 }]} contentFit="contain" /></Animated.View>;
 }
 export function DepartmentStrip() {
-  const path = usePathname(); const router = useRouter();
+  const path = usePathname(); const router = useRouter(); const { t } = useTranslation();
   return <View testID="department-strip" style={styles.row}>{departments.map((d, i) => {
     const selected = path === d.route || (d.id === 'care' && ['/beauty', '/pharmacy'].includes(path));
-    return <Pressable testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={d.label.replace('\n', ' ')} accessibilityState={{ selected }} key={d.id} onPress={() => router.navigate(d.route as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
-      <DepartmentIcon id={d.id} selected={selected} delay={i * 65} /><Text testID={`department-label-${d.id}`} style={[styles.label, selected && styles.active, selected && { color: d.color }]}>{d.label}</Text>{selected && <View style={[styles.dot, { backgroundColor: d.color }]} />}
+    return <Pressable testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={departmentName(t, d.id).replace('\n', ' ')} accessibilityState={{ selected }} key={d.id} onPress={() => router.navigate(d.route as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+      <DepartmentIcon id={d.id} selected={selected} delay={i * 65} /><Text testID={`department-label-${d.id}`} style={[styles.label, selected && styles.active, selected && { color: d.color }]}>{departmentName(t, d.id)}</Text>{selected && <View style={[styles.dot, { backgroundColor: d.color }]} />}
     </Pressable>;
   })}</View>;
 }

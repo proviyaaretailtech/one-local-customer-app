@@ -9,6 +9,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, SUPABASE_KEY, SUPABASE_URL } from './lib/supabase';
 import { useCustomer } from './customer';
 import { afterSignIn } from './privacy';
+import { t } from '@/src/i18n';
 
 type AuthState = {
   ready: boolean; session: Session | null; googleAvailable: boolean; phoneAvailable: boolean;
@@ -20,19 +21,20 @@ type AuthState = {
   signOut: (everywhere?: boolean) => Promise<void>;
 };
 
-// Supabase's own messages, in words a customer can act on.
+// Supabase's own messages, in words a customer can act on. The regexes match Supabase's English text;
+// what comes back is in the app language at the moment the error happens (t is read at call time).
 function friendly(message: string): string {
-  if (/invalid login credentials/i.test(message)) return 'That email and password don’t match. Check them and try again.';
-  if (/already registered|already exists/i.test(message)) return 'An account with this email already exists. Sign in instead.';
-  if (/password should be at least/i.test(message)) return 'Choose a password with at least 6 characters.';
-  if (/email not confirmed/i.test(message)) return 'Please confirm your email first — check your inbox for the link.';
-  if (/token has expired or is invalid|otp.*(expired|invalid)|invalid.*otp/i.test(message)) return 'That code is wrong or has expired. Check it, or send a new one.';
+  if (/invalid login credentials/i.test(message)) return t('auth.error.invalidCredentials');
+  if (/already registered|already exists/i.test(message)) return t('auth.error.alreadyRegistered');
+  if (/password should be at least/i.test(message)) return t('auth.error.passwordWeak');
+  if (/email not confirmed/i.test(message)) return t('auth.error.emailNotConfirmed');
+  if (/token has expired or is invalid|otp.*(expired|invalid)|invalid.*otp/i.test(message)) return t('auth.error.codeWrong');
   const wait = message.match(/after (\d+) seconds/i);
-  if (wait) return `Please wait ${wait[1]} seconds before asking for another code.`;
-  if (/phone.*(disabled|not enabled)|unsupported phone provider|signups not allowed for otp/i.test(message)) return 'Sign-in by mobile number isn’t switched on yet. Please use your email for now.';
-  if (/sending.*(sms|otp)|sms.*(send|fail)/i.test(message)) return 'We couldn’t send the code. Check the number and try again in a minute.';
-  if (/invalid phone|phone number/i.test(message)) return 'Enter a valid 10-digit mobile number.';
-  if (/rate limit|too many/i.test(message)) return 'Too many attempts. Please wait a minute and try again.';
+  if (wait) return t('auth.error.waitSeconds', { seconds: wait[1] });
+  if (/phone.*(disabled|not enabled)|unsupported phone provider|signups not allowed for otp/i.test(message)) return t('auth.error.phoneOff');
+  if (/sending.*(sms|otp)|sms.*(send|fail)/i.test(message)) return t('auth.error.smsFailed');
+  if (/invalid phone|phone number/i.test(message)) return t('auth.error.mobileInvalid');
+  if (/rate limit|too many/i.test(message)) return t('errors.code.rate_limited');
   return message;
 }
 const AuthContext = createContext<AuthState | null>(null);
@@ -54,7 +56,7 @@ const googleEnabled = async () => (await providers()).google;
 export const mobileDigits = (value: string) => value.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
 function e164(mobile: string) {
   const digits = mobileDigits(mobile);
-  if (!/^[6-9]\d{9}$/.test(digits)) throw new Error('Enter a valid 10-digit mobile number.');
+  if (!/^[6-9]\d{9}$/.test(digits)) throw new Error(t('auth.error.mobileInvalid'));
   return `+91${digits}`;
 }
 
@@ -92,8 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (session?.user?.id) void afterSignIn(); }, [session?.user?.id]);
 
   const signInWithGoogle = async () => {
-    if (!supabase) throw new Error('Sign-in is not configured for this build.');
-    if (!(await googleEnabled())) throw new Error('Google sign-in is not switched on yet. Please try again later.');
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
+    if (!(await googleEnabled())) throw new Error(t('auth.error.googleOff'));
     if (Platform.OS === 'web') {
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/account` } });
       if (error) throw error;
@@ -101,17 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const redirectTo = Linking.createURL('account');
     const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect: true } });
-    if (error || !data?.url) throw error ?? new Error('Could not start Google sign-in.');
+    if (error || !data?.url) throw error ?? new Error(t('auth.error.googleStart'));
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success') return; // cancelled
     const code = new URL(result.url).searchParams.get('code');
-    if (!code) throw new Error('Google sign-in did not finish. Please try again.');
+    if (!code) throw new Error(t('auth.error.googleUnfinishedRetry'));
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) throw exchangeError;
   };
 
   const signInWithEmail = async (email: string, password: string) => {
-    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) throw new Error(friendly(error.message));
   };
@@ -119,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // A new account signs straight in when the project auto-confirms emails; otherwise the customer
   // is told to confirm from their inbox first.
   const signUpWithEmail = async (name: string, email: string, password: string) => {
-    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
     const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: name.trim() } } });
     if (error) throw new Error(friendly(error.message));
     if (name.trim() && customerReady) await update({ profile: { ...profile, name: profile.name || name.trim(), email: profile.email || email.trim().toLowerCase() } }).catch(() => {});
@@ -129,14 +131,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Mobile number sign-in: Supabase texts a one-time code (creating the account the first time),
   // then the code signs the customer in. Needs Supabase's Phone provider and an SMS provider.
   const sendPhoneCode = async (mobile: string) => {
-    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
     const { error } = await supabase.auth.signInWithOtp({ phone: e164(mobile) });
     if (error) throw new Error(friendly(error.message));
   };
   const verifyPhoneCode = async (mobile: string, code: string) => {
-    if (!supabase) throw new Error('Sign-in is not configured for this build.');
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
     const token = code.replace(/\D/g, '');
-    if (token.length < 4) throw new Error('Enter the code we sent you.');
+    if (token.length < 4) throw new Error(t('auth.error.codeMissing'));
     const { error } = await supabase.auth.verifyOtp({ phone: e164(mobile), token, type: 'sms' });
     if (error) throw new Error(friendly(error.message));
   };
@@ -145,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ends every session of the account, e.g. after losing a phone.
   const signOut = async (everywhere = false) => {
     const { error } = (await supabase?.auth.signOut({ scope: everywhere ? 'global' : 'local' })) ?? { error: null };
-    if (error) throw new Error('Couldn’t sign out right now. Check your connection and try again.');
+    if (error) throw new Error(t('auth.error.signOut'));
   };
 
   return <AuthContext.Provider value={{ ready, session, googleAvailable, phoneAvailable, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
@@ -153,6 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const value = useContext(AuthContext);
-  if (!value) throw new Error('AuthProvider missing');
+  if (!value) throw new Error('AuthProvider missing'); // i18n-ignore: developer error
   return value;
 }

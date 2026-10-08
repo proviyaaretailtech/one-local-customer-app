@@ -1,4 +1,7 @@
 // Online payments through Razorpay (Orders API + Razorpay Checkout). Plain-English guide: docs/PAYMENTS.md.
+// Cashfree is the active provider whenever CASHFREE_PG_APP_ID + CASHFREE_PG_SECRET_KEY are set (payment-provider.ts activeProvider); its checkout,
+// status, UPI, hosted page, webhook and sweep live in cashfree-checkout.ts and this file hands over to it. Everything below that says
+// Razorpay is unchanged and still serves checkouts that were started with Razorpay (ol_checkouts.payment_provider).
 //
 //   1. POST /api/payments/order   saves the checkout as payment 'pending' (createCheckout prices it and
 //                                 splits it into one order per store) and opens ONE Razorpay order for
@@ -15,43 +18,17 @@
 // cash on delivery exactly as before.
 import { caller } from './auth';
 import { db, dbConfigured } from './db';
-import { features } from './features';
-import { customerKey, HttpError, limit, readBody, signatureOk } from './http';
-import { dispatchOrders } from './dispatch';
+import { clientIp, HttpError, limit, readBody, readText, signatureOk } from './http';
+import { adoptOrders, dispatchOrders } from './dispatch';
+import { limitCaller } from './limits';
+import { closeCashfreeOrder, reconcileCashfreeCheckout, startCashfreePayment } from './cashfree-checkout';
+import { activeProvider, codRule } from './payment-provider';
+import { razorpay, razorpayKeys as keys, requireKeys } from './razorpay';
+import { refundLateCapture } from './refunds';
 import { createCheckout, findPayment, ONLINE_METHODS, PaymentMethod, PaymentRecord, recordGatewayRefund, updatePayment } from './store';
-
-const RAZORPAY = 'https://api.razorpay.com/v1';
-const keys = () => ({
-  id: process.env.RAZORPAY_KEY_ID?.trim() ?? '',
-  secret: process.env.RAZORPAY_KEY_SECRET?.trim() ?? '',
-  webhook: process.env.RAZORPAY_WEBHOOK_SECRET?.trim() ?? '',
-});
-
-function requireKeys() {
-  const k = keys();
-  if (!features().online_payments || !k.id || !k.secret) throw new HttpError(503, 'Online payment is not available right now. Please choose Pay on delivery.');
-  return k;
-}
 
 const paise = (rupees: number) => Math.round(rupees * 100);
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
-
-async function razorpay<T>(path: string, body?: unknown): Promise<T> {
-  const k = requireKeys();
-  const r = await fetch(`${RAZORPAY}${path}`, {
-    method: body ? 'POST' : 'GET',
-    headers: { Authorization: `Basic ${btoa(`${k.id}:${k.secret}`)}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(10_000),
-  });
-  const json = await r.json().catch(() => null);
-  if (!r.ok) {
-    // Only Razorpay's error code and short description are logged, never a payload.
-    console.error('[payments] razorpay', path.split('/')[1], r.status, json?.error?.code, text(json?.error?.description, 200));
-    throw new HttpError(502, 'Could not reach the payment service. No money was taken. Please try again.');
-  }
-  return json as T;
-}
 
 // ---------- Signatures ----------
 // Razorpay signs with HMAC-SHA256 and sends the result as hex; the check lives in http.ts.
@@ -97,9 +74,10 @@ const reply = (record: PaymentRecord, payment_status: string) => ({ order_id: re
 // ---------- 1. Start a payment ----------
 type StartBody = { payment_method?: unknown; upi_app?: unknown; prefill?: { name?: unknown; email?: unknown; contact?: unknown } };
 
-export async function startPayment(request: Request, city: string) {
+export async function startPayment(request: Request, city: string): Promise<Record<string, any>> {
+  if (activeProvider()?.name === 'cashfree') return startCashfreePayment(request, city);
   const k = requireKeys();
-  limit(customerKey(request) ?? 'anonymous', 'pay-start', 10, 60_000);
+  await limitCaller(request, 'pay-start', 10, 60_000, { anonIpMax: 20 });
   const body = await readBody<StartBody>(request.clone());
   // Prices, coupon, the app's total check, idempotency, the split per store and payment 'pending' all
   // happen in createCheckout.
@@ -116,7 +94,7 @@ export async function startPayment(request: Request, city: string) {
       amount: paise(record.total), currency: 'INR', receipt: record.id, notes: { checkout_id: record.id },
     });
     if (created.amount !== paise(record.total)) throw new HttpError(502, 'Could not reach the payment service. No money was taken. Please try again.');
-    await updatePayment(record.id, { razorpay_order_id: created.id }, ['pending', 'failed']);
+    await updatePayment(record.id, { razorpay_order_id: created.id, payment_provider: 'razorpay' }, ['pending', 'failed']);
     record = { ...record, razorpay_order_id: created.id };
   }
 
@@ -125,14 +103,16 @@ export async function startPayment(request: Request, city: string) {
   const prefill = { name: text(p.name, 80), email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '', contact: /^[6-9]\d{9}$/.test(contact) ? `+91${contact}` : '' };
   const method = text(body.payment_method, 20), app = text(body.upi_app, 20);
   return {
-    ...reply(record, record.payment_status),
+    provider: 'razorpay' as const, ...reply(record, record.payment_status),
     razorpay_order_id: record.razorpay_order_id, key_id: k.id, amount: paise(record.total), currency: 'INR', prefill,
     checkout: checkoutOptions(record, k.id, method, app),
   };
 }
 
 // ---------- 2. The app reports a successful payment ----------
-const PAYABLE = ['pending', 'failed', 'not_charged'] as const;
+// Only a checkout still waiting for its online payment can become paid. 'not_charged' is NOT here: that is a checkout the customer
+// switched to pay on delivery, and a payment that shows up for it later is refunded, never turned into a paid order (SRV-3).
+const PAYABLE = ['pending', 'failed'] as const;
 
 // Razorpay's own record of the payment: the method actually used and the amount actually taken.
 // Best effort — if Razorpay cannot be reached the signature alone is proof enough (Razorpay's guidance),
@@ -145,24 +125,41 @@ async function fetchPayment(paymentId: string) {
 const KNOWN_METHODS: PaymentMethod[] = ['upi', 'card', 'netbanking', 'wallet', 'paylater', 'emi', 'cardless_emi'];
 const asMethod = (m: unknown) => (KNOWN_METHODS.includes(m as PaymentMethod) ? (m as PaymentMethod) : undefined);
 
-async function markPaid(record: PaymentRecord, paymentId: string, method: PaymentMethod | undefined) {
-  const changed = await updatePayment(record.id, {
-    payment_status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), payment_error: null, ...(method ? { payment_method: method } : {}),
-  }, [...PAYABLE]);
-  // The orders are now successful: ping the rider pool (idempotent, so the app's verify and Razorpay's
-  // webhook both landing is safe).
-  if (changed) await dispatchOrders(record.order_ids);
-  // Paid twice for one checkout (two tabs, two phones): keep the first, flag the second for a refund.
-  if (!changed && record.razorpay_payment_id && record.razorpay_payment_id !== paymentId) {
-    console.error('[payments] second payment on an already-paid checkout — refund it from the Razorpay dashboard', record.id, paymentId);
+// What happened to the money: it paid the checkout, or it arrived after the customer chose cash and was sent back.
+type Paid = 'paid' | 'refunded_late';
+
+async function markPaid(record: PaymentRecord, paymentId: string, method: PaymentMethod | undefined): Promise<Paid> {
+  let current = record;
+  if (record.payment_method !== 'cod') {
+    const changed = await updatePayment(record.id, {
+      payment_status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), payment_error: null, ...(method ? { payment_method: method } : {}),
+    }, [...PAYABLE]);
+    // The orders are now successful: take them to their restaurants and ping the rider pool (idempotent, so the app's verify and
+    // Razorpay's webhook both landing is safe). An order no restaurant can take is cancelled and refunded inside adoptOrders.
+    if (changed) { await dispatchOrders(await adoptOrders(record.order_ids)); return 'paid'; }
+    // Not changed: someone else moved it first. If that was the customer switching to cash, this money must go back.
+    current = (await findPayment('id', record.id)) ?? record;
   }
+  if (current.payment_method === 'cod' && current.payment_status !== 'paid') {
+    // The cash order is already with a rider as a cash job (collect the full total). Keeping this payment too would charge twice.
+    if (dbConfigured()) await refundLateCapture(current.id, paymentId);
+    else console.error('[payments] a payment arrived for a checkout switched to cash; refund it from the Razorpay dashboard', current.id, paymentId);
+    return 'refunded_late';
+  }
+  // Paid twice for one checkout (two tabs, two phones): keep the first, flag the second for a refund.
+  if (current.razorpay_payment_id && current.razorpay_payment_id !== paymentId) {
+    console.error('[payments] second payment on an already-paid checkout — refund it from the Razorpay dashboard', current.id, paymentId);
+  }
+  return 'paid';
 }
 
 export async function verifyPayment(request: Request) {
-  const k = requireKeys();
-  limit(customerKey(request) ?? 'anonymous', 'pay-verify', 20, 60_000);
+  await limitCaller(request, 'pay-verify', 20, 60_000);
   const b = await readBody<Record<string, unknown>>(request);
   const record = await ownedCheckout(request, b.checkout_id ?? b.order_id);
+  // Cashfree has no client-side signature to check: the answer is Cashfree's own record of the order, re-read now (same as GET /payments/status).
+  if (record.payment_provider === 'cashfree') { const fresh = await reconcileCashfreeCheckout(record, 'verify'); return reply(fresh, fresh.payment_status); }
+  const k = requireKeys();
   const rzpOrder = text(b.razorpay_order_id, 64), paymentId = text(b.razorpay_payment_id, 64);
 
   if (record.payment_status === 'paid' && record.razorpay_payment_id === paymentId) return reply(record, 'paid');
@@ -175,7 +172,9 @@ export async function verifyPayment(request: Request) {
     await updatePayment(record.id, { payment_error: 'Paid amount did not match the order' }, ['pending', 'failed']);
     throw new HttpError(409, 'The amount paid did not match your order. Our team will refund it. Please contact support.');
   }
-  await markPaid(record, paymentId, asMethod(payment?.method));
+  if ((await markPaid(record, paymentId, asMethod(payment?.method))) === 'refunded_late') {
+    throw new HttpError(409, 'You chose to pay on delivery for this order, so this online payment is being refunded to you. Please keep cash ready for the rider.', undefined, 'switched_to_cash');
+  }
   return reply(record, 'paid');
 }
 
@@ -184,13 +183,17 @@ export async function verifyPayment(request: Request) {
 // placed, so a payment that was only slow (and lands later through the webhook) can never leave the
 // customer with two orders.
 export async function switchToCash(request: Request) {
-  limit(customerKey(request) ?? 'anonymous', 'pay-cash', 10, 60_000);
+  await limitCaller(request, 'pay-cash', 10, 60_000);
   const b = await readBody<Record<string, unknown>>(request);
   const record = await ownedCheckout(request, b.checkout_id ?? b.order_id);
   if (record.payment_status === 'paid') return reply(record, 'paid');
+  const rule = codRule(record.total);
+  if (!rule.available) throw new HttpError(409, rule.reason === 'over_limit' ? 'Pay on delivery is not available for an order this size. Please pay online.' : 'Pay on delivery is not available right now.', undefined, 'cod_unavailable');
   const switched = await updatePayment(record.id, { payment_method: 'cod', payment_status: 'not_charged', payment_error: null }, ['pending', 'failed']);
-  // A cash order is successful the moment it is placed, so it goes to the rider pool now.
-  if (switched) await dispatchOrders(record.order_ids);
+  if (switched) await closeCashfreeOrder(record); // nobody can pay the old Cashfree order any more; a payment already in flight is refunded when it lands
+  // A cash order is successful the moment it is placed, so it goes to the rider pool now. From here the checkout is a cash
+  // checkout for good: a payment that lands on its old Razorpay order later is refunded (markPaid), not turned into a paid order.
+  if (switched) { await dispatchOrders(await adoptOrders(record.order_ids)); }
   const now = await findPayment('id', record.id);
   return reply(record, now?.payment_status ?? 'not_charged');
 }
@@ -219,13 +222,18 @@ async function remember(eventId: string, event: string, record: PaymentRecord | 
 type PaymentEntity = { id: string; order_id: string; amount: number; method?: string; notes?: Record<string, string>; error_description?: string };
 
 export async function handleWebhook(request: Request) {
-  limit('razorpay', 'pay-webhook', 600, 60_000);
   const secret = keys().webhook;
   if (!secret) throw new HttpError(503, 'Payment webhook is not set up');
-  const raw = await request.text();
-  if (raw.length > 256 * 1024) throw new HttpError(413, 'Request is too large');
+  // Anyone can post here, so the signature decides before a genuine delivery is counted: unsigned or wrongly signed requests are
+  // limited per address, and only a valid one uses the shared budget, so a flood can no longer make Razorpay's real deliveries
+  // answer 429 (SRV-9 P3-1).
+  const raw = await readText(request, 256 * 1024);
   // The signature covers the exact bytes Razorpay sent, so it is checked before anything is parsed.
-  if (!(await signatureOk(secret, raw, request.headers.get('x-razorpay-signature')))) throw new HttpError(400, 'Invalid signature');
+  if (!(await signatureOk(secret, raw, request.headers.get('x-razorpay-signature')))) {
+    limit(clientIp(request), 'pay-webhook-bad', 20, 60_000);
+    throw new HttpError(400, 'Invalid signature');
+  }
+  limit('razorpay', 'pay-webhook', 600, 60_000);
 
   let body: { event?: string; payload?: { payment?: { entity?: PaymentEntity }; order?: { entity?: { id: string } }; refund?: { entity?: { id: string; payment_id: string; amount: number } } } };
   try { body = JSON.parse(raw); } catch { throw new HttpError(400, 'Invalid body'); }
@@ -270,7 +278,7 @@ export async function handleWebhook(request: Request) {
 // Name/phone/email are handed in by the app after load, so they never appear in a URL.
 export async function checkoutPage(request: Request) {
   const k = requireKeys();
-  limit(customerKey(request) ?? 'anonymous', 'pay-page', 20, 60_000);
+  await limitCaller(request, 'pay-page', 20, 60_000);
   const url = new URL(request.url);
   // `order` is the checkout id or (older app versions) one of its orders' ids.
   const record = await ownedCheckout(request, url.searchParams.get('checkout') ?? url.searchParams.get('order'));

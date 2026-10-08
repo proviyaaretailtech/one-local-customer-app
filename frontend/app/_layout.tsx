@@ -18,6 +18,7 @@ import { AuthProvider } from '@/src/auth';
 import { IntroSplash } from '@/src/components/intro-splash';
 import { CompareProvider } from '@/src/compare';
 import { AppFrame } from '@/src/layout';
+import { I18nProvider, LanguageFirstRun, ProfileLanguageSync } from '@/src/i18n';
 
 LogBox.ignoreAllLogs(true);
 
@@ -38,6 +39,7 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <I18nProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ErrorBoundary>
@@ -45,11 +47,12 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               {Platform.OS === "web" && <Head><title>OneCity</title></Head>}
-              <CustomerProvider><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell><IntroSplash /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
+              <CustomerProvider><ProfileLanguageSync /><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }} /></AppShell><LanguageFirstRun /><IntroSplash /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </I18nProvider>
   );
 }

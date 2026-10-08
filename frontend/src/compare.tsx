@@ -19,6 +19,6 @@ export function CompareProvider({ children }: { children: React.ReactNode }) {
 
 export function useCompare() {
   const value = useContext(CompareContext);
-  if (!value) throw new Error('CompareProvider missing');
+  if (!value) throw new Error('CompareProvider missing'); // i18n-ignore: developer error, never shown to a person
   return value;
 }

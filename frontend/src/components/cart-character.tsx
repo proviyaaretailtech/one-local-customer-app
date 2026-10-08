@@ -3,11 +3,12 @@ import { Animated, View, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Stop, Path, Ellipse, Circle, Rect, G } from 'react-native-svg';
 import { colors } from '../theme';
 import { nativeDriver, useMotionAllowed } from '../motion';
+import { useTranslation } from '@/src/i18n';
 
 // Layered illustration: the arm waves independently at its shoulder; the face
 // blinks separately from the body bob. All gradients use instance-unique IDs.
 export function CartCharacter({ revision, size = 174 }: { revision: number; size?: number }) {
-  const id = useId().replace(/:/g, ''); const wave = useRef(new Animated.Value(0)).current; const bob = useRef(new Animated.Value(0)).current; const blink = useRef(new Animated.Value(1)).current; const motion = useMotionAllowed();
+  const id = useId().replace(/:/g, ''); const wave = useRef(new Animated.Value(0)).current; const bob = useRef(new Animated.Value(0)).current; const blink = useRef(new Animated.Value(1)).current; const motion = useMotionAllowed(); const { t } = useTranslation();
   useEffect(() => {
     wave.setValue(0); bob.setValue(0); blink.setValue(1); if (!motion) return;
     const waving = Animated.loop(Animated.sequence([Animated.timing(wave, { toValue: 1, duration: 240, useNativeDriver: nativeDriver }), Animated.timing(wave, { toValue: -1, duration: 300, useNativeDriver: nativeDriver }), Animated.timing(wave, { toValue: 0, duration: 240, useNativeDriver: nativeDriver })]), { iterations: 4 });
@@ -15,7 +16,7 @@ export function CartCharacter({ revision, size = 174 }: { revision: number; size
     const eyes = Animated.sequence([Animated.delay(1100), Animated.timing(blink, { toValue: 0.1, duration: 85, useNativeDriver: nativeDriver }), Animated.timing(blink, { toValue: 1, duration: 120, useNativeDriver: nativeDriver })]);
     waving.start(); floating.start(); eyes.start(); return () => { waving.stop(); floating.stop(); eyes.stop(); };
   }, [wave, bob, blink, motion, revision]);
-  return <View testID="cart-character" accessibilityLabel="A smiling 3D-style OneCity helper waving hello" style={{ width: size, height: size * 1.08 }}>
+  return <View testID="cart-character" accessibilityLabel={t('cart.character.a11y')} style={{ width: size, height: size * 1.08 }}>
     <Animated.View style={[s.character, { transform: [{ translateY: bob }] }]}>
       <Svg width="100%" height="100%" viewBox="0 0 200 216"><Defs>
         <RadialGradient id={`${id}skin`} cx="35%" cy="25%" r="80%"><Stop offset="0" stopColor={colors.characterLight} /><Stop offset="0.65" stopColor={colors.characterSkin} /><Stop offset="1" stopColor={colors.characterShadow} /></RadialGradient>

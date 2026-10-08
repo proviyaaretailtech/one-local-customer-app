@@ -6,25 +6,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
 import { OneGlyph } from './one-button';
+import { useFormat, useTranslation } from '../i18n';
 
 const INK = '#050605';
-const COPY: Record<string, { icon: string; title: string; body: string; points: string[] }> = {
-  ai_search: { icon: 'scan-outline', title: 'Photo & voice search', body: 'Snap a product or just say it — in English, Hindi or Marathi — and we’ll find it in Latur stores.', points: ['Point your camera at anything', 'Speak a whole shopping list', 'Matches from real local stock'] },
-  assistant: { icon: 'sparkles-outline', title: 'One AI, your shopping helper', body: 'Ask for “a birthday party for 10 under ₹2,000” and get a ready basket from stores near you.', points: ['Plans baskets and parties', 'Knows what’s in stock nearby', 'Adds everything in one tap'] },
-  wallet: { icon: 'wallet-outline', title: 'OneCity Wallet', body: 'Refunds, store credit and OneLocal Coins in one place, spendable at checkout.', points: ['Instant refunds to your wallet', 'Pay with one tap', 'Works across every store'] },
-};
+// Which features have a "coming soon" page and their icon. The words live in the catalogue under comingSoon.<key>.
+const FEATURES = {
+  ai_search: { icon: 'scan-outline', key: 'aiSearch' },
+  assistant: { icon: 'sparkles-outline', key: 'assistant' },
+  wallet: { icon: 'wallet-outline', key: 'wallet' },
+} as const;
 
-export function ComingSoon({ feature }: { feature: keyof typeof COPY }) {
-  const router = useRouter(); const insets = useSafeAreaInsets(); const c = COPY[feature];
+export function ComingSoon({ feature }: { feature: keyof typeof FEATURES }) {
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { t } = useTranslation(); const fmt = useFormat(); const c = FEATURES[feature];
+  const points = [t(`comingSoon.${c.key}.point1`), t(`comingSoon.${c.key}.point2`), t(`comingSoon.${c.key}.point3`)];
   return <View testID={`coming-soon-${feature}`} style={[s.screen, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 110 }]}>
-    <Pressable testID="coming-soon-back" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.back}><Icon name="chevron-back" size={22} color="#fff" /></Pressable>
+    <Pressable testID="coming-soon-back" accessibilityLabel={t('common.goBack')} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.back}><Icon name="chevron-back" size={22} color="#fff" /></Pressable>
     <View style={s.body}>
-      <View style={s.badgeRow}><OneGlyph size={22} /><View style={s.pill}><Text style={s.pillText}>COMING SOON</Text></View></View>
+      <View style={s.badgeRow}><OneGlyph size={22} /><View style={s.pill}><Text style={s.pillText}>{t('comingSoon.badge')}</Text></View></View>
       <View style={s.iconWrap}><Icon name={c.icon as any} size={34} color={colors.electricLime} /></View>
-      <Text style={s.title}>{c.title}</Text>
-      <Text style={s.text}>{c.body}</Text>
-      <View style={s.points}>{c.points.map(p => <View key={p} style={s.point}><Icon name="checkmark-circle" size={16} color={colors.electricLime} /><Text style={s.pointText}>{p}</Text></View>)}</View>
-      <Pressable testID="coming-soon-search" onPress={() => router.replace('/search' as any)} style={s.cta}><Icon name="search" size={16} color={INK} /><Text style={s.ctaText}>Use text search for now</Text></Pressable>
+      <Text style={s.title}>{t(`comingSoon.${c.key}.title`)}</Text>
+      <Text style={s.text}>{t(`comingSoon.${c.key}.body`, { amount: fmt.money(2000) })}</Text>
+      <View style={s.points}>{points.map((p, i) => <View key={i} style={s.point}><Icon name="checkmark-circle" size={16} color={colors.electricLime} /><Text style={s.pointText}>{p}</Text></View>)}</View>
+      <Pressable testID="coming-soon-search" onPress={() => router.replace('/search' as any)} style={s.cta}><Icon name="search" size={16} color={INK} /><Text style={s.ctaText}>{t('comingSoon.cta')}</Text></Pressable>
     </View>
   </View>;
 }
@@ -41,7 +44,7 @@ const s = StyleSheet.create({
   text: { color: 'rgba(255,255,255,0.68)', fontSize: 14, lineHeight: 21, marginTop: 10 },
   points: { marginTop: 22, gap: 12 },
   point: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pointText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  cta: { marginTop: 32, minHeight: 52, borderRadius: 18, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  ctaText: { color: INK, fontSize: 15, fontWeight: '800' },
+  pointText: { color: '#fff', fontSize: 14, fontWeight: '600', flex: 1 },
+  cta: { marginTop: 32, minHeight: 52, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 18, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  ctaText: { color: INK, fontSize: 15, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
 });

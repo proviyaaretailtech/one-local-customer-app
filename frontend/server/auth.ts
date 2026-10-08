@@ -1,4 +1,5 @@
 // Who is calling: a signed-in customer (Supabase access token) and/or a device key.
+import { supabaseUrl } from './env';
 import { customerKey, sha256 } from './http';
 
 const g = globalThis as unknown as { __onecityUsers?: Map<string, { id: string | null; until: number }> };
@@ -14,7 +15,7 @@ export async function signedInUserId(request: Request): Promise<string | null> {
   const key = await sha256(token);
   const hit = cache.get(key);
   if (hit && hit.until > Date.now()) return hit.id;
-  const url = process.env.SUPABASE_URL;
+  const url = supabaseUrl(); // null for a remote project unless ALLOW_REMOTE=1 (server/env.ts)
   const apikey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   let id: string | null = null;
   if (url && apikey) {

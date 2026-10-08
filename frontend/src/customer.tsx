@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// From the runtime file, not the '@/src/i18n' index: the index mounts ProfileLanguageSync, which imports this file (a cycle).
+import { t } from '@/src/i18n/runtime';
 
 export type PaymentMethod = 'cod' | 'upi' | 'card' | 'netbanking' | 'wallet' | 'paylater';
 // The UPI app picked on the Payment Options screen ('id' = pay with a UPI ID instead of an app).
@@ -46,16 +48,16 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
       const ids = favourites ? JSON.parse(favourites) : [];
       current.current = next; currentSaved.current = Array.isArray(ids) ? ids.filter(x => typeof x === 'string') : [];
       setData(next); setSaved(currentSaved.current); await AsyncStorage.setItem(KEY, JSON.stringify(next));
-    } catch { setError('Could not load your saved preferences. Please reopen this screen.'); }
+    } catch { setError(t('account.storageLoadError')); }
     finally { setReady(true); }
   })(); }, []);
   const enqueue = (action: () => Promise<void>) => {
     const result = queue.current.catch(() => {}).then(action);
-    queue.current = result.catch(() => { setError('Could not save your changes. Please try again.'); });
+    queue.current = result.catch(() => { setError(t('account.storageSaveError')); });
     return result;
   };
   const update = (patch: Partial<CustomerData>) => enqueue(async () => {
-    if (!ready) throw new Error('Your profile is still loading');
+    if (!ready) throw new Error(t('account.profileLoading'));
     const next = { ...current.current, ...patch };
     await AsyncStorage.setItem(KEY, JSON.stringify(next)); current.current = next; setData(next); setError('');
   });
@@ -73,4 +75,4 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
   });
   return <CustomerContext.Provider value={{ ...data, ready, saved, error, clearError: () => setError(''), update, toggleSaved, reset }}>{children}</CustomerContext.Provider>;
 }
-export function useCustomer() { const value = useContext(CustomerContext); if (!value) throw new Error('CustomerProvider missing'); return value; }
+export function useCustomer() { const value = useContext(CustomerContext); if (!value) throw new Error('CustomerProvider missing'); return value; } // i18n-ignore: developer error

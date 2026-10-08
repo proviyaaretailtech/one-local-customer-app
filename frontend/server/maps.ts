@@ -1,7 +1,7 @@
 // Google Maps Platform, called only from the server so the key never ships in the app.
 // Uses Places API (New) for search and place details, and the Geocoding API for pin → address.
 import { SERVICE_AREAS, serviceability } from './catalog';
-import { HttpError } from './http';
+import { HttpError, redact } from './http';
 
 const KEY = () => {
   const key = process.env.GOOGLE_MAPS_API_KEY;
@@ -34,10 +34,16 @@ function describe(lat: number, lng: number, formatted: string, components: Compo
 }
 
 async function google(url: string, init: RequestInit = {}) {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
+  // The geocoding address carries the key in its query, so nothing from a failed call (the error, the reply) is logged unmasked.
+  let response: Response;
+  try { response = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) }); }
+  catch (error) {
+    console.warn('[maps] request failed:', redact((error as Error)?.name ?? 'error'));
+    throw new HttpError(502, 'Map search is unavailable right now. Please try again.');
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.warn('[maps]', response.status, JSON.stringify(body).slice(0, 300));
+    console.warn('[maps]', response.status, redact(JSON.stringify(body).slice(0, 300)));
     throw new HttpError(502, 'Map search is unavailable right now. Please try again.');
   }
   return body;
@@ -76,7 +82,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Place> {
     return describe(lat, lng, `${lat.toFixed(5)}, ${lng.toFixed(5)}`, []);
   }
   if (body.status !== 'OK') {
-    console.warn('[maps] geocode status', body.status, body.error_message);
+    console.warn('[maps] geocode status', body.status, redact(String(body.error_message ?? '')));
     throw new HttpError(502, 'Could not find this address right now. Please try again.');
   }
   const best = body.results[0];

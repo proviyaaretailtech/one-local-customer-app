@@ -17,7 +17,8 @@ import { apiGet, Product } from '@/src/api';
 import { useCart } from '@/src/cart';
 import { useCustomer } from '@/src/customer';
 import { useCompare, COMPARE_LIMIT } from '@/src/compare';
-import { unitPrice } from '@/src/unit-price';
+import { unitPrice, unitPriceLabel } from '@/src/unit-price';
+import { useFormat, useTranslation } from '@/src/i18n';
 import { paletteFor } from '@/src/departments';
 import { nativeDriver, useMotionAllowed } from '@/src/motion';
 import { ProductRail } from '@/src/components/catalog-sections';
@@ -38,10 +39,10 @@ export default function ProductDetail() {
   const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useAppDimensions();
   const { add, remove, qtyOf, totalItems, totalPrice } = useCart();
   const { saved, toggleSaved, error: savedError } = useCustomer();
-  const compare = useCompare(); const motion = useMotionAllowed();
+  const compare = useCompare(); const motion = useMotionAllowed(); const { t } = useTranslation(); const fmt = useFormat();
   const [story, setStory] = useState<Story | null>(null); const [failed, setFailed] = useState(false);
   const [slide, setSlide] = useState(0); const [playing, setPlaying] = useState(false); const [watching, setWatching] = useState(false);
-  const [compareNote, setCompareNote] = useState(''); const [tick, setTick] = useState(0);
+  const [compareFull, setCompareFull] = useState(false); const [tick, setTick] = useState(0);
   const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -55,14 +56,14 @@ export default function ProductDetail() {
     zoom.setValue(0);
     const anim = Animated.timing(zoom, { toValue: 1, duration: SLIDE_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: nativeDriver });
     if (motion) anim.start();
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const next = (slide + 1) % story.gallery.length;
       if (next !== slide) { setSlide(next); pager.current?.scrollTo({ x: next * width, animated: true }); } else setTick(n => n + 1);
     }, SLIDE_MS);
-    return () => { clearTimeout(t); anim.stop(); };
+    return () => { clearTimeout(timer); anim.stop(); };
   }, [playing, slide, tick, story, width, zoom, motion]);
 
-  if (failed) return <View testID="product-detail" style={[s.center, { paddingTop: insets.top }]}><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={s.muted}>Couldn’t load this product.</Text><Pressable testID="pd-back-btn" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.retry}><Text style={s.retryText}>Go back</Text></Pressable></View>;
+  if (failed) return <View testID="product-detail" style={[s.center, { paddingTop: insets.top }]}><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={s.muted}>{t('product.loadFailed')}</Text><Pressable testID="pd-back-btn" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.retry}><Text style={s.retryText}>{t('common.goBack')}</Text></Pressable></View>;
   if (!story) return <View testID="product-detail" style={s.center}><View style={s.skeletonHero} /><View style={s.skeletonLine} /><View style={[s.skeletonLine, { width: '40%' }]} /></View>;
 
   const { product, gallery, video } = story;
@@ -75,7 +76,7 @@ export default function ProductDetail() {
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => { const i = Math.round(e.nativeEvent.contentOffset.x / width); if (i !== slide && i >= 0 && i < gallery.length) setSlide(i); };
   const toggleCompare = () => {
     const r = compare.toggle(product); void Haptics.selectionAsync().catch(() => {});
-    setCompareNote(r === 'full' ? `You can compare up to ${COMPARE_LIMIT} items. Remove one first.` : '');
+    setCompareFull(r === 'full');
   };
   const kenBurns = (i: number) => i === slide && playing ? [
     { scale: zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) },
@@ -95,12 +96,12 @@ export default function ProductDetail() {
         </ScrollView>
         {watching && video && <VideoPreview source={Platform.OS === 'web' ? video.web : video.url} label={video.label} onClose={() => setWatching(false)} top={insets.top} width={width} height={heroH} />}
         {!watching && <View style={s.heroControls}>
-          <Pressable testID="pd-play-images" accessibilityRole="button" accessibilityLabel={playing ? 'Pause images' : 'Play images'} onPress={() => setPlaying(p => !p)} style={s.glassPill}>
-            <Icon name={playing ? 'pause' : 'play'} size={14} color={colors.onSurface} /><Text style={s.glassText}>{playing ? 'Pause' : 'Play images'}</Text>
+          <Pressable testID="pd-play-images" accessibilityRole="button" accessibilityLabel={playing ? t('product.pauseImages') : t('product.playImages')} onPress={() => setPlaying(p => !p)} style={s.glassPill}>
+            <Icon name={playing ? 'pause' : 'play'} size={14} color={colors.onSurface} /><Text style={s.glassText}>{playing ? t('product.pause') : t('product.playImages')}</Text>
           </Pressable>
           {gallery.length > 1 && <View style={s.dots}>{gallery.map((_, i) => <View key={i} style={[s.dot, i === slide && s.dotOn]} />)}</View>}
           {video ? <Pressable testID="pd-watch-video" accessibilityRole="button" accessibilityLabel={video.label} onPress={() => { setPlaying(false); setWatching(true); }} style={[s.glassPill, s.watch]}>
-            <Icon name="videocam" size={14} color={colors.surface} /><Text style={[s.glassText, { color: colors.surface }]}>Watch</Text>
+            <Icon name="videocam" size={14} color={colors.surface} /><Text style={[s.glassText, { color: colors.surface }]}>{t('product.watch')}</Text>
           </Pressable> : <View style={{ width: 80 }} />}
         </View>}
       </View>
@@ -109,80 +110,81 @@ export default function ProductDetail() {
       <View style={s.sheet}>
         {!!savedError && <Text testID="pd-save-error" style={{ color: colors.onError }}>{savedError}</Text>}
         <View style={s.chipsRow}>
-          <View style={s.delivery}><Icon name="flash" size={12} color={colors.onSurface} /><Text style={s.deliveryText}>{product.delivery_min} MINS</Text></View>
-          <View style={s.rating}><Icon name="star" size={11} color={colors.gold} /><Text style={s.ratingText}>{product.rating.toFixed(1)}</Text></View>
-          {!!story.category && <Pressable testID="pd-category-link" onPress={() => router.push(`/category/${story.category!.id}` as any)} style={s.catLink}><Text style={s.catLinkText}>More in {story.category.name}</Text><Icon name="chevron-forward" size={12} color={colors.forest} /></Pressable>}
+          <View style={s.delivery}><Icon name="flash" size={12} color={colors.onSurface} /><Text style={s.deliveryText}>{fmt.eta(product.delivery_min)}</Text></View>
+          <View style={s.rating}><Icon name="star" size={11} color={colors.gold} /><Text style={s.ratingText}>{fmt.number(product.rating, { maxFractionDigits: 1, minFractionDigits: 1 })}</Text></View>
+          {!!story.category && <Pressable testID="pd-category-link" onPress={() => router.push(`/category/${story.category!.id}` as any)} style={s.catLink}><Text style={s.catLinkText}>{t('product.moreInCategory', { name: story.category.name })}</Text><Icon name="chevron-forward" size={12} color={colors.forest} /></Pressable>}
         </View>
         <Text testID="pd-name" style={s.name}>{product.name}</Text>
         <Text style={s.weight}>{product.weight}</Text>
         <View style={s.priceRow}>
-          <Text testID="pd-price" style={s.price}>₹{product.price}</Text>
-          {product.mrp > product.price && <><Text style={s.mrp}>₹{product.mrp}</Text><View style={s.off}><Text style={s.offText}>{Math.round(savings / product.mrp * 100)}% OFF</Text></View></>}
+          <Text testID="pd-price" style={s.price}>{fmt.money(product.price)}</Text>
+          {product.mrp > product.price && <><Text style={s.mrp}>{fmt.money(product.mrp)}</Text><View style={s.off}><Text style={s.offText}>{t('product.off', { pct: fmt.percent(Math.round(savings / product.mrp * 100)) })}</Text></View></>}
         </View>
-        <Text testID="pd-unit-price" style={s.unit}>{unit ? `${unit.label} · ` : ''}{product.department === 'food' ? '5% GST added at checkout' : 'Inclusive of all taxes'}</Text>
+        <Text testID="pd-unit-price" style={s.unit}>{unit ? `${unitPriceLabel(unit, t, fmt)} · ` : ''}{product.department === 'food' ? t('product.gstAdded') : t('product.taxIncluded')}</Text>
 
         <View style={s.actions}>
           <Pressable testID="pd-compare-toggle" accessibilityRole="button" accessibilityState={{ selected: inCompare }} onPress={toggleCompare} style={[s.action, inCompare && s.actionOn]}>
-            <Icon name={inCompare ? 'checkmark-circle' : 'git-compare-outline'} size={17} color={inCompare ? colors.electricLime : colors.onSurface} /><Text style={[s.actionText, inCompare && s.actionTextOn]}>{inCompare ? 'In compare' : 'Add to compare'}</Text>
+            <Icon name={inCompare ? 'checkmark-circle' : 'git-compare-outline'} size={17} color={inCompare ? colors.electricLime : colors.onSurface} /><Text style={[s.actionText, inCompare && s.actionTextOn]}>{inCompare ? t('product.inCompare') : t('product.addToCompare')}</Text>
           </Pressable>
-          <Pressable testID="pd-save-product" accessibilityLabel={isSaved ? 'Remove from wishlist' : 'Save to wishlist'} accessibilityState={{ selected: isSaved }} onPress={() => { void toggleSaved(product.id).catch(() => {}); void Haptics.selectionAsync().catch(() => {}); }} style={s.action}>
-            <Icon name={isSaved ? 'heart' : 'heart-outline'} size={17} color={isSaved ? colors.onError : colors.onSurface} /><Text style={s.actionText}>{isSaved ? 'Saved' : 'Save'}</Text>
+          <Pressable testID="pd-save-product" accessibilityLabel={isSaved ? t('product.removeFromWishlist') : t('product.saveToWishlist')} accessibilityState={{ selected: isSaved }} onPress={() => { void toggleSaved(product.id).catch(() => {}); void Haptics.selectionAsync().catch(() => {}); }} style={s.action}>
+            <Icon name={isSaved ? 'heart' : 'heart-outline'} size={17} color={isSaved ? colors.onError : colors.onSurface} /><Text style={s.actionText}>{isSaved ? t('product.saved') : t('common.save')}</Text>
           </Pressable>
         </View>
-        {!!compareNote && <Text testID="pd-compare-note" style={s.note}>{compareNote}</Text>}
+        {compareFull && <Text testID="pd-compare-note" style={s.note}>{t('product.compareFull', { limit: fmt.number(COMPARE_LIMIT) })}</Text>}
         {compare.items.length > 0 && <Pressable testID="pd-open-compare" onPress={() => router.push('/compare' as any)} style={s.compareBar}>
           <View style={s.compareThumbs}>{compare.items.map(p => <Image key={p.id} source={p.image} style={s.compareThumb} contentFit="cover" />)}</View>
-          <Text style={s.compareBarText}>{compare.items.length === 1 ? 'Add one more to compare' : `Compare ${compare.items.length} items`}</Text>
+          <Text style={s.compareBarText}>{compare.items.length === 1 ? t('product.compareAddOne') : t('product.compareItems', { n: fmt.number(compare.items.length) })}</Text>
           <Icon name="arrow-forward" size={16} color={colors.electricLime} />
         </Pressable>}
 
         {!!story.store && <Pressable testID="pd-store-card" onPress={() => router.push(`/store/${story.store!.id}` as any)} style={s.store}>
           {story.store.logo ? <Image source={story.store.logo} style={s.storeLogo} contentFit="contain" /> : <View style={s.storeLogo} />}
-          <View style={{ flex: 1 }}><Text style={s.storeName}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{story.store.tagline || 'Your neighbourhood store'} · {story.store.delivery_time}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.storeName}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{`${story.store.tagline || t('product.storeFallback')} · ${fmt.deliveryTime(story.store.delivery_time)}`}</Text></View>
           <Icon name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>}
       </View>
 
-      {story.related.length > 0 && <View style={s.relatedWrap}><Text style={s.sectionTitle}>More like this</Text><ProductRail products={story.related} scope="pd-related" /></View>}
+      {story.related.length > 0 && <View style={s.relatedWrap}><Text style={s.sectionTitle}>{t('product.moreLikeThis')}</Text><ProductRail products={story.related} scope="pd-related" /></View>}
 
       {/* Footer echoes the hero */}
       <View style={s.footer}>
         <Image source={product.image} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={Platform.OS === 'web' ? 24 : 50} />
         <LinearGradient colors={[colors.surface, `${palette.mid}CC`, `${palette.color}F2`]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
         <Image source={product.image} style={s.footerShot} contentFit="contain" />
-        <Text style={s.footerTitle}>{story.brand?.tagline || 'A little closer to your city'}</Text>
-        <Text style={s.footerSub}>{story.brand?.name ?? story.store?.name ?? 'OneCity'} · delivered across Latur</Text>
+        <Text style={s.footerTitle}>{story.brand?.tagline || t('product.footerTagline')}</Text>
+        <Text style={s.footerSub}>{t('product.footerSub', { name: story.brand?.name ?? story.store?.name ?? 'OneCity' })}</Text>
       </View>
     </ScrollView>
 
     {/* Top bar */}
     <View style={[s.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
-      <Pressable testID="pd-back-btn" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.round}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Pressable>
-      <Pressable testID="pd-open-cart" accessibilityLabel="Open cart" onPress={() => router.push('/cart' as any)} style={s.round}><Icon name="bag-handle-outline" size={20} color={colors.onSurface} />{totalItems > 0 && <View style={s.badge}><Text style={s.badgeText}>{totalItems}</Text></View>}</Pressable>
+      <Pressable testID="pd-back-btn" accessibilityLabel={t('common.goBack')} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.round}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Pressable>
+      <Pressable testID="pd-open-cart" accessibilityLabel={t('product.openCart')} onPress={() => router.push('/cart' as any)} style={s.round}><Icon name="bag-handle-outline" size={20} color={colors.onSurface} />{totalItems > 0 && <View style={s.badge}><Text style={s.badgeText}>{fmt.number(totalItems)}</Text></View>}</Pressable>
     </View>
 
     {/* Sticky add bar */}
     <View style={[s.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-      {totalItems > 0 && <View style={s.cartPreview}><Text style={s.cartMeta}>{totalItems} in bag · ₹{totalPrice}</Text><Pressable onPress={() => router.push('/cart' as any)} testID="pd-view-cart" hitSlop={10}><Text style={s.cartLink}>View bag →</Text></Pressable></View>}
+      {totalItems > 0 && <View style={s.cartPreview}><Text style={s.cartMeta}>{t('product.bagSummary', { n: fmt.number(totalItems), price: fmt.money(totalPrice) })}</Text><Pressable onPress={() => router.push('/cart' as any)} testID="pd-view-cart" hitSlop={10}><Text style={s.cartLink}>{t('product.viewBag')}</Text></Pressable></View>}
       {qty === 0 ? <Pressable style={s.addCta} onPress={() => { void Haptics.selectionAsync().catch(() => {}); add(product); }} testID="pd-add-btn">
-        <View style={{ flex: 1 }}><Text style={s.addPrice}>₹{product.price}</Text>{product.mrp > product.price && <Text style={s.addMrp}>MRP ₹{product.mrp}</Text>}</View>
-        <View style={s.addPill}><Text style={s.addCtaText}>Add to bag</Text><Icon name="add" size={18} color={INK} /></View>
+        <View style={{ flex: 1 }}><Text style={s.addPrice}>{fmt.money(product.price)}</Text>{product.mrp > product.price && <Text style={s.addMrp}>{t('product.mrpPrice', { price: fmt.money(product.mrp) })}</Text>}</View>
+        <View style={s.addPill}><Text style={s.addCtaText}>{t('product.addToBag')}</Text><Icon name="add" size={18} color={INK} /></View>
       </Pressable> : <View style={s.stepperLarge}>
-        <Pressable onPress={() => remove(product.id)} style={s.stepBtnLg} testID="pd-dec" accessibilityLabel="Remove one"><Text style={s.stepBtnLgText}>−</Text></Pressable>
-        <View style={s.stepQtyWrap}><Text style={s.stepQtyLg}>{qty} in bag · ₹{qty * product.price}</Text></View>
-        <Pressable onPress={() => add(product)} style={s.stepBtnLg} testID="pd-inc" accessibilityLabel="Add one more"><Text style={s.stepBtnLgText}>+</Text></Pressable>
+        <Pressable onPress={() => remove(product.id)} style={s.stepBtnLg} testID="pd-dec" accessibilityLabel={t('product.removeOne')}><Text style={s.stepBtnLgText}>−</Text></Pressable>
+        <View style={s.stepQtyWrap}><Text style={s.stepQtyLg}>{t('product.bagSummary', { n: fmt.number(qty), price: fmt.money(qty * product.price) })}</Text></View>
+        <Pressable onPress={() => add(product)} style={s.stepBtnLg} testID="pd-inc" accessibilityLabel={t('product.addOneMore')}><Text style={s.stepBtnLgText}>+</Text></Pressable>
       </View>}
     </View>
   </View>;
 }
 
 function VideoPreview({ source, label, onClose, top, width, height }: { source: string; label: string; onClose: () => void; top: number; width: number; height: number }) {
+  const { t } = useTranslation();
   const player = useVideoPlayer(source, p => { p.loop = true; p.muted = true; p.play(); });
   return <View testID="pd-video" style={[StyleSheet.absoluteFill, s.videoWrap]}>
     <VideoView player={player} nativeControls={false} contentFit="cover" style={{ position: 'absolute', top: 0, left: 0, width, height }} />
     <LinearGradient colors={['rgba(0,0,0,0.45)', 'transparent', 'rgba(0,0,0,0.5)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
     <View style={[s.videoTop, { top: top + 64 }]}><View style={s.videoLabel}><Icon name="videocam" size={12} color={colors.electricLime} /><Text style={s.videoLabelText}>{label}</Text></View>
-      <Pressable testID="pd-video-close" accessibilityLabel="Close video" onPress={onClose} style={s.videoClose}><Icon name="close" size={20} color={colors.surface} /></Pressable></View>
+      <Pressable testID="pd-video-close" accessibilityLabel={t('product.closeVideo')} onPress={onClose} style={s.videoClose}><Icon name="close" size={20} color={colors.surface} /></Pressable></View>
   </View>;
 }
 
@@ -195,7 +197,7 @@ const s = StyleSheet.create({
   shot: { borderRadius: 30, overflow: 'hidden', backgroundColor: colors.glassBright, boxShadow: [{ offsetX: 0, offsetY: 18, blurRadius: 40, color: 'rgba(0,0,0,0.18)' }] },
   heroControls: { position: 'absolute', left: 20, right: 20, bottom: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   glassPill: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.glassBright, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: colors.glassLine },
-  glassText: { fontSize: 12, fontWeight: '700', color: colors.onSurface },
+  glassText: { fontSize: 12, fontWeight: '700', color: colors.onSurface, flexShrink: 1 },
   watch: { backgroundColor: INK, borderColor: INK },
   dots: { flexDirection: 'row', gap: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.2)' }, dotOn: { width: 16, backgroundColor: INK },
   videoWrap: { backgroundColor: INK, overflow: 'hidden' },
@@ -206,10 +208,10 @@ const s = StyleSheet.create({
   sheet: { marginTop: -26, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: colors.surface, padding: spacing.lg, paddingTop: 22 },
   chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
   delivery: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.pastelYellow, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
-  deliveryText: { fontSize: 11, fontWeight: '800', color: colors.onSurface },
+  deliveryText: { fontSize: 11, fontWeight: '800', color: colors.onSurface, textTransform: 'uppercase' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.surfaceSecondary, paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill },
   ratingText: { fontSize: 11, fontWeight: '800', color: colors.onSurface },
-  catLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginLeft: 'auto' }, catLinkText: { fontSize: 11, fontWeight: '700', color: colors.forest },
+  catLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginLeft: 'auto' }, catLinkText: { fontSize: 11, fontWeight: '700', color: colors.forest, flexShrink: 1 },
   name: { fontSize: 24, fontWeight: '800', color: colors.onSurface, letterSpacing: -0.5 },
   weight: { fontSize: 14, color: colors.muted, marginTop: 4 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 14 },
@@ -218,9 +220,9 @@ const s = StyleSheet.create({
   off: { backgroundColor: colors.pastelGreen, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill }, offText: { color: colors.onSuccess, fontSize: 11, fontWeight: '800' },
   unit: { fontSize: 12, color: colors.muted, marginTop: 6 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  action: { flex: 1, minHeight: 46, borderRadius: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  action: { flex: 1, minHeight: 46, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   actionOn: { backgroundColor: INK, borderColor: INK },
-  actionText: { fontSize: 13, fontWeight: '700', color: colors.onSurface }, actionTextOn: { color: colors.electricLime },
+  actionText: { fontSize: 13, fontWeight: '700', color: colors.onSurface, flexShrink: 1, textAlign: 'center' }, actionTextOn: { color: colors.electricLime },
   note: { fontSize: 12, color: colors.onError, marginTop: 8 },
   compareBar: { marginTop: 12, minHeight: 52, borderRadius: 18, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 10 },
   compareThumbs: { flexDirection: 'row' }, compareThumb: { width: 30, height: 30, borderRadius: 10, marginRight: -8, borderWidth: 2, borderColor: INK, backgroundColor: colors.surface },
@@ -239,13 +241,13 @@ const s = StyleSheet.create({
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: colors.electricLime, fontSize: 9, fontWeight: '800' },
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.glassBright, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  cartPreview: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  cartMeta: { fontSize: 12, color: colors.muted, fontWeight: '600' }, cartLink: { fontSize: 13, fontWeight: '800', color: colors.forest },
+  cartPreview: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  cartMeta: { fontSize: 12, color: colors.muted, fontWeight: '600', flexShrink: 1 }, cartLink: { fontSize: 13, fontWeight: '800', color: colors.forest },
   addCta: { minHeight: 58, borderRadius: 20, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 6 },
   addPrice: { color: colors.surface, fontSize: 18, fontWeight: '800' }, addMrp: { color: 'rgba(255,255,255,0.55)', fontSize: 10, textDecorationLine: 'line-through', marginTop: 1 },
-  addPill: { minHeight: 46, paddingHorizontal: 18, borderRadius: 16, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  addCtaText: { color: INK, fontSize: 15, fontWeight: '800' },
-  stepperLarge: { height: 58, borderRadius: 20, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  addPill: { minHeight: 46, maxWidth: '65%', paddingHorizontal: 18, paddingVertical: 4, borderRadius: 16, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addCtaText: { color: INK, fontSize: 15, fontWeight: '800', flexShrink: 1 },
+  stepperLarge: { minHeight: 58, borderRadius: 20, backgroundColor: INK, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   stepBtnLg: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' }, stepBtnLgText: { color: colors.electricLime, fontSize: 24, fontWeight: '800' },
-  stepQtyWrap: { flex: 1, alignItems: 'center' }, stepQtyLg: { color: colors.surface, fontSize: 15, fontWeight: '800' },
+  stepQtyWrap: { flex: 1, alignItems: 'center' }, stepQtyLg: { color: colors.surface, fontSize: 15, fontWeight: '800', textAlign: 'center' },
 });

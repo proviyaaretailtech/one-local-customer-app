@@ -4,7 +4,7 @@
 //
 // One source of truth: a listing is an ol_stores row with organization_id set and is_demo = false.
 // Its categories, items, prices and photos are the organization's own POS rows (menu_categories,
-// menu_items, menu_item_variants). An item is hidden on One Local while it is unavailable in the POS
+// menu_items, pos_menu_item_variants). An item is hidden on One Local while it is unavailable in the POS
 // or switched off for the 'one_local' channel in item_channel_status (is_available = false and
 // off_until empty or still in the future) — the same rule the VINII Partner app uses (restaurant.ts).
 //
@@ -221,7 +221,7 @@ export async function readItemMaster(organizationIds: (string | null)[]): Promis
     selectAll<MenuCategoryRow>((a, b) => db().from('menu_categories').select('id, organization_id, name, sort_order').in('organization_id', ids).order('id').range(a, b)),
     selectAll<MenuItemRow>((a, b) => db().from('menu_items').select('id, organization_id, category_id, name, price, image_url, is_available, sort_order').in('organization_id', ids).order('id').range(a, b)),
     // Variants are optional: an item without variant rows is sold at its own price.
-    selectAll<VariantRow>((a, b) => db().from('menu_item_variants').select('id, organization_id, menu_item_id, name, price, is_default, sort_order').in('organization_id', ids).order('id').range(a, b), true),
+    selectAll<VariantRow>((a, b) => db().from('pos_menu_item_variants').select('id, organization_id, menu_item_id, name, price, is_default, sort_order').in('organization_id', ids).order('id').range(a, b), true),
     selectAll<SwitchRow>((a, b) => db().from('item_channel_status').select('menu_item_id, organization_id, is_available, off_until').in('organization_id', ids).eq('channel', 'one_local').order('menu_item_id').range(a, b), true),
   ]);
   return { organizations, categories, items, variants, switches };
@@ -236,7 +236,21 @@ export async function readLocations(organizationIds: (string | null)[]): Promise
   const ids = unique(organizationIds);
   if (!ids.length) return [];
   if (!dbConfigured()) return forOrgs(memory().locations, ids);
-  return selectAll<LocationRow>((a, b) => db().from('locations').select('id, organization_id, name, city, address, code').in('organization_id', ids).order('id').range(a, b), true);
+  // The live table has no `city` column and `address` is jsonb: the area is `locations.area` (text), the address is an object.
+  const rows = await selectAll<Record<string, any>>((a, b) => db().from('locations').select('id, organization_id, name, area, address, code').in('organization_id', ids).order('id').range(a, b), true);
+  return rows.map(r => ({ id: r.id, organization_id: r.organization_id, name: r.name, code: r.code ?? null, city: r.area ?? cleanText(r.address?.city), address: addressText(r.address) }));
+}
+
+const cleanText = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+// `locations.address` is jsonb ({} when unset). A plain string is kept; an object is joined from its usual parts.
+function addressText(a: unknown): string | null {
+  if (typeof a === 'string') return cleanText(a);
+  if (!a || typeof a !== 'object') return null;
+  const o = a as Record<string, unknown>;
+  const whole = cleanText(o.text) ?? cleanText(o.formatted) ?? cleanText(o.full);
+  if (whole) return whole;
+  const parts = [o.line1, o.line2, o.street, o.locality, o.city, o.state, o.pincode ?? o.postal_code].map(cleanText).filter((x): x is string => !!x);
+  return parts.length ? parts.join(', ') : null;
 }
 
 // Listings: Master-created store rows (organization set, not demo); soft-deleted ones left out.

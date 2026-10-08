@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
+import { useTranslation } from '../i18n';
 
 type Props = {
   image: string; title: string; subtitle?: string; eyebrow?: string;
@@ -16,12 +17,12 @@ type Props = {
 };
 
 export function ImmersiveHeader({ image, title, subtitle, eyebrow, logo, monogram, height = 340, testID, right, children }: Props) {
-  const router = useRouter(); const insets = useSafeAreaInsets();
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { t } = useTranslation();
   return <View testID={testID} style={{ height: height + insets.top }}>
     <Image source={image} style={StyleSheet.absoluteFill} contentFit="cover" />
     <LinearGradient colors={['rgba(5,6,5,0.55)', 'rgba(5,6,5,0)', 'rgba(5,6,5,0.25)', 'rgba(5,6,5,0.88)']} locations={[0, 0.3, 0.55, 1]} style={StyleSheet.absoluteFill} />
     <View style={[s.bar, { top: insets.top + 8 }]}>
-      <Pressable testID={testID ? `${testID}-back` : undefined} accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as never)} style={s.glass}><Icon name="chevron-back" size={22} color="#fff" /></Pressable>
+      <Pressable testID={testID ? `${testID}-back` : undefined} accessibilityLabel={t('common.goBack')} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as never)} style={s.glass}><Icon name="chevron-back" size={22} color="#fff" /></Pressable>
       {right}
     </View>
     <View style={s.bottom}>

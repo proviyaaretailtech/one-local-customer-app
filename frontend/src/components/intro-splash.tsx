@@ -14,6 +14,7 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useMotionAllowed } from '../motion';
 import { OneGlyph } from './one-button';
 import { colors } from '../theme';
+import { useTranslation } from '../i18n';
 
 const launch = globalThis as unknown as { __onecityIntroPlayed?: boolean };
 const INK = '#050605';
@@ -26,6 +27,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export function IntroSplash() {
   const [visible, setVisible] = useState(!launch.__onecityIntroPlayed);
+  const { t } = useTranslation(); // safe here: I18nProvider holds the first render until the saved language is loaded
   const motion = useMotionAllowed();
   const bloom = useSharedValue(0);  // lime light
   const glyph = useSharedValue(0);  // the "1"
@@ -76,7 +78,7 @@ export function IntroSplash() {
   }));
 
   if (!visible) return null;
-  return <Animated.View testID="intro-splash" accessibilityLabel="OneCity is loading" style={[s.screen, screen]} pointerEvents="none">
+  return <Animated.View testID="intro-splash" accessibilityLabel={t('shell.introLoading')} style={[s.screen, screen]} pointerEvents="none">
     <StatusBar style="light" />
     <Animated.View style={[s.center, stage]}>
       <Animated.View style={[s.halo, halo]}>
@@ -89,9 +91,9 @@ export function IntroSplash() {
         <View style={s.wordClip}><Animated.Text style={[s.word, wordmark]}>neCity</Animated.Text></View>
         <Animated.View style={[s.band, band]} />
       </View>
-      <Animated.Text style={[s.tagline, tagline]}>YOUR CITY · AT YOUR DOORSTEP</Animated.Text>
+      <Animated.Text style={[s.tagline, tagline]}>{t('shell.introTagline')}</Animated.Text>
     </Animated.View>
-    <Animated.Text style={[s.made, tagline]}>Made in Latur</Animated.Text>
+    <Animated.Text style={[s.made, tagline]}>{t('shell.introMade')}</Animated.Text>
   </Animated.View>;
 }
 

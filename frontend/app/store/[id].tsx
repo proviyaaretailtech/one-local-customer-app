@@ -10,6 +10,7 @@ import { colors, radius, spacing } from "@/src/theme";
 import { api, Category, Product, Store, StoreMedia } from "@/src/api";
 import { ProductCard } from "@/src/components/product-card";
 import { useFollowedStores } from "@/src/followed";
+import { useFormat, useTranslation } from "@/src/i18n";
 
 // Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
 const SCREEN_W = Math.min(Dimensions.get("window").width, MAX_APP_WIDTH);
@@ -68,6 +69,8 @@ export default function StoreProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
+  const fmt = useFormat();
   const { isFollowing, toggle } = useFollowedStores();
   const [store, setStore] = useState<Store | null>(null);
   const [slide, setSlide] = useState(0);
@@ -85,7 +88,7 @@ export default function StoreProfileScreen() {
   if (!store) {
     return (
       <View style={styles.loader}>
-        <Text style={{ color: colors.muted }}>Loading store...</Text>
+        <Text style={{ color: colors.muted }}>{t('store.loading')}</Text>
       </View>
     );
   }
@@ -128,21 +131,21 @@ export default function StoreProfileScreen() {
           <View style={styles.metaRow}>
             <View style={styles.metaChip}>
               <Icon name="flash" size={12} color={colors.onSurface} />
-              <Text style={styles.metaChipText}>{store.delivery_time}</Text>
+              <Text style={styles.metaChipText}>{fmt.deliveryTime(store.delivery_time)}</Text>
             </View>
             <View style={styles.metaChip}>
               <Icon name="star" size={12} color={colors.onSurface} />
-              <Text style={styles.metaChipText}>{store.rating}</Text>
+              <Text style={styles.metaChipText}>{fmt.number(store.rating, { maxFractionDigits: 1 })}</Text>
             </View>
             <View style={styles.metaChip}>
               <Icon name="storefront-outline" size={12} color={colors.onSurface} />
-              <Text style={styles.metaChipText}>Sample store</Text>
+              <Text style={styles.metaChipText}>{t('store.sampleBadge')}</Text>
             </View>
           </View>
           <View style={styles.tagsRow}>
-            {store.tags.map((t) => (
-              <View key={t} style={styles.tagPill}>
-                <Text style={styles.tagText}>{t}</Text>
+            {store.tags.map((tag) => (
+              <View key={tag} style={styles.tagPill}>
+                <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -158,7 +161,7 @@ export default function StoreProfileScreen() {
               color={isFollowing(store.id) ? colors.onError : colors.onBrandPrimary}
             />
             <Text style={[styles.followText, isFollowing(store.id) && { color: colors.onSurface }]}>
-              {isFollowing(store.id) ? "Following" : "Follow store"}
+              {isFollowing(store.id) ? t('store.following') : t('store.follow')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -172,7 +175,7 @@ export default function StoreProfileScreen() {
           >
             {cats.map((c) => {
               const active = activeCat === c;
-              const label = c === "all" ? "All Items" : (catMap[c]?.name ?? c);
+              const label = c === "all" ? t('store.allItems') : (catMap[c]?.name ?? c);
               const emoji = c === "all" ? "🛒" : (catMap[c]?.emoji ?? "");
               return (
                 <TouchableOpacity
@@ -192,7 +195,7 @@ export default function StoreProfileScreen() {
 
         {/* Products */}
         <View style={styles.productSection}>
-          <Text style={styles.sectionTitle}>All Products</Text>
+          <Text style={styles.sectionTitle}>{t('store.allProducts')}</Text>
           <View style={styles.grid}>
             {shown.map((p) => (
               <View key={p.id} style={styles.gridItem}>
@@ -201,7 +204,7 @@ export default function StoreProfileScreen() {
             ))}
             {shown.length === 0 && (
               <View style={styles.empty}>
-                <Text style={{ color: colors.muted }}>No products in this category</Text>
+                <Text style={{ color: colors.muted }}>{t('store.emptyCategory')}</Text>
               </View>
             )}
           </View>
@@ -256,15 +259,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 18,
-    height: 40,
+    paddingVertical: 6,
+    minHeight: 40,
     borderRadius: radius.pill,
     backgroundColor: colors.brandPrimary,
   },
   followBtnActive: { backgroundColor: colors.pastelPink },
-  followText: { color: colors.onBrandPrimary, fontWeight: "800", fontSize: 13 },
-  chipHeader: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, height: 56, justifyContent: "center" },
+  followText: { color: colors.onBrandPrimary, fontWeight: "800", fontSize: 13, flexShrink: 1 },
+  chipHeader: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, minHeight: 56, justifyContent: "center" },
   chipRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, flexDirection: "row", alignItems: "center" },
-  chip: { height: 36, flexShrink: 0, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "center" },
+  chip: { minHeight: 36, paddingVertical: 5, flexShrink: 0, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "center" },
   chipText: { fontSize: 12, fontWeight: "700", color: colors.onSurface },
   productSection: { paddingTop: spacing.lg },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.onSurface, paddingHorizontal: spacing.lg, marginBottom: spacing.md },

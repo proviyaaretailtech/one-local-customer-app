@@ -10,13 +10,14 @@ import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
 import { api, Order } from "@/src/api";
 import { useCart } from "@/src/cart";
-
-const r2 = (n: number) => Math.round(n * 100) / 100;
+import { orderStatusKey, useFormat, useTranslation } from "@/src/i18n";
 
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { addMany } = useCart();
+  const { t } = useTranslation();
+  const fmt = useFormat();
   const [orders, setOrders] = useState<Order[]>([]);
   // Newest checkout first; its store orders in the order they were in the cart.
   const checkouts = useMemo(() => {
@@ -30,15 +31,15 @@ export default function OrdersScreen() {
     return groups;
   }, [orders]);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [failed, setFailed] = useState(false); // the message is worded while rendering, so it follows the language
   const [reordered, setReordered] = useState<string | null>(null);
 
   const fetchOrders = useCallback(() => {
     setRefreshing(true);
-    setError('');
+    setFailed(false);
     api<Order[]>("/orders")
       .then(setOrders)
-      .catch(() => setError('Could not load your orders. Please try again.'))
+      .catch(() => setFailed(true))
       .finally(() => setRefreshing(false));
   }, []);
 
@@ -59,22 +60,22 @@ export default function OrdersScreen() {
           <Icon name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>My Orders</Text>
-          <Text style={styles.sub}>{checkouts.length} order{checkouts.length === 1 ? "" : "s"}</Text>
+          <Text style={styles.title}>{t('orders.title')}</Text>
+          <Text style={styles.sub}>{t('orders.count', { count: checkouts.length })}</Text>
         </View>
       </View>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchOrders} />}
       >
-        {!!error && <View style={styles.empty} testID="orders-error"><Text style={styles.emptySub}>{error}</Text><TouchableOpacity testID="orders-retry" style={styles.shopBtn} onPress={fetchOrders}><Text style={styles.shopBtnText}>Try again</Text></TouchableOpacity></View>}
-        {orders.length === 0 && !error ? (
+        {failed && <View style={styles.empty} testID="orders-error"><Text style={styles.emptySub}>{t('orders.loadError')}</Text><TouchableOpacity testID="orders-retry" style={styles.shopBtn} onPress={fetchOrders}><Text style={styles.shopBtnText}>{t('common.retry')}</Text></TouchableOpacity></View>}
+        {orders.length === 0 && !failed ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📦</Text>
-            <Text style={styles.emptyTitle}>No orders yet</Text>
-            <Text style={styles.emptySub}>Your past orders will appear here</Text>
+            <Text style={styles.emptyTitle}>{t('orders.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('orders.emptySub')}</Text>
             <TouchableOpacity style={styles.shopBtn} onPress={() => router.replace("/(tabs)" as any)}>
-              <Text style={styles.shopBtnText}>Start shopping</Text>
+              <Text style={styles.shopBtnText}>{t('orders.startShopping')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -82,22 +83,22 @@ export default function OrdersScreen() {
             const first = list[0]; const many = list.length > 1;
             const track = (o: Order) => <TouchableOpacity style={styles.trackBtn} onPress={() => router.push(`/order/${o.id}` as any)} testID={`track-${o.id}`}>
               <Icon name="location-outline" size={14} color={colors.onSurface} />
-              <Text style={styles.trackText}>Track</Text>
+              <Text style={styles.trackText}>{t('orders.track')}</Text>
             </TouchableOpacity>;
             return <View key={key} style={styles.card} testID={many ? `checkout-${key}` : `order-${first.id}`}>
               <View style={styles.cardHead}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.orderId} numberOfLines={1}>#{key.slice(0, 8).toUpperCase()}{many ? ` · ${list.length} stores` : first.store_name ? ` · ${first.store_name}` : ''}</Text>
-                  <Text style={styles.orderDate}>{new Date(first.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</Text>
+                  <Text style={styles.orderId} numberOfLines={1}>{many ? t('orders.cardStores', { id: key.slice(0, 8).toUpperCase(), n: fmt.number(list.length) }) : `#${key.slice(0, 8).toUpperCase()}${first.store_name ? ` · ${first.store_name}` : ''}`}</Text>
+                  <Text style={styles.orderDate}>{fmt.dateTime(first.created_at)}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: colors.pastelGreen }]}>
-                  <Text style={styles.statusText}>{first.status}</Text>
+                  <Text style={styles.statusText}>{t(orderStatusKey(first.status))}</Text>
                 </View>
               </View>
 
               {list.map(o => <View key={o.id} style={many ? styles.storePart : undefined} testID={many ? `order-${o.id}` : undefined}>
                 {many && <View style={styles.storeHead}>
-                  <View style={{ flex: 1 }}><Text style={styles.storeName} numberOfLines={1}>{o.store_name || 'Store'}</Text><Text style={styles.footerMeta}>₹{o.total} · {o.items.length} items</Text></View>
+                  <View style={{ flex: 1 }}><Text style={styles.storeName} numberOfLines={1}>{o.store_name || t('orders.storeFallback')}</Text><Text style={styles.footerMeta}>{t('orders.storeMeta', { total: fmt.money(o.total), count: o.items.length })}</Text></View>
                   {track(o)}
                 </View>}
                 <View style={styles.imgRow}>
@@ -113,15 +114,15 @@ export default function OrdersScreen() {
               </View>)}
 
               <View style={styles.footer}>
-                <View>
-                  <Text style={styles.total}>₹{r2(list.reduce((s, o) => s + o.total, 0))}</Text>
-                  <Text style={styles.footerMeta}>{list.reduce((n, o) => n + o.items.length, 0)} items{many ? ' · paid together' : ''}</Text>
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={styles.total}>{fmt.money(list.reduce((s, o) => s + o.total, 0))}</Text>
+                  <Text style={styles.footerMeta}>{t(many ? 'orders.itemsTogether' : 'orders.items', { count: list.reduce((n, o) => n + o.items.length, 0) })}</Text>
                 </View>
-                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", flexShrink: 1, gap: spacing.sm }}>
                   {!many && track(first)}
                   <TouchableOpacity style={styles.reorderBtn} onPress={() => reorder(key, list)} testID={`reorder-${first.id}`}>
                     <Icon name={reordered === key ? "checkmark" : "repeat"} size={14} color={colors.onBrandPrimary} />
-                    <Text style={styles.reorderText}>{reordered === key ? "Added" : "Reorder"}</Text>
+                    <Text style={styles.reorderText}>{reordered === key ? t('orders.reordered') : t('orders.reorder')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -148,8 +149,8 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderId: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
   orderDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
-  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
-  statusText: { fontSize: 11, fontWeight: "800", color: colors.onSuccess, textTransform: "capitalize" },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, marginLeft: spacing.sm, maxWidth: "55%" },
+  statusText: { fontSize: 11, fontWeight: "800", color: colors.onSuccess },
   imgRow: { flexDirection: "row", gap: 6, marginTop: spacing.md },
   storePart: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.divider },
   storeHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

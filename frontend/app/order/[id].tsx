@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import type { ParseKeys } from 'i18next';
+import { useEffect, useState, type ComponentProps } from "react";
 import { MAX_APP_WIDTH } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
@@ -14,6 +15,13 @@ import { useMotionAllowed } from '@/src/motion';
 import { paymentLabel } from '@/src/components/payment-options';
 import { ORDER_TOTAL_S, stageAt, syncOrderActivity, updateOrderWidget } from '@/src/native/ios-extras';
 import { OneLottie } from '@/src/components/one-lottie';
+import { CancelOrderCard } from '@/src/components/cancel-order-card';
+import { RefundStatus } from '@/src/components/refund-status';
+import { orderStatusKey, useFormat, useTranslation } from '@/src/i18n';
+import { useLiveTracking } from '@/src/use-live-tracking';
+import { TrackingMap } from '@/src/components/tracking-map';
+import { activityStepFor, describeEta, LIVE_TIMELINE, riderInitial, timelineIndex, vehicleCode, type TrackingLive, type TrackingPhase } from '@/src/utils/tracking';
+import { etaCopy } from '@/src/utils/tracking-copy';
 
 const AnimatedView = Animated.View;
 // Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
@@ -41,29 +49,49 @@ function pointOnRoute(t: number) {
   return { x: p0.x + (p1.x - p0.x) * localT, y: p0.y + (p1.y - p0.y) * localT };
 }
 
-// Cash orders keep the old wording; online orders say what Razorpay confirmed (server/payments.ts).
-const PAYMENT_NOTE: Record<string, string> = {
-  not_charged: 'sample order, not charged', paid: 'paid online', pending: 'payment being confirmed',
-  failed: 'payment did not go through', refunded: 'refunded',
-};
+// Cash orders keep the old wording; online orders say what Razorpay confirmed (server/payments.ts). The server's
+// payment_status is a code; this picks the catalogue sentence for it (an unknown code reads like a cash order).
+const PAYMENT_NOTE_KEYS = {
+  not_charged: 'tracking.paymentNote.not_charged', paid: 'tracking.paymentNote.paid', pending: 'tracking.paymentNote.pending',
+  failed: 'tracking.paymentNote.failed', refunded: 'tracking.paymentNote.refunded',
+} as const;
+const paymentNoteKey = (code?: string | null) => PAYMENT_NOTE_KEYS[(code ?? 'not_charged') as keyof typeof PAYMENT_NOTE_KEYS] ?? PAYMENT_NOTE_KEYS.not_charged;
 
-const TIMELINE = [
-  { key: "placed", label: "Order placed", icon: "checkmark-circle" as const },
-  { key: "packed", label: "Packed at store", icon: "cube" as const },
-  { key: "out", label: "Out for delivery", icon: "bicycle" as const },
-  { key: "delivered", label: "Delivered", icon: "home" as const },
+// The steps hold catalogue keys: status words come from the order-status mapping, the one step that is not a status has its own.
+const TIMELINE: { key: string; label: ParseKeys; icon: 'checkmark-circle' | 'cube' | 'bicycle' | 'home' }[] = [
+  { key: "placed", label: orderStatusKey('placed'), icon: "checkmark-circle" },
+  { key: "packed", label: 'tracking.step.packedAtStore', icon: "cube" },
+  { key: "out", label: orderStatusKey('out'), icon: "bicycle" },
+  { key: "delivered", label: orderStatusKey('delivered'), icon: "home" },
 ];
+
+// Live timeline (real GPS data): one row per phase the server reports; cancelled replaces the whole list with one row.
+type StepIcon = ComponentProps<typeof Icon>['name'];
+const LIVE_ICONS: Record<TrackingPhase, StepIcon> = {
+  preparing: 'cube', finding_rider: 'search', to_store: 'bicycle', at_store: 'storefront',
+  on_the_way: 'navigate', at_door: 'home', delivered: 'checkmark-circle', cancelled: 'close-circle',
+};
 
 export default function OrderTrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
+  const fmt = useFormat();
   const [order, setOrder] = useState<Order | null>(null);
   const [elapsedS, setElapsedS] = useState(0);
-  const [error, setError] = useState('');
+  const [failed, setFailed] = useState(false); // worded while rendering, so it follows the language
   const [retry, setRetry] = useState(0);
   const [help, setHelp] = useState(false);
   const motion = useMotionAllowed();
+
+  // Live tracking (GET /orders/:id/tracking). `live` is set only when the server has dispatch data for this order;
+  // otherwise (demo orders, no job yet, endpoint unreachable) the illustrative simulation below runs exactly as before.
+  // `trackingPending` is the short wait for the first answer: a neutral skeleton, so the sample never flashes first.
+  const tracking = useLiveTracking(id, { enabled: !!order && !failed });
+  const live: TrackingLive | null = tracking.data?.live ? tracking.data : null;
+  const trackingPending = tracking.loading && !tracking.data;
+  const neutral = !!live || trackingPending;
 
   // Rider animation: 0..1 over the delivery duration
   const progress = useSharedValue(0);
@@ -71,8 +99,8 @@ export default function OrderTrackingScreen() {
 
   useEffect(() => {
     if (!id) return;
-    setError('');
-    api<Order>(`/orders/${id}`).then(setOrder).catch(() => setError('Could not load this order. Please try again.'));
+    setFailed(false);
+    api<Order>(`/orders/${id}`).then(setOrder).catch(() => setFailed(true));
   }, [id, retry]);
 
   // The other store orders paid for in the same checkout (a shopping cart split by store).
@@ -96,21 +124,29 @@ export default function OrderTrackingScreen() {
   useEffect(() => {
     if (!placedAt) return;
     const tick = () => setElapsedS(Math.max(0, Math.floor((Date.now() - placedAt) / 1000)));
-    tick(); const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
+    tick(); const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
   }, [placedAt]);
 
   // iOS add-in layer: keep the Live Activity (lock screen / Dynamic Island) and the home-screen
   // widget in step with the order. No-ops outside an iOS development build.
-  const stage = stageAt(elapsedS);
+  // When live, the step comes from the real phase and the ETA from the server, not from time since placing.
+  const liveStep = live ? activityStepFor(live.phase, order?.status) : null; // null for cancelled
+  const stage = live ? (liveStep ?? 0) : stageAt(elapsedS);
+  const liveKey = live ? `${live.phase}|${live.eta?.minutes ?? ''}` : '';
   useEffect(() => {
-    if (!order) return;
+    if (!order || trackingPending) return;
     const count = order.items.reduce((n, i) => n + i.qty, 0);
-    const summary = `${order.items[0]?.name ?? 'Your order'}${order.items.length > 1 ? ` + ${order.items.length - 1} more` : ''} · ₹${order.total}`;
-    syncOrderActivity(order.id, stage, summary, placedAt);
-    updateOrderWidget({ orderId: order.id, step: stage, etaMinutes: Math.max(0, Math.ceil((ORDER_TOTAL_S - elapsedS) / 60)), itemCount: count, total: `₹${order.total}`, firstItem: order.items[0]?.name ?? 'Your order' });
+    // Worded now, in the language the app is in at this moment (the Live Activity and widget keep these words).
+    const first = order.items[0]?.name ?? t('notifications.yourOrder');
+    const total = fmt.money(order.total);
+    const summary = order.items.length > 1 ? t('notifications.summaryMore', { name: first, n: fmt.number(order.items.length - 1), total }) : `${first} · ${total}`;
+    if (live && liveStep === null) { updateOrderWidget(null); return; } // cancelled: nothing left to follow
+    syncOrderActivity(order.id, stage, summary, placedAt, live?.eta ? Date.parse(live.eta.arrives_at) : undefined);
+    const etaMinutes = live ? Math.max(0, Math.ceil(live.eta?.minutes ?? 0)) : Math.max(0, Math.ceil((ORDER_TOTAL_S - elapsedS) / 60));
+    updateOrderWidget({ orderId: order.id, step: stage, etaMinutes, itemCount: count, total, firstItem: first });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id, stage]);
+  }, [order?.id, stage, liveKey, trackingPending]);
 
   const riderStyle = useAnimatedStyle(() => {
     const p = pointOnRoute(progress.value);
@@ -122,10 +158,25 @@ export default function OrderTrackingScreen() {
   const secs = etaLeft % 60;
   const stagePct = stage;
 
+  // ---- live-only wording and structure (all of it unused when `live` is null) ----
+  // A road ETA reads "12 min"; an estimate or the checkout promise reads "About 12 min" and an "Around 7:45 pm" clock time.
+  const etaWords = live ? etaCopy(describeEta(live.eta, live.phase), t, fmt) : null;
+  const riderName = live?.rider?.first_name ?? t('tracking.live.riderFallback');
+  const vehicle = live?.rider?.vehicle ?? null;
+  const vehicleCodeName = vehicleCode(vehicle);
+  const vehicleText = vehicleCodeName ? t(`tracking.vehicle.${vehicleCodeName}`) : vehicle;
+  const cancelled = live?.phase === 'cancelled';
+  const timelineSteps: { key: string; label: ParseKeys; icon: StepIcon }[] = !live ? TIMELINE
+    : cancelled ? [{ key: 'cancelled', label: 'tracking.phase.cancelled', icon: LIVE_ICONS.cancelled }]
+    : LIVE_TIMELINE.map(p => ({ key: p, label: `tracking.phase.${p}` as ParseKeys, icon: LIVE_ICONS[p] })); // i18n-ignore (catalogue keys)
+  const currentStep = !live ? stagePct : cancelled ? 0 : timelineIndex(live.phase);
+  const stepTone = cancelled ? colors.onError : colors.brandPrimary;
+  const etaIcon: StepIcon = live?.phase === 'delivered' ? 'checkmark' : cancelled ? 'close' : 'bicycle-outline';
+
   if (!order) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }}>
-        {error ? <><Text testID="tracking-error" style={{ color: colors.onError }}>{error}</Text><TouchableOpacity testID="tracking-retry" style={styles.homeBtn} onPress={() => setRetry(v => v + 1)}><Text style={styles.homeBtnText}>Try again</Text></TouchableOpacity></> : <ActivityIndicator testID="tracking-loading" color={colors.forest} />}
+        {failed ? <><Text testID="tracking-error" style={{ color: colors.onError }}>{t('tracking.loadError')}</Text><TouchableOpacity testID="tracking-retry" style={styles.homeBtn} onPress={() => setRetry(v => v + 1)}><Text style={styles.homeBtnText}>{t('common.retry')}</Text></TouchableOpacity></> : <ActivityIndicator testID="tracking-loading" color={colors.forest} />}
       </View>
     );
   }
@@ -137,50 +188,71 @@ export default function OrderTrackingScreen() {
           <Icon name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text testID="tracking-title" style={styles.title}>Your delivery story</Text>
-          <Text testID="tracking-sample-notice" style={styles.sub} numberOfLines={1}>Sample tracking · #{order.id.slice(0, 8).toUpperCase()}{order.store_name ? ` · ${order.store_name}` : ''}</Text>
+          <Text testID="tracking-title" style={styles.title}>{t('tracking.title')}</Text>
+          {neutral
+            ? <Text testID="tracking-order-ref" style={styles.sub}>{order.store_name ? t('tracking.live.subtitleStore', { id: order.id.slice(0, 8).toUpperCase(), store: order.store_name }) : t('tracking.live.subtitle', { id: order.id.slice(0, 8).toUpperCase() })}</Text>
+            : <Text testID="tracking-sample-notice" style={styles.sub}>{order.store_name ? t('tracking.sampleNoticeStore', { id: order.id.slice(0, 8).toUpperCase(), store: order.store_name }) : t('tracking.sampleNotice', { id: order.id.slice(0, 8).toUpperCase() })}</Text>}
         </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
-        <Text testID="order-payment-method" style={styles.riderMeta}>{paymentLabel(order.payment_method || 'cod')} · {PAYMENT_NOTE[order.payment_status ?? 'not_charged'] ?? PAYMENT_NOTE.not_charged}</Text>
+        <Text testID="order-payment-method" style={styles.riderMeta}>{`${paymentLabel(order.payment_method || 'cod')} · ${neutral && (order.payment_status ?? 'not_charged') === 'not_charged' ? t('tracking.live.payAtDoor') : t(paymentNoteKey(order.payment_status))}`}</Text>
+        {((order.payment_method ?? 'cod') !== 'cod' || order.payment_status === 'refunded') && <RefundStatus orderId={order.id} />}
         {elapsedS < 12 && <View testID="order-placed-moment" style={styles.placed}>
           <OneLottie name="order-success" size={72} />
-          <View style={{ flex: 1 }}><Text style={styles.placedTitle}>Order placed!</Text><Text style={styles.placedSub}>₹{order.total} · the store has your order</Text></View>
+          <View style={{ flex: 1 }}><Text style={styles.placedTitle}>{t('tracking.placed')}</Text><Text style={styles.placedSub}>{t('tracking.placedSub', { amount: fmt.money(order.total) })}</Text></View>
         </View>}
         {!!order.address && <View testID="order-address" style={styles.addressCard}>
           <Icon name="location" size={20} color={colors.forest} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.addressTitle}>Delivering to{order.address.label ? `: ${order.address.label}` : ''}</Text>
+            <Text style={styles.addressTitle}>{order.address.label ? t('tracking.deliveringToLabel', { label: order.address.label }) : t('tracking.deliveringTo')}</Text>
             <Text style={styles.addressText}>{order.address.text}</Text>
-            {!!order.address.notes && <Text testID="order-address-notes" style={styles.addressNotes}>Note for the delivery partner: {order.address.notes}</Text>}
+            {!!order.address.notes && <Text testID="order-address-notes" style={styles.addressNotes}>{t('tracking.partnerNote', { notes: order.address.notes })}</Text>}
           </View>
         </View>}
         {siblings.length > 0 && <View testID="order-checkout-siblings" style={styles.addressCard}>
           <Icon name="storefront-outline" size={20} color={colors.forest} />
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={styles.addressTitle}>Paid together with {siblings.length} more store order{siblings.length === 1 ? '' : 's'}</Text>
+            <Text style={styles.addressTitle}>{t('tracking.paidTogether', { count: siblings.length })}</Text>
             {siblings.map(o => <TouchableOpacity key={o.id} testID={`order-sibling-${o.id}`} onPress={() => router.push(`/order/${o.id}` as any)} style={styles.siblingRow}>
-              <Text style={styles.addressText} numberOfLines={1}>{o.store_name || 'Store'} · {o.items.length} items · ₹{o.total}</Text>
+              <Text style={styles.addressText}>{t('tracking.siblingRow', { store: o.store_name || t('orders.storeFallback'), count: o.items.length, total: fmt.money(o.total) })}</Text>
               <Icon name="chevron-forward" size={16} color={colors.muted} />
             </TouchableOpacity>)}
           </View>
         </View>}
         <VendorNote items={order.items} status={order.status} />
         {/* ETA hero */}
+        {neutral ? (
+          // Real ETA (or its skeleton). Every line keeps a minimum height, so a new value never moves what is below it.
+          <View style={styles.etaCard} testID="eta-card">
+            <View style={styles.etaLeft}>
+              <Text style={styles.etaLabel}>{etaWords?.label ?? t('tracking.live.etaLabel')}</Text>
+              <Text style={styles.etaTimeLive} testID="eta-time" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} accessibilityLiveRegion="polite">{etaWords?.text ?? '—'}</Text>
+              <Text style={styles.etaWhen} testID="eta-arrives-by" numberOfLines={1}>{etaWords?.when || ' '}</Text>
+              <Text style={styles.etaSource} testID="tracking-live-source">{etaWords?.source || ' '}</Text>
+            </View>
+            <View style={[styles.dispatchDot, styles.dispatchDotLive]}>
+              <Icon name={etaIcon} size={32} color={colors.forestDeep} />
+            </View>
+          </View>
+        ) : (
         <View style={styles.etaCard}>
           <View style={styles.etaLeft}>
-            <Text style={styles.etaLabel}>SAMPLE DELIVERY COUNTDOWN</Text>
-            <Text style={styles.etaTime} testID="eta-time">{mins}:{secs.toString().padStart(2, "0")}</Text>
-            <Text testID="tracking-animation-notice" style={styles.etaHint}>Illustrative route · not live GPS</Text>
+            <Text style={styles.etaLabel}>{t('tracking.countdown')}</Text>
+            <Text style={styles.etaTime} testID="eta-time">{fmt.number(mins)}:{secs < 10 ? '0' : ''}{fmt.number(secs)}</Text>
+            <Text testID="tracking-animation-notice" style={styles.etaHint}>{t('tracking.routeNotice')}</Text>
           </View>
           <View style={styles.dispatchDot}>
             <Icon name="bicycle-outline" size={36} color={colors.forestDeep} />
           </View>
         </View>
+        )}
 
         {/* Map illustration */}
         <View style={styles.mapCard} testID="tracking-map">
+          {live ? <TrackingMap tracking={live} animate={motion} /> : trackingPending ? (
+            <View style={styles.mapPending}><ActivityIndicator testID="tracking-map-loading" accessibilityLabel={t('tracking.live.loading')} color={colors.forest} /></View>
+          ) : <>
           <Svg width={MAP_W} height={MAP_H}>
             {/* faux streets background */}
             <Path d={`M 0 ${MAP_H * 0.35} L ${MAP_W} ${MAP_H * 0.35}`} stroke={colors.border} strokeWidth={1} />
@@ -196,72 +268,80 @@ export default function OrderTrackingScreen() {
             <Circle cx={MAP_W - 30} cy={30} r={10} fill={colors.pastelGreen} />
             <Circle cx={MAP_W - 30} cy={30} r={4} fill={colors.onSuccess} />
           </Svg>
-          <View style={styles.storeLabel}><Text style={styles.markerText}>Store</Text></View>
-          <View style={styles.homeLabel}><Text style={styles.markerText}>You</Text></View>
+          <View style={styles.storeLabel}><Text style={styles.markerText}>{t('tracking.markerStore')}</Text></View>
+          <View style={styles.homeLabel}><Text style={styles.markerText}>{t('tracking.markerYou')}</Text></View>
           {/* rider */}
           <AnimatedView style={[styles.rider, riderStyle]} testID="rider-marker">
             <Icon name="bicycle" size={24} color={colors.forest} />
           </AnimatedView>
+          </>}
         </View>
+        {live && !!tracking.error && <Text testID="tracking-reconnecting" style={styles.riderMeta}>{t('tracking.live.reconnecting')}</Text>}
 
         {/* Rider card */}
-        <View style={styles.riderCard}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{order.rider_name[0]}</Text></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.riderName}>{order.rider_name}</Text>
-            <Text style={styles.riderMeta}>Your sample delivery partner</Text>
+        {!trackingPending && <View style={styles.riderCard} testID="rider-card">
+          <View style={styles.avatar}>
+            {!live ? <Text style={styles.avatarText}>{order.rider_name[0]}</Text>
+              : live.rider ? <Text style={styles.avatarText}>{riderInitial(live.rider.first_name)}</Text>
+              : <Icon name="search" size={20} color={colors.onSurface} />}
           </View>
-          <TouchableOpacity style={styles.callBtn} testID="call-rider-btn" accessibilityLabel="Delivery information" onPress={() => setHelp(!help)}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.riderName} testID={live ? 'rider-name' : undefined}>{!live ? order.rider_name : live.rider ? live.rider.first_name : t('tracking.live.noRiderTitle')}</Text>
+            <Text style={styles.riderMeta} testID={live ? 'rider-meta' : undefined}>{!live ? t('tracking.riderMeta') : !live.rider ? t('tracking.live.noRiderMeta') : vehicleText ? t('tracking.live.riderMeta', { vehicle: vehicleText }) : t('tracking.live.riderMetaPlain')}</Text>
+          </View>
+          <TouchableOpacity style={styles.callBtn} testID="call-rider-btn" accessibilityRole="button" accessibilityLabel={t('tracking.infoA11y')} onPress={() => setHelp(!help)}>
             <Icon name="information-circle-outline" size={20} color={colors.onBrandPrimary} />
           </TouchableOpacity>
-        </View>
-        {help && <Text testID="delivery-help" style={styles.riderMeta}>This is a sample order. No real rider is assigned or available to call.</Text>}
+        </View>}
+        {help && !trackingPending && <Text testID="delivery-help" style={styles.riderMeta}>{live ? t('tracking.live.help') : t('tracking.sampleHelp')}</Text>}
 
         {/* Timeline */}
-        <View style={styles.timeline}>
-          <Text style={styles.timelineTitle}>Order status</Text>
-          {TIMELINE.map((t, i) => {
-            const active = i <= stagePct;
+        {!trackingPending && <View style={styles.timeline} testID="tracking-timeline">
+          <Text style={styles.timelineTitle}>{t('tracking.statusTitle')}</Text>
+          {timelineSteps.map((step, i) => {
+            const active = i <= currentStep;
             return (
-              <View key={t.key} style={styles.timelineRow}>
-                <View style={[styles.timelineDot, active && { backgroundColor: colors.brandPrimary }]}>
-                  <Icon name={t.icon} size={14} color={active ? colors.onBrandPrimary : colors.muted} />
+              <View key={step.key} style={styles.timelineRow} testID={`timeline-step-${step.key}`} accessibilityState={{ selected: i === currentStep }}>
+                <View style={[styles.timelineDot, active && { backgroundColor: stepTone }]}>
+                  <Icon name={step.icon} size={14} color={active ? colors.onBrandPrimary : colors.muted} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.timelineLabel, active && { color: colors.onSurface, fontWeight: "800" }]}>{t.label}</Text>
-                  {i === stagePct && <Text style={styles.timelineNow}>In progress · just now</Text>}
+                  <Text style={[styles.timelineLabel, active && { color: colors.onSurface, fontWeight: "800" }]}>{t(step.label)}</Text>
+                  {i === currentStep && <Text style={[styles.timelineNow, cancelled && { color: stepTone }]} testID="timeline-now">{live ? t(`tracking.phaseNow.${live.phase}`, { name: riderName }) : t('tracking.now')}</Text>}
                 </View>
-                {i < TIMELINE.length - 1 && <View style={[styles.timelineLine, active && { backgroundColor: colors.brandPrimary }]} />}
+                {i < timelineSteps.length - 1 && <View style={[styles.timelineLine, active && { backgroundColor: stepTone }]} />}
               </View>
             );
           })}
-        </View>
+        </View>}
 
         {/* Order items */}
         <View style={styles.itemsCard}>
-          <Text style={styles.timelineTitle}>Your order · {order.items.length} items</Text>
+          <Text style={styles.timelineTitle}>{t('tracking.itemsTitle', { count: order.items.length })}</Text>
           {order.items.slice(0, 4).map((i) => (
             <View key={i.id} style={styles.itemRow}>
               <Image source={i.image} style={styles.itemImg} contentFit="cover" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName} numberOfLines={1}>{i.name}</Text>
-                <Text style={styles.itemMeta}>{i.weight} · x{i.qty}</Text>
+                <Text style={styles.itemMeta}>{t('tracking.itemMeta', { weight: i.weight, qty: fmt.number(i.qty) })}</Text>
               </View>
-              <Text style={styles.itemPrice}>₹{i.price * i.qty}</Text>
+              <Text style={styles.itemPrice}>{fmt.money(i.price * i.qty)}</Text>
             </View>
           ))}
           {order.items.length > 4 && (
-            <Text style={styles.moreText}>+ {order.items.length - 4} more items</Text>
+            <Text style={styles.moreText}>{t('tracking.moreItems', { count: order.items.length - 4 })}</Text>
           )}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Grand total</Text>
-            <Text style={styles.totalValue}>₹{order.total}</Text>
+            <Text style={styles.totalLabel}>{t('tracking.grandTotal')}</Text>
+            <Text style={styles.totalValue}>{fmt.money(order.total)}</Text>
           </View>
         </View>
 
+        <CancelOrderCard order={order} onCancelled={() => setRetry(v => v + 1)} />
+
         <TouchableOpacity style={styles.homeBtn} onPress={() => router.replace("/(tabs)" as any)} testID="continue-shopping">
-          <Text style={styles.homeBtnText}>Continue shopping</Text>
+          <Text style={styles.homeBtnText}>{t('tracking.continueShopping')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -270,7 +350,7 @@ export default function OrderTrackingScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", gap: spacing.md },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 20, fontWeight: "800", color: colors.onSurface },
   sub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   placed: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: '#050605', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
@@ -288,6 +368,12 @@ const styles = StyleSheet.create({
   etaHint: { color: colors.brandSecondary, fontSize: 12, fontWeight: "700", marginTop: 4 },
   dispatchDot: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.brandSecondary, alignItems: "center", justifyContent: "center" },
   dispatchEmoji: { fontSize: 34 },
+  // live ETA card: fixed line heights so a new value never changes the card's height
+  etaTimeLive: { color: colors.onBrandPrimary, fontSize: 30, lineHeight: 40, minHeight: 40, fontWeight: "800", marginTop: 4 },
+  etaWhen: { color: colors.onBrandPrimary, fontSize: 14, lineHeight: 20, minHeight: 20, fontWeight: "700" },
+  etaSource: { color: colors.brandSecondary, fontSize: 12, lineHeight: 18, minHeight: 18, fontWeight: "700", marginTop: 2 },
+  dispatchDotLive: { width: 56, height: 56, borderRadius: 28, marginLeft: spacing.sm },
+  mapPending: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceSecondary },
   mapCard: { width: MAP_W, height: MAP_H, backgroundColor: colors.surface, borderRadius: radius.md, overflow: "hidden", borderWidth: 1, borderColor: colors.border },
   rider: { position: "absolute", width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   storeLabel: { position: "absolute", left: 44, bottom: 20, backgroundColor: colors.brandSecondary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
@@ -303,7 +389,7 @@ const styles = StyleSheet.create({
   timelineTitle: { fontSize: 14, fontWeight: "800", color: colors.onSurface, marginBottom: spacing.md },
   timelineRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, paddingVertical: 8, position: "relative" },
   timelineDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" },
-  timelineLine: { position: "absolute", left: 13, top: 32, width: 2, height: 20, backgroundColor: colors.border },
+  timelineLine: { position: "absolute", left: 13, top: 32, bottom: -8, width: 2, backgroundColor: colors.border },
   timelineLabel: { fontSize: 13, color: colors.muted, marginTop: 4 },
   timelineNow: { fontSize: 11, color: colors.brandPrimary, marginTop: 2, fontWeight: "700" },
   itemsCard: { marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md },
@@ -317,6 +403,6 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between" },
   totalLabel: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
   totalValue: { fontSize: 16, fontWeight: "800", color: colors.onSurface },
-  homeBtn: { marginTop: spacing.lg, height: 52, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
+  homeBtn: { marginTop: spacing.lg, minHeight: 52, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
   homeBtnText: { color: colors.onSurface, fontWeight: "800" },
 });

@@ -8,6 +8,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useTheme, radius, spacing } from '../theme';
+import { useTranslation } from '../i18n';
 
 interface HiggsfieldCharacterProps {
   type: 'bappa' | 'shopping_character' | 'rider' | 'store';
@@ -33,6 +34,7 @@ export function HiggsfieldCharacter({
   onLoad,
 }: HiggsfieldCharacterProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = makeStyles(colors);
 
   const bounceY = useSharedValue(0);
@@ -71,12 +73,7 @@ export function HiggsfieldCharacter({
     store: '🏪',       // Store
   }[type];
 
-  const characterLabel = {
-    bappa: 'Bappa',
-    shopping_character: 'Shopping Buddy',
-    rider: 'Your Rider',
-    store: 'Store',
-  }[type];
+  const characterLabel = t(`home.character.${type}`);
 
   return (
     <View style={styles.container}>
@@ -93,6 +90,7 @@ export function HiggsfieldCharacter({
 
       {/* Placeholder notice for development */}
       <Text style={styles.placeholder}>
+        {/* i18n-ignore: developer placeholder, never shown in a real build */}
         [Higgsfield 3D Asset Placeholder]
       </Text>
     </View>

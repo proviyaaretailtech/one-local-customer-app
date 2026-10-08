@@ -13,6 +13,7 @@ import { CityScroll } from '@/src/motion';
 import { BrandRail, CategoryRail, EventRail, LoadState, ProductGrid as ProductRail, SectionTitle } from '@/src/components/catalog-sections';
 import { ExploreTown } from '@/src/components/explore-town';
 import { useDeliveryLocation } from '@/src/delivery-location';
+import { useFormat, useTranslation } from '@/src/i18n';
 
 export default function HomeScreen() {
   // Outside our delivery cities, home becomes the town's real local places.
@@ -24,7 +25,7 @@ export default function HomeScreen() {
 function LiveHome() {
   const { data, isLoading, isError, refetch } = useCatalog();
   const router = useRouter();
-  const { isFollowing } = useFollowedStores();
+  const { isFollowing } = useFollowedStores(); const { t } = useTranslation(); const fmt = useFormat();
   const [stores, setStores] = useState<Store[]>([]);
   useEffect(() => { api<Store[]>('/stores').then(setStores).catch(() => {}); }, []);
   if (isLoading || !data) return <LoadState error={isError} retry={refetch} />;
@@ -34,37 +35,37 @@ function LiveHome() {
   const go = (route: string) => () => router.navigate(route as any);
   const selected = (ids: string[]) => ids.flatMap(id => data.products.filter(p => p.id === id));
   return <CityScroll testID="home-screen" showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-    {followed.length > 0 && <><SectionTitle id="followed" title="Your local favourites" subtitle="The stores you follow, always first." /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><Text style={styles.storeName}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
+    {followed.length > 0 && <><SectionTitle id="followed" title={t('home.followedTitle')} subtitle={t('home.followedSubtitle')} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><Text style={styles.storeName}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
     <BrandSpotlight switchable />
     <View style={styles.sheet}>
-    <SectionTitle id="home-shop-by-store" title="A little world for every mood" subtitle="SHOP BY STORE · Five edits, made for you." onPress={go('/categories')} />
+    <SectionTitle id="home-shop-by-store" title={t('home.storesTitle')} subtitle={t('home.storesSubtitle')} onPress={go('/categories')} />
     <StoreRail stores={data.themed_stores || []} scope="home" />
-    <SectionTitle id="trending" title="Trending in Latur" subtitle="Good finds. Everyone’s talking." onPress={go('/search?collection=trending')} />
+    <SectionTitle id="trending" title={t('home.trendingTitle')} subtitle={t('home.trendingSubtitle')} onPress={go('/search?collection=trending')} />
     <ProductRail products={selected(['f1', 'f5', 'b1', 'f3', 'p3', 'a1'])} scope="trending-home" />
-    <SectionTitle id="top-picks" title="Top picks for you" subtitle="A few things we think you’ll love." onPress={go('/search?collection=picks')} />
+    <SectionTitle id="top-picks" title={t('home.picksTitle')} subtitle={t('home.picksSubtitle')} onPress={go('/search?collection=picks')} />
     <ProductRail products={selected(['p3', 'f3', 'b1', 'p4', 'f6', 'a1'])} scope="picks" />
     <View style={styles.rule} />
-    <SectionTitle id="home-food" title="What are you craving?" subtitle="FOOD · The names you know. The bites you love." onPress={go('/food')} />
+    <SectionTitle id="home-food" title={t('home.foodTitle')} subtitle={t('home.foodSubtitle')} onPress={go('/food')} />
     <BrandRail brands={data.brands.filter(b => b.department === 'food')} scope="home-food" />
     <View style={styles.railSpace}><ProductRail products={selected(['f4', 'f2', 'f5'])} scope="food-home" /></View>
-    <SectionTitle id="home-grocery" title="A fresh start, every day" subtitle="GROCERY SHOP · Your everyday essentials." onPress={go('/grocery')} />
+    <SectionTitle id="home-grocery" title={t('home.groceryTitle')} subtitle={t('home.grocerySubtitle')} onPress={go('/grocery')} />
     <CategoryRail categories={data.categories.filter(c => c.department === 'grocery').slice(0, 6)} scope="grocery-home" />
-    <SectionTitle id="home-shops" title="A little city shopping" subtitle="SHOPS · Style, sound & lovely little spaces." onPress={go('/shops')} />
+    <SectionTitle id="home-shops" title={t('home.shopsTitle')} subtitle={t('home.shopsSubtitle')} onPress={go('/shops')} />
     <BrandRail brands={data.brands.filter(b => b.department === 'shops')} scope="home-shops" />
     <View style={styles.railSpace}><ProductRail products={selected(['sneak1', 'audio1', 'home1'])} scope="shops-home" /></View>
-    <SectionTitle id="home-pharmacy" title="A little care goes a long way" subtitle="PHARMACY & BEAUTY · Feel good, inside and out." onPress={go('/care')} />
+    <SectionTitle id="home-pharmacy" title={t('home.pharmacyTitle')} subtitle={t('home.pharmacySubtitle')} onPress={go('/care')} />
     <BrandRail brands={data.brands.filter(b => b.department === 'pharmacy')} scope="home-pharmacy" />
     <View style={styles.railSpace}><ProductRail products={selected(['h2', 'h1', 'h3'])} scope="pharmacy-home" /></View>
-    <SectionTitle id="home-beauty" title="Find your everyday glow" subtitle="Your next little obsession." onPress={go('/care')} />
+    <SectionTitle id="home-beauty" title={t('home.beautyTitle')} subtitle={t('home.beautySubtitle')} onPress={go('/care')} />
     <BrandRail brands={data.brands.filter(b => b.department === 'beauty')} scope="home-beauty" />
     <View style={styles.railSpace}><ProductRail products={selected(['b2', 'b3', 'b4'])} scope="beauty-home" /></View>
-    <SectionTitle id="home-book" title="Make room for good times" subtitle="BOOK IT · Movies, events & little adventures." onPress={go('/book-it')} />
+    <SectionTitle id="home-book" title={t('home.bookTitle')} subtitle={t('home.bookSubtitle')} onPress={go('/book-it')} />
     <EventRail events={data.events} scope="home-book" />
-    <SectionTitle id="home-stores" title="Meet your neighbourhood" subtitle="Independent stores. A little closer to home." />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{stores.filter(s => s.id.startsWith('s') || s.id.startsWith('org-')).map(s => <Pressable testID={`store-card-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><View><Text style={styles.storeName}>{s.name}</Text><Text style={styles.meta}>{s.delivery_time} · {s.rating} rating</Text></View></Pressable>)}</ScrollView>
-    <SectionTitle id="home-budget" title="Little prices. Lots to love." subtitle="Everything here under ₹99" onPress={go('/search?collection=budget')} /><ProductRail products={data.products.filter(p => p.price < 99).slice(-10)} scope="home-budget" />
-    <SectionTitle id="home-brand-discovery" title="Meet your next favourite brand" subtitle={`${data.brands.length} demo brands, one little city`} /><BrandRail brands={data.brands.slice(16)} scope="home-new-brands" />
-    <View style={styles.footer}><Text style={styles.footerTitle}>One city. Endless possibilities.</Text><Text style={styles.footerSub}>Made for Latur. Made for you.</Text><Text testID="sample-catalog-notice" style={styles.notice}>Explore our sample catalogue. Brand listings, prices and booking experiences are for demonstration.</Text></View>
+    <SectionTitle id="home-stores" title={t('home.neighbourhoodTitle')} subtitle={t('home.neighbourhoodSubtitle')} />
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{stores.filter(s => s.id.startsWith('s') || s.id.startsWith('org-')).map(s => <Pressable testID={`store-card-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><View><Text style={styles.storeName}>{s.name}</Text><Text style={styles.meta}>{t('home.storeMeta', { time: fmt.deliveryTime(s.delivery_time), rating: fmt.number(s.rating, { maxFractionDigits: 2 }) })}</Text></View></Pressable>)}</ScrollView>
+    <SectionTitle id="home-budget" title={t('home.budgetTitle')} subtitle={t('home.budgetSubtitle', { amount: fmt.money(99) })} onPress={go('/search?collection=budget')} /><ProductRail products={data.products.filter(p => p.price < 99).slice(-10)} scope="home-budget" />
+    <SectionTitle id="home-brand-discovery" title={t('home.brandsTitle')} subtitle={t('home.brandsSubtitle', { value: fmt.number(data.brands.length) })} /><BrandRail brands={data.brands.slice(16)} scope="home-new-brands" />
+    <View style={styles.footer}><Text style={styles.footerTitle}>{t('home.footerTitle')}</Text><Text style={styles.footerSub}>{t('home.footerSub')}</Text><Text testID="sample-catalog-notice" style={styles.notice}>{t('home.sampleNotice')}</Text></View>
     </View>
   </CityScroll>;
 }

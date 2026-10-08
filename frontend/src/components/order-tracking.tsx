@@ -1,8 +1,10 @@
 import React from 'react';
+import type { ParseKeys } from 'i18next';
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme, radius, spacing } from '../theme';
 import { GlassCard } from './glass-card';
+import { orderStatusKey, useFormat, useTranslation } from '@/src/i18n';
 
 export interface OrderTrackingProps {
   status: 'placed' | 'packed' | 'out' | 'delivered';
@@ -13,11 +15,12 @@ export interface OrderTrackingProps {
   total: number;
 }
 
-const STATUS_STEPS = [
-  { key: 'placed', label: 'Order Placed', icon: '✓' },
-  { key: 'packed', label: 'Being Packed', icon: '📦' },
-  { key: 'out', label: 'Out for Delivery', icon: '🚴' },
-  { key: 'delivered', label: 'Delivered', icon: '🏠' },
+// Labels are catalogue keys: status words come from the order-status mapping, "Being Packed" has its own line.
+const STATUS_STEPS: { key: string; label: ParseKeys; icon: string }[] = [
+  { key: 'placed', label: orderStatusKey('placed'), icon: '✓' },
+  { key: 'packed', label: 'tracking.step.beingPacked', icon: '📦' },
+  { key: 'out', label: orderStatusKey('out'), icon: '🚴' },
+  { key: 'delivered', label: orderStatusKey('delivered'), icon: '🏠' },
 ];
 
 /**
@@ -32,6 +35,8 @@ export function OrderTracking({
   total,
 }: OrderTrackingProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const fmt = useFormat();
   const styles = makeStyles(colors);
   const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === status);
 
@@ -42,8 +47,8 @@ export function OrderTracking({
         entering={FadeInDown.duration(500)}
         style={styles.etaBanner}
       >
-        <Text style={styles.etaLabel}>Estimated Delivery</Text>
-        <Text style={styles.etaTime}>{eta_minutes} minutes</Text>
+        <Text style={styles.etaLabel}>{t('tracking.etaTitle')}</Text>
+        <Text style={styles.etaTime}>{t('tracking.etaMinutes', { count: eta_minutes })}</Text>
       </Animated.View>
 
       {/* Status Timeline */}
@@ -76,7 +81,7 @@ export function OrderTracking({
                   isActive && styles.stepLabelActive,
                 ]}
               >
-                {step.label}
+                {t(step.label)}
               </Text>
 
               {/* Connector line */}
@@ -110,12 +115,12 @@ export function OrderTracking({
 
       {/* Items summary */}
       <View style={styles.itemsSection}>
-        <Text style={styles.itemsTitle}>Items ({items.length})</Text>
+        <Text style={styles.itemsTitle}>{t('tracking.itemsHeading', { n: fmt.number(items.length) })}</Text>
         {items.map((item, index) => (
           <View key={item.id || index} style={styles.itemRow}>
             <Text style={styles.itemName}>{item.name}</Text>
             <Text style={styles.itemQty}>× {item.qty}</Text>
-            <Text style={styles.itemPrice}>₹{item.price}</Text>
+            <Text style={styles.itemPrice}>{fmt.money(item.price)}</Text>
           </View>
         ))}
       </View>
@@ -123,8 +128,8 @@ export function OrderTracking({
       {/* Order total */}
       <GlassCard variant="default">
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Order Total</Text>
-          <Text style={styles.totalAmount}>₹{total}</Text>
+          <Text style={styles.totalLabel}>{t('tracking.orderTotal')}</Text>
+          <Text style={styles.totalAmount}>{fmt.money(total)}</Text>
         </View>
       </GlassCard>
     </ScrollView>

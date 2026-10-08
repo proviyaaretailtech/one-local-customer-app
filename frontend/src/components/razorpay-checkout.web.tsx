@@ -13,11 +13,12 @@ function loadCheckout(): Promise<void> {
     const tag = document.createElement('script');
     tag.src = 'https://checkout.razorpay.com/v1/checkout.js';
     tag.onload = () => resolve();
-    tag.onerror = () => { script = null; reject(new Error('Could not load the payment page')); };
+    tag.onerror = () => { script = null; reject(new Error('Could not load the payment page')); }; // i18n-ignore: developer reason, never shown
     document.body.appendChild(tag);
   }));
 }
 
+// The `reason` texts in the results below are for developers (the cart never shows them), so they stay English.
 export function RazorpayCheckout({ session, onResult }: { session: PaymentStart; method: string; app?: string; onResult: (r: PaymentResult) => void }) {
   useEffect(() => {
     let done = false, failure = '';

@@ -9,11 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
 import { API, identity, PaymentResult, PaymentStart } from '../api';
 import { colors } from '../theme';
+import { useTranslation } from '@/src/i18n';
 
 export function RazorpayCheckout({ session, method, app, onResult }: { session: PaymentStart; method: string; app?: string; onResult: (r: PaymentResult) => void }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [headers, setHeaders] = useState<Record<string, string> | null>(null);
   const done = useRef(false);
+  // The `reason` texts below travel in the result for developers; the cart never shows them, so they stay English.
   const finish = (r: PaymentResult) => { if (!done.current) { done.current = true; onResult(r); } };
   useEffect(() => { identity().then(setHeaders).catch(() => finish({ type: 'failed', reason: 'Could not open the payment page' })); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -26,8 +29,8 @@ export function RazorpayCheckout({ session, method, app, onResult }: { session: 
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => finish({ type: 'dismiss' })}>
     <View testID="razorpay-webview" style={[s.screen, { paddingTop: insets.top }]}>
       <View style={s.bar}>
-        <Pressable testID="razorpay-close" accessibilityLabel="Cancel payment" onPress={() => finish({ type: 'dismiss' })} style={s.close}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
-        <Icon name="lock-closed" size={14} color={colors.onSuccess} /><Text style={s.title}>Secure payment by Razorpay</Text>
+        <Pressable testID="razorpay-close" accessibilityLabel={t('payment.cancelA11y')} onPress={() => finish({ type: 'dismiss' })} style={s.close}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
+        <Icon name="lock-closed" size={14} color={colors.onSuccess} /><Text style={s.title}>{t('payment.secure')}</Text>
       </View>
       {headers ? <WebView
         source={{ uri, headers }}

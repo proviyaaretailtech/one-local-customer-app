@@ -63,7 +63,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [lastAdded, setLastAdded] = useState<CartContextType['lastAdded']>(null);
   // A food add that would mix restaurants waits here for the customer's answer.
-  const [pending, setPending] = useState<{ lines: Line[]; origin?: Origin; from: string; to: string } | null>(null);
+  const [pending, setPending] = useState<{ lines: Line[]; origin?: Origin; from?: string; to?: string } | null>(null);
   const [storeNames, setStoreNames] = useState<Map<string, string>>(new Map());
   const catalog = useRef(new Map<string, CartProduct>()); // fills in store and department when a caller leaves them out
   const current = useRef(carts); current.current = carts;
@@ -122,7 +122,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!food.length) return;
     const to = food[0].product.store_id;
     const from = current.current.food.find(i => i.store_id && to && i.store_id !== to)?.store_id;
-    if (from) setPending({ lines: food, origin, from: storeNames.get(from) ?? 'another restaurant', to: storeNames.get(to!) ?? 'this restaurant' });
+    if (from) setPending({ lines: food, origin, from: storeNames.get(from), to: storeNames.get(to!) }); // names the stores gave; the sheet words the rest
     else put('food', food, origin);
   };
   const add = (p: CartProduct, origin?: Origin) => addMany([{ product: p, qty: 1 }], origin);
@@ -158,6 +158,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 export function useCart() {
   const c = useContext(CartContext);
-  if (!c) throw new Error("useCart must be used inside CartProvider");
+  if (!c) throw new Error("useCart must be used inside CartProvider"); // i18n-ignore: developer error
   return c;
 }

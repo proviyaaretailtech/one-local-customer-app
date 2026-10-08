@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { apiGet, apiPost } from './api';
 import { consentGranted } from './privacy';
+import { t } from './i18n';
 import type { Point } from './delivery-location';
 import type { Address } from './customer';
 
@@ -26,12 +27,19 @@ export const checkServiceable = (p: Point) =>
 
 // Location refused. After a "Don't Allow" the phone never asks again (canAskAgain false), so the
 // screen offers a way to Settings instead of a button that silently does nothing.
+// The message is translated when the error is created (never at module load), so it is already in the
+// person's language: screens show `.message` for these two errors and use useErrorMessage() for the rest.
 export class LocationOffError extends Error {
   constructor(public canAskAgain: boolean) {
-    super(canAskAgain ? 'Location access is off. Allow it to use your current location, or search for your town above.'
-      : 'Location access is turned off for OneCity. Turn it on in Settings, or search for your town above.');
+    super(canAskAgain ? t('location.off.canAsk') : t('location.off.settings'));
   }
 }
+export class LocationUnavailableError extends Error {
+  constructor() { super(t('location.cannotFind')); }
+}
+/** True for the location errors above, whose message is already a translated sentence. */
+export const isLocationError = (e: unknown): e is LocationOffError | LocationUnavailableError =>
+  e instanceof LocationOffError || e instanceof LocationUnavailableError;
 
 // A fresh fix can take long indoors (or never come on a simulator), so wait at most 12 s, then
 // fall back to a recent known position, and say so plainly if there is none.
@@ -42,7 +50,7 @@ export async function currentPoint(): Promise<Point> {
   const late = new Promise<null>(resolve => setTimeout(() => resolve(null), 12_000));
   const pos = (await Promise.race([fresh, late]))
     ?? (await Location.getLastKnownPositionAsync({ maxAge: 30 * 60_000 }).catch(() => null));
-  if (!pos) throw new Error('Couldn’t find where you are right now. Check that location is switched on, or search for your town above.');
+  if (!pos) throw new LocationUnavailableError();
   return { lat: pos.coords.latitude, lng: pos.coords.longitude };
 }
 

@@ -12,6 +12,6 @@ export const DeliveryLocationContext = createContext<{
   coverage: Coverage | null;
   edit: () => void;
   setLocation: (value: string, point?: Point | null) => void;
-}>({ location: 'Latur, Maharashtra', point: null, coverage: null, edit: () => {}, setLocation: () => {} });
+}>({ location: 'Latur, Maharashtra', point: null, coverage: null, edit: () => {}, setLocation: () => {} }); // i18n-ignore: the default place name is data (a town), not UI text
 
 export const useDeliveryLocation = () => useContext(DeliveryLocationContext);

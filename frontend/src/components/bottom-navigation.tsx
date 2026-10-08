@@ -5,24 +5,27 @@ import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
 import { OneButton } from './one-button';
 import { usePageColors } from '../use-page-colors';
+import { useTranslation } from '../i18n';
+import { departmentName } from '../departments';
 
 const tabs = [
-  { id: 'home', label: 'Home', path: '/', icon: 'home-outline' },
-  { id: 'categories', label: 'Categories', path: '/categories', icon: 'grid-outline' },
-  { id: 'discover', label: 'Discover', path: '/discover', icon: 'play-outline' },
-  { id: 'food', label: 'Food', path: '/food', icon: 'fast-food-outline' },
-  { id: 'book-it', label: 'Book It', path: '/book-it', icon: 'ticket-outline' },
+  { id: 'home', path: '/', icon: 'home-outline' },
+  { id: 'categories', path: '/categories', icon: 'grid-outline' },
+  { id: 'discover', path: '/discover', icon: 'play-outline' },
+  { id: 'food', path: '/food', icon: 'fast-food-outline' },
+  { id: 'book-it', path: '/book-it', icon: 'ticket-outline' },
 ];
 export function BottomNavigation() {
-  const insets = useSafeAreaInsets(); const path = usePathname(); const router = useRouter();
+  const insets = useSafeAreaInsets(); const path = usePathname(); const router = useRouter(); const { t } = useTranslation();
+  const labels: Record<string, string> = { home: t('nav.home'), categories: t('nav.categories'), discover: t('nav.discover'), food: departmentName(t, 'food'), 'book-it': departmentName(t, 'book-it') };
   const palette = usePageColors();
   const dark = path === '/reels';
   const selected = (id: string, route: string) => path === route || (id === 'categories' && (path.startsWith('/collection/') || path.startsWith('/category/')));
   // Full-screen flows, and product pages (they carry their own sticky add-to-bag bar).
   if (['/location', '/address-map', '/address-form', '/sign-in'].includes(path) || path.startsWith('/product/')) return null;
   return <View testID="bottom-navigation" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 9) }, dark && styles.dark]}>
-    {tabs.map(t => t.id === 'discover' ? <View key={t.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>Discover</Text></View> : <Pressable key={t.id} testID={`tab-${t.id}`} accessibilityRole="tab" accessibilityLabel={t.label} accessibilityState={{ selected: selected(t.id, t.path) }} onPress={() => router.navigate((t.id === 'home' ? '/(tabs)' : `/(tabs)/${t.id}`) as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
-      <Icon name={t.icon as any} size={20} color={selected(t.id, t.path) ? palette.forest : dark ? colors.surface : colors.muted} /><Text testID={`tab-label-${t.id}`} style={[styles.label, selected(t.id, t.path) && styles.active, selected(t.id, t.path) && { color: palette.forest }, dark && styles.light]}>{t.label}</Text>{selected(t.id, t.path) && <View style={[styles.dot, { backgroundColor: palette.forest }]} />}
+    {tabs.map(tab => tab.id === 'discover' ? <View key={tab.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>{labels.discover}</Text></View> : <Pressable key={tab.id} testID={`tab-${tab.id}`} accessibilityRole="tab" accessibilityLabel={labels[tab.id]} accessibilityState={{ selected: selected(tab.id, tab.path) }} onPress={() => router.navigate((tab.id === 'home' ? '/(tabs)' : `/(tabs)/${tab.id}`) as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+      <Icon name={tab.icon as any} size={20} color={selected(tab.id, tab.path) ? palette.forest : dark ? colors.surface : colors.muted} /><Text testID={`tab-label-${tab.id}`} style={[styles.label, selected(tab.id, tab.path) && styles.active, selected(tab.id, tab.path) && { color: palette.forest }, dark && styles.light]}>{labels[tab.id]}</Text>{selected(tab.id, tab.path) && <View style={[styles.dot, { backgroundColor: palette.forest }]} />}
     </Pressable>)}
   </View>;
 }

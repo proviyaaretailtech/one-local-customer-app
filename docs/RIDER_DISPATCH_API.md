@@ -23,7 +23,7 @@ A retry never makes a second job, and an order never fails because dispatch is d
 
 ## 2. Endpoints
 
-**Server to server** (`/api/dispatch/*`): `Authorization: Bearer <DISPATCH_SERVICE_TOKEN>`, `X-Request-Id`, `X-Timestamp` (unix seconds or ISO, within 5 minutes), `X-Signature` = hex `HMAC-SHA256(DISPATCH_SIGNING_SECRET, timestamp + "." + raw body)` (also on GET, with an empty body), and `Idempotency-Key` on every POST. A user's token is refused.
+**Server to server** (`/api/dispatch/*`): `Authorization: Bearer <DISPATCH_SERVICE_TOKEN>`, `X-Request-Id`, `X-Timestamp` (unix seconds or ISO, within 5 minutes), `X-Signature` = hex `HMAC-SHA256(DISPATCH_SIGNING_SECRET, METHOD + "\n" + path-and-query + "\n" + timestamp + "\n" + sha256hex(raw body))` (also on GET, with an empty body; the path and query exactly as called, e.g. `/api/dispatch/events?after=0`, so a signature works for that one request only), and `Idempotency-Key` on every POST. A user's token is refused.
 
 | Route | What it does |
 | --- | --- |
@@ -66,3 +66,36 @@ The existing suites still pass (checkout 42, admin 96, privacy 56) and the type 
 - **Zones and PostGIS:** distance is a straight line within `search_radius_km` (default 8). Zones from `RIDER_APP_E2E_V1.md` section 2 replace `dispatch_km()` later.
 - **Cash limit** check when going online (needs the cash ledger).
 - **Restaurant timeout** cancels the job through the sweep (up to one sweep interval late), not instantly.
+
+## 6. Live navigation, live tracking and ETA
+
+**Date:** 2026-10-08 · **Spec:** `specs/live-navigation-eta/spec.md` · **Code:** `server/routing.ts` (Google client, kept routes, progress), `server/geometry.ts` (polyline maths), `server/tracking.ts` (the two reads below) · **Checks:** `npx tsx scripts/live-tracking-checks.ts`
+
+All Google calls are made by this server with `GOOGLE_MAPS_API_KEY` (Routes API `computeRoutes`, `TWO_WHEELER`, `TRAFFIC_AWARE`, `en-IN`, metric; 6 s timeout, widened with `GOOGLE_ROUTES_TIMEOUT_MS` up to 30 s). The key never leaves the server and is never logged (errors go through `redact()`). The route for a (job, target) is fetched once and kept in the server's memory; after that every position is turned into "how much is left" by projecting it onto the kept polyline. Google is asked again only when there is nothing kept, the kept route is older than 120 s, the rider is more than 80 m off the line (not more often than every 10 s), or the destination moved by more than 25 m. A target change (store, then customer) is a new key. After a Google failure that key is left alone for 30 s. With no key, or when Google fails, the answer is an **estimate** (`source: "estimate"`: straight line x 1.35 at 20 km/h, a two-point polyline, one step), so the apps keep working.
+
+**Route object** (both endpoints): `{ source: "google"|"estimate", distance_m, duration_s, polyline, steps: [{ instruction, maneuver, distance_m, duration_s, end: {lat,lng} }], fetched_at }`. `polyline` is a Google encoded polyline (precision 5). `distance_m` and `duration_s` are the totals for that polyline as fetched, so an app works out what is left as `remaining along the polyline / total x duration_s`. `maneuver` is Google's value (`TURN_LEFT`, ...) or `null`.
+
+| Route | What it does |
+| --- | --- |
+| `POST /api/rider/route` | Rider login, 20 a minute. Body `{ job_id, from: { lat, lng } }`. Returns `{ target: "pickup"\|"drop", destination: { lat, lng, label }, route }`. The destination is worked out from the rider's own job and is never read from the request. Before the order is picked up (`assigned`, `at_pickup` including pickup verified) the target is the pickup and the answer holds nothing about the customer's pin; from `picked_up` (the same moment the rider app is shown the drop) it is the drop, with the drop address as `label`. A job held for a problem keeps the target it had. `400 validation` (bad `job_id` or `from`), `401`/`403` as the other rider routes, `404` job not found or not this rider's, `409 wrong_state` job not active (delivered, cancelled, closed by a problem) |
+| `GET /api/orders/:id/tracking` | The customer's own order only (account or device, the same rule as `GET /api/orders/:id`; anyone else's is `404`), 30 a minute. Returns `{ live, phase, rider, store, drop, eta, route, poll_after_s }` |
+
+**Tracking answer.** `live` is false when there is no delivery job (no database / demo mode, dispatch not set up, or the order never got a job): then only `phase` and `poll_after_s` are real and `rider`, `store`, `drop`, `eta`, `route` are `null` (the one place the answer is not the full shape; the app keeps its simulation). `phase`: `preparing` (restaurant has not accepted), `finding_rider`, `to_store`, `at_store`, `on_the_way`, `at_door`, `delivered`, `cancelled` (a delivery closed by a problem, failed or returned, also reads `cancelled`; a job held for a problem shows the phase it was in). `rider` is `{ first_name, vehicle, lat, lng, heading, seen_at, stale }` and appears only while a rider has the delivery and a position is known; no phone, no rider id. The position is the newer of the rider's last GPS point on this job and `rider_availability`; `heading` comes from the GPS point (`null` otherwise); `stale` is true when `seen_at` is older than 90 s. `route` is `{ polyline }` from the rider's position to the current target (store before pickup, customer after), already cut to what is still ahead; `null` at the store and at the door. `poll_after_s` is 10 while the rider is moving and fresh, 30 when stationary, stale, not yet assigned or the order is over.
+
+**ETA** (`eta: { minutes, arrives_at, source, updated_at }`, minutes never below 1; `null` for `delivered`/`cancelled`):
+
+| Phase | ETA | `source` |
+| --- | --- | --- |
+| `preparing`, `finding_rider` (no rider yet) | the promise: `ol_orders.promised_eta_at`, else `created_at + eta_minutes`; a promise already passed shows 1 minute | `promise` |
+| `to_store` | `max(rider to store, prep time left) + store to customer`; prep time left = `released_at + prep_minutes - now` | `road`, or `estimate` if any leg is an estimate |
+| `at_store` | `prep time left + store to customer` | same |
+| `on_the_way` | rider to customer | same |
+| `at_door` | 1 minute | `estimate` |
+
+The store-to-customer leg does not depend on the rider, so it is kept for 10 minutes instead of 2. The two reads share the same kept routes, so a customer polling every 10 s and a rider app asking for directions cost one Google call per window between them.
+
+**Rider position mid-job.** `POST /api/rider/jobs/:id/track` (`recordTrack`) now also updates `rider_availability` (`lat`, `lng`, `accuracy_m`, `last_seen_at`) from the newest kept point, for an online rider only and never backwards in time, so the position does not go stale while the heartbeat is not sent. A failure of that update is logged and does not fail the batch.
+
+**Limits.** Kept routes live in each server process's memory: a host running several processes makes one Google call per process per window, not one per poll. Nothing is persisted and no migration is needed. The estimate has no traffic or road shape. Voice guidance, multi-stop batching and background location on iOS are out of scope.
+
+**Switching it on.** `GOOGLE_MAPS_API_KEY` must be a key that is allowed to call the **Routes API** from a server: in Google Cloud Console enable "Routes API" for the project (it is separate from Directions and Places), keep billing on, and make sure the key's API restrictions include Routes API and its application restriction is "None" or the server's IP addresses (not Android, iOS or website restrictions). Until that is done every route is an estimate.

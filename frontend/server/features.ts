@@ -7,7 +7,7 @@ export type Features = {
   ai_search: boolean;        // photo + voice search
   assistant: boolean;        // One AI shopping assistant
   maps: boolean;             // Google Maps pin-drop and address search
-  online_payments: boolean;  // UPI / card / net banking (Razorpay)
+  online_payments: boolean;  // UPI / card / net banking (Cashfree, else Razorpay)
   wallet: boolean;           // OneCity Wallet
   coins: boolean;            // OneLocal Coins
   google_sign_in: boolean;   // mirrors Supabase's own setting; the app also asks Supabase directly
@@ -25,7 +25,7 @@ export function features(): Features {
     ai_search: override('ai_search', ai),
     assistant: override('assistant', ai),
     maps: override('maps', has('GOOGLE_MAPS_API_KEY')),
-    online_payments: override('online_payments', has('RAZORPAY_KEY_ID') && has('RAZORPAY_KEY_SECRET')),
+    online_payments: override('online_payments', (has('CASHFREE_PG_APP_ID') && has('CASHFREE_PG_SECRET_KEY')) || (has('RAZORPAY_KEY_ID') && has('RAZORPAY_KEY_SECRET'))),
     wallet: override('wallet', false),
     coins: override('coins', false),
     google_sign_in: override('google_sign_in', false),

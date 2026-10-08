@@ -2,8 +2,10 @@
 // Contract: docs/MASTER_CONTRACT_V1.md. The Master calls it with the signed-in admin's own Supabase
 // access token (same Supabase project), so every change goes through One Local's own checks (D14).
 //
-//   * Who: a user with a platform_admins row. Reads: any platform role. Writes: super_admin (live),
-//     master_admin, onboarding_admin or operations (development tokens). 401 without a valid token, 403 without the role.
+//   * Who: a user with an Active platform_admins row whose role is the active super_admin role, the same test the database makes
+//     (is_platform_super); reads and writes alike. Any other role is refused (403), and so is every call when that table cannot be
+//     read (503, nothing cached). Development tokens (master_admin, onboarding_admin, operations ...) work only with no database, outside
+//     production, and only with ADMIN_DEV_TOKENS=1. 401 without a valid token.
 //   * CORS: the Master calls server-side, so it needs none; browsers on the Master's origin(s) from
 //     MASTER_APP_URL (comma-separated, localhost too outside production) are allowed anyway, and
 //     every route answers the preflight OPTIONS. Calls from any other website are refused.
@@ -16,7 +18,7 @@
 import { signedInUserId } from './auth';
 import { invalidateCatalog } from './catalog';
 import { db, dbConfigured, fromDbError } from './db';
-import { HttpError, limit, readBody } from './http';
+import { clientIp, HttpError, limit, readBody } from './http';
 import * as market from './marketplace';
 import type { StoreRow } from './marketplace';
 
@@ -49,19 +51,29 @@ const asAdmin = (row: { user_id: string; email: string | null; full_name: string
 // The platform_admins row, cached for 30 seconds (a removed admin loses access within that time).
 // Live columns: user_id, role_id (-> platform_roles.key), first_name, last_name, status. The email lives in auth.users.
 // Only an Active admin gets in; a Suspended, Inactive or Pending one counts as not an admin.
-type AdminRow = { user_id: string; status: string; first_name: string | null; last_name: string | null; platform_roles: { key: string } | { key: string }[] | null };
+type RoleRow = { key: string; is_active?: boolean | null };
+type AdminRow = { user_id: string; status: string; first_name: string | null; last_name: string | null; platform_roles: RoleRow | RoleRow[] | null };
+// The same test the database makes for a platform admin (is_platform_super): an Active row whose role is active AND is super_admin (SRV-5).
+// A limited staff role (support, finance, a role someone named "operations") is not a One Local admin here: this API has no per-feature
+// permission model, so it must not hand out the full one. Anything missing or unexpected in the row is a "no": it fails closed.
+export const PLATFORM_ADMIN_ROLE = 'super_admin';
 export const adminFromRow = (row: AdminRow, email: string | null): Admin | null => {
   if (row.status !== 'Active') return null;
-  const role = (Array.isArray(row.platform_roles) ? row.platform_roles[0] : row.platform_roles)?.key;
-  if (!role) return null; // no role assigned: nothing to authorise against
+  const role = Array.isArray(row.platform_roles) ? row.platform_roles[0] : row.platform_roles;
+  if (!role || role.key !== PLATFORM_ADMIN_ROLE || role.is_active !== true) return null; // no role, another role, or a deactivated role
   const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ') || null;
-  return asAdmin({ user_id: row.user_id, email, full_name: fullName, role });
+  return { ...asAdmin({ user_id: row.user_id, email, full_name: fullName, role: role.key }), canWrite: true };
 };
 async function platformAdmin(userId: string): Promise<Admin | null> {
   const hit = admins.get(userId);
   if (hit && hit.until > Date.now()) return hit.admin;
-  const { data, error } = await db().from('platform_admins').select('user_id, status, first_name, last_name, platform_roles(key)').eq('user_id', userId).maybeSingle();
-  if (error) fromDbError(error);
+  const { data, error } = await db().from('platform_admins').select('user_id, status, first_name, last_name, platform_roles(key, is_active)').eq('user_id', userId).maybeSingle();
+  if (error) {
+    // The table does not look the way this code expects (a migration it does not know about, a renamed column) or the database is down:
+    // nobody is let in, and nothing is cached, so the next call asks again. Only the code is logged.
+    console.error('[admin] the platform_admins check failed, so access is refused:', error.code ?? 'error');
+    throw err(503, 'admin_unavailable', 'The admin service cannot check your access right now. Please try again shortly.');
+  }
   let admin: Admin | null = null;
   if (data) {
     const email = (await db().auth.admin.getUserById(userId).catch(() => null))?.data?.user?.email ?? null;
@@ -87,12 +99,16 @@ export async function requireAdmin(request: Request, write: boolean): Promise<Ad
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) throw err(401, 'not_signed_in', 'Sign in to continue.');
   let admin: Admin | null;
-  if (dbConfigured()) {
+  // In production dbConfigured() throws when the database is missing; here that is the admin API's own 503 below.
+  const hasDb = (() => { try { return dbConfigured(); } catch { return false; } })();
+  if (hasDb) {
     const userId = await signedInUserId(request);
     if (!userId) throw err(401, 'session_expired', 'Your session has expired. Please sign in again.');
     admin = await platformAdmin(userId);
   } else {
-    if (production()) throw err(503, 'database_not_connected', 'The database is not connected yet.');
+    // Development tokens ("dev-admin:<role>") stand in for sign-in with no database. They are a back door, so they are off unless
+    // this development machine asks for them with ADMIN_DEV_TOKENS=1, and never in production (SRV-9 P3-4).
+    if (production() || process.env.ADMIN_DEV_TOKENS !== '1') throw err(503, 'database_not_connected', 'The database is not connected yet.');
     admin = devAdmin(token);
   }
   if (!admin) throw err(403, 'not_platform_admin', 'Only One Local platform admins can use this.');
@@ -156,7 +172,7 @@ export function preflight(request: Request): Response {
 
 type Handler = (request: Request, params: Record<string, string>) => Response | Promise<Response>;
 
-const clientIp = (request: Request) => request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'direct';
+// The address the proxy saw, never the client-written start of X-Forwarded-For (http.ts clientIp).
 
 // Every admin route: the origin check, a per-address limit that runs before any token is looked
 // up, errors as { detail, code }, and CORS headers on every answer (errors included) when a

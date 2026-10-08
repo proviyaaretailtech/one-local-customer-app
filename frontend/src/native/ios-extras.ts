@@ -3,16 +3,20 @@
 // is best-effort, so Expo Go, Android and the web simply skip what they can't do.
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { t } from '@/src/i18n';
 
-// The order journey the app shows (app/order/[id].tsx): seconds after placing → stage.
+// The order journey the app shows (app/order/[id].tsx): seconds after placing → stage. The words for a stage live
+// in the catalogue (notifications.<id>.title / .body) and are looked up when a notification, the Live Activity or
+// the widget is written, so each carries the language the app was in at that moment.
 export const ORDER_STAGES = [
-  { at: 0, title: 'Order placed', body: 'The store has your order.' },
-  { at: 120, title: 'Being packed', body: 'Your items are being packed right now.' },
-  { at: 300, title: 'On the way', body: 'Your order is out for delivery.' },
-  { at: 600, title: 'Delivered', body: 'Enjoy! Your order has arrived.' },
+  { at: 0, id: 'placed' },
+  { at: 120, id: 'packed' },
+  { at: 300, id: 'out' },
+  { at: 600, id: 'delivered' },
 ] as const;
 export const ORDER_TOTAL_S = 600;
 export const stageAt = (elapsedS: number) => ORDER_STAGES.reduce((s, st, i) => (elapsedS >= st.at ? i : s), 0);
+const stageTitle = (step: number) => t(`notifications.${ORDER_STAGES[step].id}.title`);
 
 const isIOS = Platform.OS === 'ios';
 // Expo Go can't load custom native code (Live Activities, widgets); a development build can.
@@ -46,7 +50,7 @@ export async function scheduleOrderJourney(orderId: string, placedAt: number) {
     if (seconds <= 0) continue;
     await N.scheduleNotificationAsync({
       identifier: `order-${orderId}-${st.at}`,
-      content: { title: `OneCity · ${st.title}`, body: st.body, data: { url: `/order/${orderId}` } },
+      content: { title: `OneCity · ${t(`notifications.${st.id}.title`)}`, body: t(`notifications.${st.id}.body`), data: { url: `/order/${orderId}` } },
       trigger: { type: N.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
     }).catch(() => {});
   }
@@ -58,7 +62,7 @@ export function updateOrderWidget(order: WidgetOrder | null) {
   const Storage = extensionStorage(); if (!Storage) return;
   try {
     const store = new Storage(appGroup);
-    if (order) store.set('onecity.latestOrder', JSON.stringify({ ...order, status: ORDER_STAGES[order.step].title }));
+    if (order) store.set('onecity.latestOrder', JSON.stringify({ ...order, status: stageTitle(order.step) }));
     else store.remove('onecity.latestOrder');
     Storage.reloadWidget();
   } catch {}
@@ -70,10 +74,11 @@ export function updateOrderWidget(order: WidgetOrder | null) {
 const liveActivity = () => (devBuild ? load(() => require('../../modules/onecity-live-activity').default as typeof import('../../modules/onecity-live-activity').default) : null);
 
 // Brings the order's activity to `step`: starts it if needed (while not delivered), then updates it;
-// the final step ends it.
-export function syncOrderActivity(orderId: string, step: number, summary: string, placedAt: number) {
+// the final step ends it. `etaEndMs` is the real arrival time when live tracking has one (app/order/[id].tsx);
+// without it the sample journey's end (placed + ORDER_TOTAL_S) is used.
+export function syncOrderActivity(orderId: string, step: number, summary: string, placedAt: number, etaEndMs?: number) {
   const LA = liveActivity(); if (!LA) return;
-  const etaEnd = placedAt + ORDER_TOTAL_S * 1000; const title = ORDER_STAGES[step].title;
+  const etaEnd = etaEndMs ?? placedAt + ORDER_TOTAL_S * 1000; const title = stageTitle(step);
   const started = step < 3 ? LA.start(orderId, title, step, etaEnd, summary) : Promise.resolve(null);
   started.then(() => LA.update(orderId, title, step, etaEnd, summary)).catch(() => {});
 }

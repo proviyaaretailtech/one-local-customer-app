@@ -1,10 +1,16 @@
 // Checks the checkout rules on the server with no database (memory mode) and Razorpay simulated:
 // food carts are one restaurant, shopping carts split into one order per store under one checkout,
 // one Razorpay order per checkout, and paying / switching to cash / refunding moves every order.
+// Also checks, with no database: a payment that lands after the customer chose cash is never turned into a paid order (SRV-3), the
+// rate limits cannot be dodged by inventing device keys and can be backed by a shared counter (SRV-7), production with no database
+// answers 503 instead of keeping orders in memory (SRV-8), and the server never uses a remote Supabase without ALLOW_REMOTE=1 or reads
+// a Supabase management token (SEC-1).
 // Run from frontend/:  npx tsx scripts/checkout-checks.ts
 import { createHmac } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 
-for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'FEATURE_ONLINE_PAYMENTS']) delete process.env[k];
+for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'FEATURE_ONLINE_PAYMENTS', 'ALLOW_REMOTE', 'TRUSTED_PROXY_HOPS', 'ORDERS_REQUIRE_SIGN_IN']) delete process.env[k];
+process.env.SUPABASE_ACCESS_TOKEN = 'sbp_0123456789abcdef0123456789abcdef01234567'; // a made-up management token: the server must drop it as it loads (SEC-1)
 Object.assign(process.env, { RAZORPAY_KEY_ID: 'rzp_test_checks', RAZORPAY_KEY_SECRET: 'checks-secret', RAZORPAY_WEBHOOK_SECRET: 'checks-webhook' });
 
 // Razorpay, simulated: orders it opened, and payments it would report.
@@ -144,6 +150,95 @@ async function main() {
   const refundRaw = JSON.stringify({ event: 'refund.processed', payload: { refund: { entity: { id: 'rfnd_T1', payment_id: 'pay_T3', amount: 11200 } } } });
   await pay.handleWebhook(new Request('http://localhost/api/payments/webhook', { method: 'POST', body: refundRaw, headers: { 'x-razorpay-signature': hmac('checks-webhook', refundRaw), 'x-razorpay-event-id': 'evt_4' } }));
   check('a full refund marks every order in the checkout refunded', (await store.listOrders(request('orders', undefined, 'webhook-customer'))).every(o => o.payment_status === 'refunded'));
+
+  // ---------- SRV-3: a payment that arrives after the customer switched to cash ----------
+  // `failing` was switched to pay on delivery above. Its Razorpay order is still open, so the customer (or a slow bank) can still pay it.
+  const lateId = 'pay_T6';
+  rzpPayments.set(lateId, { amount: 11200, method: 'upi', order_id: failing.razorpay_order_id!, status: 'captured' });
+  await webhook('payment.captured', { id: lateId, order_id: failing.razorpay_order_id, amount: 11200, method: 'upi', notes: { checkout_id: failing.checkout_id } }, 'evt_late_1');
+  const afterLate = await store.findPayment('id', failing.checkout_id);
+  check('a late capture after "switch to cash" does not turn the checkout into a paid one', afterLate?.payment_method === 'cod' && afterLate.payment_status === 'not_charged' && afterLate.razorpay_payment_id === null, afterLate);
+  check('...and every order in it is still cash on delivery, not paid', (await store.listOrders(request('orders', undefined, 'failing-payer'))).every(o => o.payment_method === 'cod' && o.payment_status === 'not_charged'));
+  await refused('the app reporting that late payment (verify) is told the order is cash on delivery: 409, not "paid"', 409, () => pay.verifyPayment(request('payments/verify', { checkout_id: failing.checkout_id, razorpay_order_id: failing.razorpay_order_id, razorpay_payment_id: lateId, razorpay_signature: hmac('checks-secret', `${failing.razorpay_order_id}|${lateId}`) }, 'failing-payer')));
+  check('verify did not change it either', (await store.findPayment('id', failing.checkout_id))?.payment_status === 'not_charged');
+
+  // ---------- SRV-7: limits that a client-chosen header cannot dodge ----------
+  const limitsMap = () => (globalThis as unknown as { __onecityLimits?: Map<string, unknown> }).__onecityLimits!;
+  const { setSharedLimitStore } = await import('../server/limits');
+  limitsMap().clear();
+  process.env.TRUSTED_PROXY_HOPS = '1';
+  const order = (device: string, ip: string) => store.createCheckout(request('checkouts', { items: [{ id: 'p1', qty: 1 }], address }, device, undefined, { 'x-forwarded-for': `${device}, ${ip}` }), 'latur');
+  let placed = 0, blocked = 0;
+  for (let i = 0; i < 12; i++) { try { await order(`rotate-${i}`, '198.51.100.7'); placed++; } catch (e) { if ((e as { status?: number }).status === 429) blocked++; else throw e; } }
+  check('inventing a new device key for every order does not get past the address limit (8 a minute without an account)', placed === 8 && blocked === 4, { placed, blocked });
+  await order('someone-on-another-address', '203.0.113.50').then(() => check('another address is not affected', true), e => check('another address is not affected', false, e));
+  const shared = { keys: [] as string[] };
+  limitsMap().clear();
+  setSharedLimitStore(async key => { shared.keys.push(key); return { allowed: false, retryAfter: 7 }; });
+  let denied: { status?: number; headers?: Record<string, string> } = {};
+  try { await order('shared-store-1', '198.51.100.20'); } catch (e) { denied = e as typeof denied; }
+  check('the shared counter can refuse a request the local one would have allowed (429 with Retry-After)', denied.status === 429 && denied.headers?.['Retry-After'] === '7', denied);
+  check('only a hash of the caller (never the address or the device key) reaches the shared counter', shared.keys.length >= 1 && shared.keys.every(k => /^order:[0-9a-f]{40}$/.test(k)) && !shared.keys.some(k => k.includes('198.51') || k.includes('shared-store')), shared.keys);
+  limitsMap().clear();
+  setSharedLimitStore(async () => { throw new Error('the counter is down'); });
+  await order('shared-store-2', '198.51.100.21').then(() => check('a shared counter that fails does not stop orders (the local limits still apply)', true), e => check('a shared counter that fails does not stop orders', false, e));
+  setSharedLimitStore(null);
+  limitsMap().clear();
+  process.env.ORDERS_REQUIRE_SIGN_IN = '1';
+  await refused('ORDERS_REQUIRE_SIGN_IN=1: a device key alone cannot place an order (401)', 401, () => order('no-account', '198.51.100.30'));
+  delete process.env.ORDERS_REQUIRE_SIGN_IN;
+  delete process.env.TRUSTED_PROXY_HOPS;
+  limitsMap().clear();
+  const { limit } = await import('../server/http');
+  for (let i = 0; i < 51_000; i++) limit(`subject-${i}`, 'prune', 5, 1);
+  await new Promise(r => setTimeout(r, 10));
+  limit('one-more', 'prune', 5, 60_000);
+  check('the in-process limiter forgets expired buckets and stays bounded', limitsMap().size < 50_000, limitsMap().size);
+  limitsMap().clear();
+
+  // ---------- SEC-1: the server's environment ----------
+  check('the Supabase management token is removed from the environment when the server loads', process.env.SUPABASE_ACCESS_TOKEN === undefined);
+  const sources = (dir: string) => readdirSync(dir, { recursive: true, withFileTypes: true }).filter(f => f.isFile() && /\.(ts|tsx|js|mjs)$/.test(f.name)).map(f => `${f.parentPath}/${f.name}`);
+  const readers = [...sources('server'), ...sources('app/api')].filter(f => readFileSync(f, 'utf8').split('\n').some(l => l.includes('SUPABASE_ACCESS_TOKEN') && !l.trimStart().startsWith('//') && !l.includes('deleteProperty')));
+  check('no server or route file reads SUPABASE_ACCESS_TOKEN', readers.length === 0, readers);
+  const dbmod = await import('../server/db');
+  const envmod = await import('../server/env');
+  Object.assign(process.env, { SUPABASE_URL: 'https://abcdefghij.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'service-key-for-checks' });
+  check('a hosted Supabase project is not used without ALLOW_REMOTE=1 (no database, not a crash)', dbmod.dbConfigured() === false && envmod.supabaseUrl() === null);
+  let refusedDb: { status?: number } = {};
+  try { dbmod.db(); } catch (e) { refusedDb = e as typeof refusedDb; }
+  check('...and db() answers 503 instead of connecting to it', refusedDb.status === 503, refusedDb);
+  process.env.ALLOW_REMOTE = '1';
+  check('with ALLOW_REMOTE=1 the hosted project is allowed', dbmod.dbConfigured() === true && envmod.supabaseUrl() === 'https://abcdefghij.supabase.co');
+  delete process.env.ALLOW_REMOTE;
+  process.env.SUPABASE_URL = 'http://127.0.0.1:54321';
+  check('a local Supabase needs no flag', dbmod.dbConfigured() === true);
+  check('only loopback counts as local (a look-alike host does not)', envmod.isLocalUrl('http://localhost:54321') && envmod.isLocalUrl('http://[::1]:54321') && envmod.isLocalUrl('http://x.localhost:3000') && !envmod.isLocalUrl('https://localhost.evil.example') && !envmod.isLocalUrl('http://127.0.0.1.evil.example') && !envmod.isLocalUrl('https://x.supabase.co') && !envmod.isLocalUrl('nonsense'));
+  for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) delete process.env[k];
+
+  // ---------- SRV-9 P3-10 and P3-5: body size is checked while reading, and credentials never reach the logs ----------
+  const { readBody, redact } = await import('../server/http');
+  await refused('a body over the limit is refused (413) without being parsed', 413, () => readBody(new Request('http://localhost/api/x', { method: 'POST', body: JSON.stringify({ pad: 'x'.repeat(70_000) }) })));
+  await refused('a declared Content-Length over the limit is refused (413) before the body is read', 413, () => readBody(new Request('http://localhost/api/x', { method: 'POST', body: '{}', headers: { 'content-length': '999999' } })));
+  check('a small body is still read', (await readBody<{ a: number }>(new Request('http://localhost/api/x', { method: 'POST', body: '{"a":1}' }))).a === 1);
+  const masked = redact(new Error('request to https://maps.googleapis.com/maps/api/geocode/json?latlng=1,2&key=AIzaSyA1234567890abcdefghijklmnopqrstuv failed with Bearer abcdefghijklmnop1234 and eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3OCJ9.c2lnbmF0dXJlLXZhbHVl'));
+  check('redact masks a Google key, a bearer token and a JWT', !/AIza|abcdefghijklmnop1234|eyJhbGci/.test(masked) && masked.includes('latlng=1,2'), masked);
+
+  // ---------- SRV-8: production never keeps orders, support or webhooks in memory ----------
+  const nodeEnv = process.env.NODE_ENV;
+  Object.assign(process.env, { NODE_ENV: 'production' });
+  const prodRefusal = async (what: string, run: () => Promise<unknown>) => {
+    try { await run(); check(what, false, 'was accepted'); } catch (e) { const x = e as { status?: number; code?: string }; check(what, x.status === 503 && x.code === 'database_unavailable', `${x.status} ${x.code}`); }
+  };
+  await prodRefusal('production with no database: a cash order is refused (503), not held in memory', () => store.createCheckout(request('checkouts', { items: [{ id: 'p1', qty: 1 }], address }, 'prod-order'), 'latur'));
+  await prodRefusal('production with no database: a help request is refused', () => store.createSupportRequest(request('support-requests', { topic: 'order', message: 'Where is my order, please?' }, 'prod-support')));
+  await prodRefusal('production with no database: a booking enquiry is refused', () => store.createEnquiry(request('booking-enquiries', { event_id: 'x', slot: 'x', date: '2026-01-01', name: 'Asha', phone: '9876543210', guests: 2 }, 'prod-enquiry')));
+  await prodRefusal('production with no database: reading orders is refused', () => store.listOrders(request('orders', undefined, 'prod-orders')));
+  await prodRefusal('production with no database: the catalogue is refused (no sample data in production)', () => quote('latur', [{ id: 'f1', qty: 1 }], null));
+  const raw = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_P1', order_id: 'order_P1', amount: 100 } } } });
+  await prodRefusal('production with no database: a webhook is refused, so Razorpay retries it (not remembered in memory)', () => pay.handleWebhook(new Request('http://localhost/api/payments/webhook', { method: 'POST', body: raw, headers: { 'x-razorpay-signature': hmac('checks-webhook', raw), 'x-razorpay-event-id': 'evt_prod_1' } })));
+  if (nodeEnv === undefined) Reflect.deleteProperty(process.env, "NODE_ENV"); else process.env.NODE_ENV = nodeEnv;
+  check('outside production the same orders still work in memory (UI work with no .env)', (await store.createSupportRequest(request('support-requests', { topic: 'order', message: 'Where is my order, please?' }, 'dev-support'))).status === 'saved_for_review');
 
   // Imports every route the change touches, so a broken import shows up here.
   await Promise.all(['../app/api/checkouts/index+api', '../app/api/checkouts/[id]+api', '../app/api/orders/index+api', '../app/api/cart/quote+api', '../app/api/payments/order+api'].map(p => import(p)));
