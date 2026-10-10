@@ -359,9 +359,9 @@
  "stores": [
   {
    "id": "s1",
-   "name": "Latur Fresh Mart",
-   "logo": "/api/media/legacy-2e7560e3462d3586",
-   "tagline": "Farm to home in 10 mins",
+   "name": "Purushottam Super Market",
+   "logo": "/api/media/store-purushottam-icon",
+   "tagline": "Your neighbourhood supermarket",
    "delivery_time": "10 min",
    "rating": 4.7,
    "tags": [
@@ -477,9 +477,9 @@
   },
   {
    "id": "mcdonalds",
-   "name": "McDonald's",
-   "logo": "/api/media/mcdonalds",
-   "tagline": "A little bite of happiness",
+   "name": "NIKS Brownies & Burger",
+   "logo": "/api/media/brand-niks",
+   "tagline": "Burgers, brownies, big smiles",
    "delivery_time": "25 min",
    "rating": 4.6,
    "tags": [
@@ -516,9 +516,9 @@
   },
   {
    "id": "kfc",
-   "name": "KFC",
-   "logo": "/api/media/kfc",
-   "tagline": "Crispy. Juicy. Irresistible.",
+   "name": "Rooftop All Day Kitchen",
+   "logo": "/api/media/brand-rooftop",
+   "tagline": "All day, every craving",
    "delivery_time": "25 min",
    "rating": 4.6,
    "tags": [
@@ -555,9 +555,9 @@
   },
   {
    "id": "starbucks",
-   "name": "Starbucks",
-   "logo": "/api/media/starbucks",
-   "tagline": "Your daily coffee ritual",
+   "name": "Baskin Robbins",
+   "logo": "/api/media/brand-baskin-robbins",
+   "tagline": "A little scoop of happy",
    "delivery_time": "25 min",
    "rating": 4.6,
    "tags": [
@@ -594,9 +594,9 @@
   },
   {
    "id": "burgerking",
-   "name": "Burger King",
-   "logo": "/api/media/burgerking",
-   "tagline": "Big on flavour",
+   "name": "Shri Shyam Bhoj",
+   "logo": "/api/media/brand-shri-shyam-bhoj",
+   "tagline": "A full thali, a full heart",
    "delivery_time": "25 min",
    "rating": 4.6,
    "tags": [
@@ -633,9 +633,9 @@
   },
   {
    "id": "dominos",
-   "name": "Domino's",
-   "logo": "/api/media/dominos",
-   "tagline": "Good times, great pizza",
+   "name": "MH 12 Pav Bhaji",
+   "logo": "/api/media/brand-mh12-pav-bhaji",
+   "tagline": "Pav bhaji, pizza and good times",
    "delivery_time": "25 min",
    "rating": 4.6,
    "tags": [
@@ -2268,6 +2268,28 @@
     }
    ],
    "department": "grocery"
+  },
+  {
+   "id": "alpaharam",
+   "name": "Alpaharam",
+   "logo": "/api/media/brand-alpaharam",
+   "tagline": "Pure veg, made fresh",
+   "delivery_time": "25 min",
+   "rating": 4.5,
+   "tags": [
+    "Food",
+    "Pure veg",
+    "Sample brand"
+   ],
+   "media": [
+    {
+     "type": "image",
+     "url": "/api/media/vendor-food-v2",
+     "thumbnail": null,
+     "video_web": null
+    }
+   ],
+   "department": "food"
   }
  ],
  "products": [
@@ -2514,7 +2536,7 @@
   {
    "id": "f1",
    "name": "Classic Cheeseburger",
-   "weight": "McDonald’s · 1 burger",
+   "weight": "NIKS · 1 burger",
    "price": 129.0,
    "mrp": 159.0,
    "image": "/api/media/burger",
@@ -2529,7 +2551,7 @@
   {
    "id": "f2",
    "name": "Crispy Chicken Bucket",
-   "weight": "KFC · 6 pieces",
+   "weight": "Rooftop · 6 pieces",
    "price": 399.0,
    "mrp": 499.0,
    "image": "/api/media/chicken",
@@ -2544,37 +2566,37 @@
   {
    "id": "f3",
    "name": "Iced Caramel Latte",
-   "weight": "Starbucks · 350 ml",
+   "weight": "Rooftop · 350 ml",
    "price": 249.0,
    "mrp": 295.0,
    "image": "/api/media/coffee",
    "category_id": "c11",
-   "store_id": "starbucks",
+   "store_id": "kfc",
    "delivery_min": 25,
    "discount_pct": 16,
    "rating": 4.6,
    "department": "food",
-   "brand_id": "starbucks"
+   "brand_id": "kfc"
   },
   {
    "id": "f4",
-   "name": "Whopper Meal",
-   "weight": "Burger King · burger + fries",
+   "name": "Double Cheese Burger Meal",
+   "weight": "NIKS · burger + fries",
    "price": 199.0,
    "mrp": 259.0,
    "image": "/api/media/burger",
    "category_id": "c9",
-   "store_id": "burgerking",
+   "store_id": "mcdonalds",
    "delivery_min": 25,
    "discount_pct": 23,
    "rating": 4.6,
    "department": "food",
-   "brand_id": "burgerking"
+   "brand_id": "mcdonalds"
   },
   {
    "id": "f5",
    "name": "Farmhouse Pizza",
-   "weight": "Domino’s · regular",
+   "weight": "MH 12 · regular",
    "price": 249.0,
    "mrp": 329.0,
    "image": "/api/media/pizza",
@@ -2589,7 +2611,7 @@
   {
    "id": "f6",
    "name": "Loaded Cheese Fries",
-   "weight": "McDonald’s · 1 portion",
+   "weight": "NIKS · 1 portion",
    "price": 119.0,
    "mrp": 149.0,
    "image": "/api/media/fries",
@@ -3535,43 +3557,43 @@
  "brands": [
   {
    "id": "mcdonalds",
-   "name": "McDonald's",
+   "name": "NIKS Brownies & Burger",
    "department": "food",
-   "logo": "/api/media/mcdonalds",
+   "logo": "/api/media/brand-niks",
    "image": "/api/media/burger",
-   "tagline": "A little bite of happiness"
+   "tagline": "Burgers, brownies, big smiles"
   },
   {
    "id": "kfc",
-   "name": "KFC",
+   "name": "Rooftop All Day Kitchen",
    "department": "food",
-   "logo": "/api/media/kfc",
+   "logo": "/api/media/brand-rooftop",
    "image": "/api/media/chicken",
-   "tagline": "Crispy. Juicy. Irresistible."
+   "tagline": "All day, every craving"
   },
   {
    "id": "starbucks",
-   "name": "Starbucks",
+   "name": "Baskin Robbins",
    "department": "food",
-   "logo": "/api/media/starbucks",
+   "logo": "/api/media/brand-baskin-robbins",
    "image": "/api/media/coffee",
-   "tagline": "Your daily coffee ritual"
+   "tagline": "A little scoop of happy"
   },
   {
    "id": "burgerking",
-   "name": "Burger King",
+   "name": "Shri Shyam Bhoj",
    "department": "food",
-   "logo": "/api/media/burgerking",
+   "logo": "/api/media/brand-shri-shyam-bhoj",
    "image": "/api/media/burger",
-   "tagline": "Big on flavour"
+   "tagline": "A full thali, a full heart"
   },
   {
    "id": "dominos",
-   "name": "Domino's",
+   "name": "MH 12 Pav Bhaji",
    "department": "food",
-   "logo": "/api/media/dominos",
+   "logo": "/api/media/brand-mh12-pav-bhaji",
    "image": "/api/media/pizza",
-   "tagline": "Good times, great pizza"
+   "tagline": "Pav bhaji, pizza and good times"
   },
   {
    "id": "himalaya",
@@ -3900,6 +3922,14 @@
    "logo": "",
    "image": "/api/media/bread",
    "tagline": "Discover the collection · demo brand listing"
+  },
+  {
+   "id": "alpaharam",
+   "name": "Alpaharam",
+   "department": "food",
+   "logo": "/api/media/brand-alpaharam",
+   "image": "/api/media/vendor-food-v2",
+   "tagline": "Pure veg, made fresh"
   }
  ],
  "events": [

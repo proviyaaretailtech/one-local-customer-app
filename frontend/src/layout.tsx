@@ -6,7 +6,7 @@ import { createContext, useContext } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { colors } from './theme';
-import { OneGlyph } from './components/one-button';
+import { BrandLogo } from './components/brand-logo';
 import { departmentName } from './departments';
 import { safeLineHeight } from './i18n/typography';
 
@@ -45,7 +45,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     <View testID="app-frame" style={s.backdrop}>
       <View style={s.glowA} /><View style={s.glowB} />
       {panel && <View style={s.panel}>
-        <View style={s.brand}><OneGlyph size={44} /><Text style={s.brandWord}>neCity</Text></View>
+        <View style={s.brand}><BrandLogo tone="dark" height={44} /></View>
         <Text style={[s.headline, { lineHeight: lineHeight(48, 52) }]}>{t('shell.panel.headline')}</Text>
         <Text style={s.copy}>{t('shell.panel.copy')}</Text>
         <View style={s.chips}>{[{ id: 'food', label: departmentName(t, 'food') }, { id: 'grocery', label: departmentName(t, 'grocery') }, { id: 'shops', label: departmentName(t, 'shops') }, { id: 'care', label: t('shell.panel.care') }, { id: 'book-it', label: departmentName(t, 'book-it') }].map(c => <View key={c.id} style={s.chip}><Text style={s.chipText}>{c.label}</Text></View>)}</View>
@@ -62,7 +62,6 @@ const s = StyleSheet.create({
   column: { width: MAX_APP_WIDTH, overflow: 'hidden', backgroundColor: colors.surface, boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 60, color: 'rgba(179,244,0,0.12)' }] },
   panel: { width: 360, justifyContent: 'center', paddingRight: 56 },
   brand: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  brandWord: { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: -1, marginBottom: 2 },
   // i18n-ignore: Latin value; the Text overrides it with useLineHeight() in other languages
   headline: { color: '#fff', fontSize: 48, lineHeight: 52, fontWeight: '800', letterSpacing: -1.8, marginTop: 28 },
   copy: { color: 'rgba(255,255,255,0.62)', fontSize: 15, lineHeight: 23, marginTop: 16 },

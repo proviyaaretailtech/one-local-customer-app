@@ -14,8 +14,8 @@ import { useTranslation } from '../i18n';
 const stories = [
   { id: 'mcdonalds', asset: 'burger' },
   { id: 'kfc', asset: 'chicken' },
-  { id: 'starbucks', asset: 'coffee' },
-  { id: 'burgerking', asset: 'burger' },
+  { id: 'starbucks', asset: 'item-chocolate' },
+  { id: 'burgerking', asset: 'item-sweets' },
   { id: 'dominos', asset: 'pizza' },
 ] as const;
 export function FoodSpotlight() {

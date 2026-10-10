@@ -34,8 +34,8 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
   const price = 'price' in baseStory ? fmt.money(baseStory.price) : '';
   const copy = {
     eyebrow: t(`home.spotlight.${textKey[shown]}.eyebrow`), title: t(`home.spotlight.${textKey[shown]}.title`), copy: t(`home.spotlight.${textKey[shown]}.copy`),
-    // i18n-ignore: McDonald’s and Latur After Hours are proper names; every other tag is translated
-    tag: shown === 'food' ? 'McDonald’s' : shown === 'book-it' ? 'Latur After Hours' : t(tagKey[shown]),
+    // i18n-ignore: NIKS and Latur After Hours are proper names; every other tag is translated
+    tag: shown === 'food' ? 'NIKS Brownies & Burger' : shown === 'book-it' ? 'Latur After Hours' : t(tagKey[shown]),
     detail: t(`home.spotlight.${textKey[shown]}.detail`, { price }), cta: t(`home.spotlight.${textKey[shown]}.cta`), badge: t(`home.spotlight.${textKey[shown]}.badge`),
   };
   const story = { ...baseStory, ...copy, color: currentPalette.color };

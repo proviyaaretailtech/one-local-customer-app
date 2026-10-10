@@ -13,6 +13,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, ChevronDown, MapPin, Mic, ScanLine, Search, ShoppingBag, User, Wallet } from 'lucide-react-native';
 import { colors } from '../theme';
+import { BrandLogo } from './brand-logo';
 import { mediaUrl } from '../api';
 import type { Catalog } from '../api';
 import { useCart } from '../cart';
@@ -50,7 +51,7 @@ function Hero() {
     <View style={[s.heroInner, { paddingTop: insets.top + 6 }]}>
       <View style={s.topRow}>
         <Pressable testID="header-brand-home" accessibilityRole="button" accessibilityLabel={t('shell.home')} style={s.brand}>
-          <View testID="company-logo" accessibilityLabel="OneCity" style={s.logo}><View style={s.logoMark}><Text style={s.logoOne}>1</Text></View><Text style={s.logoWord}>neCity</Text></View>
+          <BrandLogo testID="company-logo" tone="dark" height={28} />
         </Pressable>
         <View style={s.actions}>
           <HeroIcon testID="header-wallet-button" label={t('shell.wallet')} onPress={() => router.navigate('/wallet' as never)}><Wallet size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
@@ -160,11 +161,6 @@ const s = StyleSheet.create({
   heroInner: { flex: 1, paddingHorizontal: 18 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
   brand: { minHeight: 44, justifyContent: 'center' },
-  logo: { flexDirection: 'row', alignItems: 'center' },
-  logoMark: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginRight: 1 },
-  // i18n-ignore: the brand digit "1", not text
-  logoOne: { color: INK, fontSize: 21, lineHeight: 25, fontWeight: '900' },
-  logoWord: { color: '#FFFFFF', fontSize: 25, fontWeight: '800', letterSpacing: -0.8 },
   actions: { flexDirection: 'row', gap: 8 },
   glass: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' },
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0397A', borderWidth: 1.5, borderColor: '#FFFFFF' },

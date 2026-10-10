@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
-import { mediaUrl } from '../api';
 import { paletteFor } from '../departments';
 import { useCart } from '../cart';
 import { DepartmentStrip } from './department-strip';
@@ -19,6 +17,7 @@ import { DeliveryLocationContext, Point } from '../delivery-location';
 import { useQuery } from '@tanstack/react-query';
 import { CITY_CENTER, coverageAt } from '../places';
 import { OneGlyph } from './one-button';
+import { BrandLogo } from './brand-logo';
 import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
 import { HOME_COMPACT_AT } from './home-hero';
 
@@ -83,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
     {!reels && !isHome && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
-        <View style={styles.topRow}>{!isHome && <Pressable testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Pressable>}<Pressable testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><Image testID="company-logo" accessibilityLabel="OneCity" source={mediaUrl('city-logo')} contentFit="contain" style={styles.logo} /></Pressable>
+        <View style={styles.topRow}>{!isHome && <Pressable testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Pressable>}<Pressable testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><BrandLogo testID="company-logo" tone="light" height={22} /></Pressable>
           <View style={styles.topActions}>{[{ id: 'wallet', label: t('shell.wallet'), icon: 'wallet-outline', route: '/wallet' }, { id: 'cart', label: t('shell.cart'), icon: 'bag-handle-outline', route: '/cart' }, { id: 'profile', label: t('shell.profile'), icon: 'person-outline', route: '/account' }].map(b => <Pressable testID={b.id === 'profile' ? 'header-profile-btn' : `header-${b.id}-button`} accessibilityLabel={b.label} key={b.id} onPress={() => router.navigate(b.route as any)} style={styles.iconButton}><Icon name={b.icon as any} size={18} color={colors.onSurface} />{b.id === 'cart' && totalItems > 0 && <View style={styles.badge}><Text testID="header-cart-count" style={styles.badgeText}>{fmt.number(totalItems)}</Text></View>}</Pressable>)}</View>
         </View>
         <Pressable testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={openLocation} style={styles.location}><Icon name="location-outline" size={13} color={colors.onSurface} /><Text testID="selected-location" style={styles.address} numberOfLines={1}>{location}</Text><Icon name="chevron-down" size={10} color={colors.onSurface} /></Pressable>
