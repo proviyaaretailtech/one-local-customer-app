@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useScreenPalette } from '../use-screen-path';
 import { View, Text, Pressable, Animated, StyleSheet, AccessibilityInfo, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { paletteFor } from '../departments';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
 import { mediaUrl } from '../api';
@@ -30,7 +30,7 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
   const { t } = useTranslation(); const fmt = useFormat(); const lineHeight = useLineHeight();
   const shown = switchable ? selected : variant;
   const baseStory = stories[shown];
-  const currentPalette = paletteFor(usePathname());
+  const currentPalette = useScreenPalette();
   const price = 'price' in baseStory ? fmt.money(baseStory.price) : '';
   const copy = {
     eyebrow: t(`home.spotlight.${textKey[shown]}.eyebrow`), title: t(`home.spotlight.${textKey[shown]}.title`), copy: t(`home.spotlight.${textKey[shown]}.copy`),
@@ -39,7 +39,7 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
     detail: t(`home.spotlight.${textKey[shown]}.detail`, { price }), cta: t(`home.spotlight.${textKey[shown]}.cta`), badge: t(`home.spotlight.${textKey[shown]}.badge`),
   };
   const story = { ...baseStory, ...copy, color: currentPalette.color };
-  const float = useRef(new Animated.Value(0)).current; const router = useRouter(); const palette = paletteFor(usePathname());
+  const float = useRef(new Animated.Value(0)).current; const router = useRouter(); const palette = currentPalette;
   useEffect(() => { let animation: Animated.CompositeAnimation | undefined; let disposed = false; AccessibilityInfo.isReduceMotionEnabled().then(reduce => { if (!reduce && !disposed) { animation = Animated.loop(Animated.sequence([Animated.timing(float, { toValue: -7, duration: 2100, useNativeDriver: Platform.OS !== 'web' }), Animated.timing(float, { toValue: 0, duration: 2100, useNativeDriver: Platform.OS !== 'web' })])); animation.start(); } }); return () => { disposed = true; animation?.stop(); }; }, [float]);
   return <LinearGradient testID={`spotlight-${variant}`} colors={[palette.mid, palette.fade, colors.surface]} locations={[0, 0.83, 1]} style={styles.wrap}>
     <View style={styles.hero}><View style={styles.glow} /><View style={styles.orbit} />

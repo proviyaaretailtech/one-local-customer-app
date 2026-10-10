@@ -5,7 +5,7 @@
 //     groups it by store, and at checkout the server makes one order per store, paid together.
 // The cart screen shows one cart at a time (`kind`, the one last added to) with a switch when both
 // have items. `items` and the totals cover both carts, for the bag badge and the floating cart.
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, mediaUrl, Store } from './api';
 import { ReplaceCartSheet } from './components/replace-cart-sheet';
@@ -49,6 +49,12 @@ type CartContextType = {
 };
 
 const CartContext = createContext<CartContextType | null>(null);
+// Product cards need only the add/remove buttons (which never change) and their own quantity.
+// They read those here instead of useCart(), so adding one item redraws one card, not every card.
+type CartActions = Pick<CartContextType, 'add' | 'addMany' | 'remove'>;
+const CartActionsContext = createContext<CartActions | null>(null);
+const qtyStore = { qty: new Map<string, number>(), listeners: new Set<() => void>() };
+const subscribeQty = (l: () => void) => { qtyStore.listeners.add(l); return () => { qtyStore.listeners.delete(l); }; };
 const KEY = "onelatur.cart.v2";
 const OLD_KEY = "onelatur.cart.v1"; // one list, before the two carts
 const EMPTY: Carts = { food: [], shopping: [] };
@@ -142,18 +148,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
   const clear = (k?: CartKind) => setCarts(prev => (k ? { ...prev, [k]: [] } : EMPTY));
-  const items = [...carts.food, ...carts.shopping];
-  const qtyOf = (id: string) => items.find((i) => i.id === id)?.qty ?? 0;
-  const totalItems = items.reduce((a, b) => a + b.qty, 0);
-  const totalPrice = items.reduce((a, b) => a + b.qty * b.price, 0);
-  const totalMrp = items.reduce((a, b) => a + b.qty * b.mrp, 0);
+  // Stable wrappers: the functions above are re-created each render, the wrappers never are.
+  const latest = useRef({ add, addMany, remove, clear });
+  useLayoutEffect(() => { latest.current = { add, addMany, remove, clear }; });
+  const stableAdd = useCallback((p: CartProduct, origin?: Origin) => latest.current.add(p, origin), []);
+  const stableAddMany = useCallback((lines: Line[]) => latest.current.addMany(lines), []);
+  const stableRemove = useCallback((id: string) => latest.current.remove(id), []);
+  const stableClear = useCallback((k?: CartKind) => latest.current.clear(k), []);
+  const actions = useMemo(() => ({ add: stableAdd, addMany: stableAddMany, remove: stableRemove }), [stableAdd, stableAddMany, stableRemove]);
+
+  const value = useMemo(() => {
+    const items = [...carts.food, ...carts.shopping];
+    const qty = new Map(items.map(i => [i.id, i.qty]));
+    return {
+      items, carts, kind, setKind, add: stableAdd, addMany: stableAddMany, remove: stableRemove, clear: stableClear, lastAdded,
+      qtyOf: (id: string) => qty.get(id) ?? 0,
+      totalItems: items.reduce((a, b) => a + b.qty, 0),
+      totalPrice: items.reduce((a, b) => a + b.qty * b.price, 0),
+      totalMrp: items.reduce((a, b) => a + b.qty * b.mrp, 0),
+    };
+  }, [carts, kind, lastAdded, stableAdd, stableAddMany, stableRemove, stableClear]);
+  useLayoutEffect(() => {
+    qtyStore.qty = new Map(value.items.map(i => [i.id, i.qty]));
+    qtyStore.listeners.forEach(l => l());
+  }, [value.items]);
 
   return (
-    <CartContext.Provider value={{ items, carts, kind, setKind, add, addMany, remove, clear, qtyOf, totalItems, totalPrice, totalMrp, lastAdded }}>
-      {children}
-      {pending && <ReplaceCartSheet from={pending.from} to={pending.to} onKeep={() => setPending(null)} onReplace={replaceFood} />}
-    </CartContext.Provider>
+    <CartActionsContext.Provider value={actions}>
+      <CartContext.Provider value={value}>
+        {children}
+        {pending && <ReplaceCartSheet from={pending.from} to={pending.to} onKeep={() => setPending(null)} onReplace={replaceFood} />}
+      </CartContext.Provider>
+    </CartActionsContext.Provider>
   );
+}
+
+export function useCartActions() {
+  const c = useContext(CartActionsContext);
+  if (!c) throw new Error("useCartActions must be used inside CartProvider"); // i18n-ignore: developer error
+  return c;
+}
+// Quantity of one product; re-renders only when that product's quantity changes.
+export function useCartQty(id: string) {
+  return useSyncExternalStore(subscribeQty, () => qtyStore.qty.get(id) ?? 0, () => 0);
 }
 
 export function useCart() {

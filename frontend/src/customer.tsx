@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // From the runtime file, not the '@/src/i18n' index: the index mounts ProfileLanguageSync, which imports this file (a cycle).
 import { t } from '@/src/i18n/runtime';
@@ -36,6 +36,9 @@ const defaults: CustomerData = {
 const newReferral = () => `ONE${Math.random().toString(36).slice(2, 9).toUpperCase()}`;
 type Context = CustomerData & { ready: boolean; saved: string[]; error: string; clearError: () => void; update: (patch: Partial<CustomerData>) => Promise<void>; toggleSaved: (id: string) => Promise<void>; reset: () => Promise<void> };
 const CustomerContext = createContext<Context | null>(null);
+// The wishlist on its own, so product cards redraw when it changes and not on every profile edit.
+type SavedContextValue = { saved: string[]; ready: boolean; toggleSaved: (id: string) => Promise<void> };
+const SavedContext = createContext<SavedContextValue | null>(null);
 export function CustomerProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<CustomerData>(defaults); const [saved, setSaved] = useState<string[]>([]);
   const [ready, setReady] = useState(false); const [error, setError] = useState('');
@@ -73,6 +76,10 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.multiRemove([KEY, SAVED_KEY]);
     current.current = next; currentSaved.current = []; setData(next); setSaved([]); setError('');
   });
-  return <CustomerContext.Provider value={{ ...data, ready, saved, error, clearError: () => setError(''), update, toggleSaved, reset }}>{children}</CustomerContext.Provider>;
+  const latestToggle = useRef(toggleSaved); useLayoutEffect(() => { latestToggle.current = toggleSaved; });
+  const stableToggle = useCallback((id: string) => latestToggle.current(id), []);
+  const savedValue = useMemo(() => ({ saved, ready, toggleSaved: stableToggle }), [saved, ready, stableToggle]);
+  return <SavedContext.Provider value={savedValue}><CustomerContext.Provider value={{ ...data, ready, saved, error, clearError: () => setError(''), update, toggleSaved, reset }}>{children}</CustomerContext.Provider></SavedContext.Provider>;
 }
+export function useSavedProducts() { const value = useContext(SavedContext); if (!value) throw new Error('CustomerProvider missing'); return value; } // i18n-ignore: developer error
 export function useCustomer() { const value = useContext(CustomerContext); if (!value) throw new Error('CustomerProvider missing'); return value; } // i18n-ignore: developer error
