@@ -2048,7 +2048,9 @@
     "doneNoRefund": "No money was refunded for this cancellation.",
     "doneNothingPaid": "Nothing was charged, so there is nothing to refund.",
     "banner": "This order was cancelled.",
-    "close": "Close"
+    "close": "Close",
+    "holdToConfirm": "Keep holding to cancel",
+    "holdHint": "Press and hold until the bar fills to cancel the order"
   },
   "payui": {
     "test": "Test mode: no real money is charged",

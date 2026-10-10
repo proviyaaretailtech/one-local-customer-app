@@ -4,7 +4,7 @@
 // (A plain Pressable with its pressed state, not an animated wrapper: animated Pressables drop their
 // styles on react-native-web.) Reduce Motion keeps the ring but skips the scale.
 import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { haptic as buzz } from '../haptics';
 import { useMotionAllowed } from '../motion';
 import { duration, pressScale } from '../motion-tokens';
 import { colors } from '../theme';
@@ -17,7 +17,7 @@ const webEase = Platform.OS === 'web' ? ({ transitionProperty: 'transform', tran
 export function Tap({ style, glow = true, haptic = true, radius = 18, onPress, children, ...rest }: Props) {
   const motion = useMotionAllowed();
   return <Pressable {...rest}
-    onPress={e => { if (haptic) void Haptics.selectionAsync().catch(() => {}); onPress?.(e); }}
+    onPress={e => { if (haptic) buzz.tap(); onPress?.(e); }}
     style={({ pressed }) => [style, webEase, motion && pressed && { transform: [{ scale: pressScale }] }]}>
     {({ pressed }) => <>
       {children}

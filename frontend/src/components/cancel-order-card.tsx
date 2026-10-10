@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { ApiError, apiGet, apiPost, type Order } from '@/src/api';
 import { colors, radius, spacing } from '@/src/theme';
 import { useErrorMessage, useFormat, useTranslation } from '@/src/i18n';
+import { haptic } from '@/src/haptics';
+import { HoldToConfirm } from './motion/hold-to-confirm';
 
 // Server shapes (server/customer-cancel.ts). Amounts, percentages and stages all come from the server; this screen sends only a reason.
 type Preview = {
@@ -43,8 +45,9 @@ export function CancelOrderCard({ order, onCancelled }: { order: Order; onCancel
     setBusy(true); setError(null);
     try {
       setDone(await apiPost<Result>(`/orders/${order.id}/cancel`, { reason }, { 'Idempotency-Key': key.current }));
-      onCancelled();
+      haptic.success(); onCancelled();
     } catch (e) {
+      haptic.error();
       setError(e instanceof ApiError && e.code === 'too_late' ? t('orderCancel.tooLate') : errorText(e));
     } finally { setBusy(false); }
   };
@@ -85,12 +88,11 @@ export function CancelOrderCard({ order, onCancelled }: { order: Order; onCancel
           <Text style={styles.label}>{t('orderCancel.reasonLabel')}</Text>
           <View style={styles.reasons}>
             {REASONS.map(r => <TouchableOpacity key={r.code} testID={`cancel-reason-${r.code}`} accessibilityRole="radio" accessibilityState={{ selected: reason === r.code }}
-              onPress={() => setReason(r.code)} style={[styles.chip, reason === r.code && styles.chipOn]}><Text style={[styles.chipText, reason === r.code && styles.chipTextOn]}>{t(r.label)}</Text></TouchableOpacity>)}
+              onPress={() => { haptic.select(); setReason(r.code); }} style={[styles.chip, reason === r.code && styles.chipOn]}><Text style={[styles.chipText, reason === r.code && styles.chipTextOn]}>{t(r.label)}</Text></TouchableOpacity>)}
           </View>
           {!!error && <Text testID="cancel-error" style={styles.error}>{error}</Text>}
-          <TouchableOpacity testID="cancel-order-confirm" disabled={busy} style={[styles.danger, busy && { opacity: 0.6 }]} onPress={confirm}>
-            <Text style={styles.dangerText}>{busy ? t('orderCancel.working') : t('orderCancel.confirm')}</Text>
-          </TouchableOpacity>
+          <HoldToConfirm testID="cancel-order-confirm" disabled={busy} style={[styles.danger, busy && { opacity: 0.6 }]} textStyle={styles.dangerText}
+            label={busy ? t('orderCancel.working') : t('orderCancel.confirm')} holdLabel={t('orderCancel.holdToConfirm')} hint={t('orderCancel.holdHint')} onConfirm={confirm} />
         </>}
         <TouchableOpacity testID="cancel-order-keep" style={styles.ghost} onPress={() => setOpen(false)}><Text style={styles.ghostText}>{t('orderCancel.keep')}</Text></TouchableOpacity>
       </>}

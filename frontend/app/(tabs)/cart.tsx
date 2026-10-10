@@ -10,7 +10,8 @@ import { Image } from "expo-image";
 import { useIsFocused, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/ionicons";
-import * as Haptics from "expo-haptics";
+import { haptic } from "@/src/haptics";
+import { RollingNumber } from "@/src/components/motion/rolling-number";
 import { colors, radius, spacing } from "@/src/theme";
 import { CartKind, useCart } from "@/src/cart";
 import { apiGet, apiPost, Bill, Checkout, Coupon, CouponResult, PaymentResult, PaymentStart, randomId } from "@/src/api";
@@ -182,11 +183,11 @@ export default function CartScreen() {
         setCouponCode(code);
         setTab('cart');
         setCouponMsg({ ok: true, server: res.message, fallback: 'applied' });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptic.success();
       } else {
         setApplied(null);
         setCouponMsg({ ok: false, server: res.message || undefined, fallback: 'invalid' });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        haptic.warning();
       }
     } catch {
       setCouponMsg({ ok: false, fallback: 'failed' });
@@ -232,13 +233,13 @@ export default function CartScreen() {
     if (placing || items.length === 0 || !bill) return;
     setCheckoutError(null);
     // 1. Where to deliver.
-    if (!hasAddress) { setSheet(false); setNeedAddress(true); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}); return; }
+    if (!hasAddress) { setSheet(false); setNeedAddress(true); haptic.warning(); return; }
     // 2. A signed-in customer (when this build has sign-in at all). The cart stays saved on the
     //    phone; once they are back from sign-in this screen carries on paying by itself.
     if (supabase && !(await accessToken())) { payAfterSignIn = pick; setSheet(false); router.push('/sign-in?next=checkout' as never); return; }
     setPlacing(true);
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic.commit(); // the order is on its way to being placed; success lands when it is confirmed
       // Remember the way they paid, so it is the Preferred Payment next time.
       if (online_payments && (pick.method !== payment || pick.app !== upiApp)) void update({ payment: pick.method, upiApp: pick.app }).catch(() => {});
       setSheet(false);
@@ -334,14 +335,14 @@ export default function CartScreen() {
         <View style={styles.cartTop}><Pressable testID="cart-back" accessibilityLabel={t('common.goBack')} style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}><Icon name="chevron-back" size={20} color={colors.onSurface} /></Pressable><Text testID="cart-title" style={styles.title}>{t('cart.title')}</Text><Text testID="cart-total-items" style={styles.subtitle}>{t('cart.itemCount', { count: totalItems })}</Text></View>
         {both && <>
           <View testID="cart-kinds" accessibilityRole="tablist" style={styles.kinds}>
-            {(['food', 'shopping'] as const).map(k => <Pressable key={k} testID={`cart-kind-${k}`} accessibilityRole="tab" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.kind, kind === k && styles.kindOn]}>
+            {(['food', 'shopping'] as const).map(k => <Pressable key={k} testID={`cart-kind-${k}`} accessibilityRole="tab" accessibilityState={{ selected: kind === k }} onPress={() => { if (kind !== k) haptic.select(); setKind(k); }} style={[styles.kind, kind === k && styles.kindOn]}>
               <Icon name={k === 'food' ? 'restaurant-outline' : 'bag-handle-outline'} size={15} color={kind === k ? colors.surface : colors.forest} />
               <Text style={[styles.kindText, kind === k && styles.kindTextOn]}>{t(k === 'food' ? 'cart.kindTab.food' : 'cart.kindTab.shopping', { n: fmt.number(carts[k].reduce((n, i) => n + i.qty, 0)) })}</Text>
             </Pressable>)}
           </View>
           <Text style={styles.kindNote}>{t('cart.kindNote')}</Text>
         </>}
-        <View testID="cart-tabs" style={styles.tabs}>{([{ id: 'cart', label: 'cart.tab.cart', icon: 'bag-handle-outline' }, { id: 'saver', label: 'cart.tab.saver', icon: 'sparkles-outline' }] as const).map(tb => <Pressable key={tb.id} testID={`cart-tab-${tb.id}`} accessibilityRole="tab" accessibilityState={{ selected: tab === tb.id }} onPress={() => setTab(tb.id)} style={[styles.tab, tab === tb.id && styles.selectedTab]}><Icon name={tb.icon as any} size={15} color={tab === tb.id ? colors.surface : colors.forest} /><Text style={[styles.tabText, tab === tb.id && styles.selectedTabText]}>{t(tb.label)}</Text></Pressable>)}</View>
+        <View testID="cart-tabs" style={styles.tabs}>{([{ id: 'cart', label: 'cart.tab.cart', icon: 'bag-handle-outline' }, { id: 'saver', label: 'cart.tab.saver', icon: 'sparkles-outline' }] as const).map(tb => <Pressable key={tb.id} testID={`cart-tab-${tb.id}`} accessibilityRole="tab" accessibilityState={{ selected: tab === tb.id }} onPress={() => { if (tab !== tb.id) haptic.select(); setTab(tb.id); }} style={[styles.tab, tab === tb.id && styles.selectedTab]}><Icon name={tb.icon as any} size={15} color={tab === tb.id ? colors.surface : colors.forest} /><Text style={[styles.tabText, tab === tb.id && styles.selectedTabText]}>{t(tb.label)}</Text></Pressable>)}</View>
       </View>
 
       {tab === 'saver' ? <OneSaver onApply={code => void runCoupon(code)} applying={applying} /> : items.length === 0 ? (
@@ -390,11 +391,11 @@ export default function CartScreen() {
                       <Text style={styles.itemPrice}>{fmt.money(it.price)}</Text>
                     </View>
                     <View style={styles.stepper}>
-                      <TouchableOpacity onPress={() => remove(it.id)} style={styles.stepBtn} testID={`cart-dec-${it.id}`}>
+                      <TouchableOpacity onPress={() => { haptic.remove(); remove(it.id); }} style={styles.stepBtn} testID={`cart-dec-${it.id}`}>
                         <Text style={styles.stepText}>−</Text>
                       </TouchableOpacity>
-                      <Text style={styles.stepQty}>{it.qty}</Text>
-                      <TouchableOpacity onPress={() => add(it)} style={styles.stepBtn} testID={`cart-inc-${it.id}`}>
+                      <RollingNumber value={it.qty} text={String(it.qty)} lineHeight={20} style={styles.stepQty} />
+                      <TouchableOpacity onPress={() => { haptic.add(); add(it); }} style={styles.stepBtn} testID={`cart-inc-${it.id}`}>
                         <Text style={styles.stepText}>+</Text>
                       </TouchableOpacity>
                     </View>
@@ -416,7 +417,7 @@ export default function CartScreen() {
                           <Text style={styles.topUpName} numberOfLines={1}>{p.name}</Text>
                           <Text style={styles.topUpPrice}>{fmt.money(p.price)} <Text style={styles.topUpNet}>{t('cart.topUp.net', { amount: fmt.money(p.net) })}</Text></Text>
                         </View>
-                        <Pressable testID={`top-up-add-${p.id}`} accessibilityLabel={t('cart.topUp.addA11y', { name: p.name, price: fmt.money(p.price) })} onPress={() => { add(p); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }} style={styles.topUpAdd}><Icon name="add" size={18} color={colors.electricLime} /></Pressable>
+                        <Pressable testID={`top-up-add-${p.id}`} accessibilityLabel={t('cart.topUp.addA11y', { name: p.name, price: fmt.money(p.price) })} onPress={() => { add(p); haptic.add(); }} style={styles.topUpAdd}><Icon name="add" size={18} color={colors.electricLime} /></Pressable>
                       </View>)}
                     </ScrollView>}
                   </View>
@@ -563,7 +564,7 @@ export default function CartScreen() {
           ) : (
             <View testID="checkout-footer" style={[styles.checkoutBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>
               <View style={{ flex: 1 }}>
-                <Text testID="checkout-total" style={styles.checkoutTotal}>{fmt.money(grand)}</Text>
+                <RollingNumber testID="checkout-total" value={grand} text={fmt.money(grand)} lineHeight={24} style={styles.checkoutTotal} />
                 <Text testID="checkout-payment-notice" style={styles.checkoutMeta}>{t('checkout.sampleNotice')}</Text>
               </View>
               <TouchableOpacity style={styles.checkoutBtn} onPress={() => handleCheckout()} testID="checkout-btn" disabled={placing}>

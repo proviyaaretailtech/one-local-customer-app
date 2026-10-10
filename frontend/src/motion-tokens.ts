@@ -30,3 +30,12 @@ export const spring = {
 
 export const stagger = 50;                   // ms between items in a list reveal
 export const pressScale = 0.96;              // how far a tappable card sinks when pressed
+
+// Reanimated springs (damping/stiffness/mass) for gesture-driven and worklet animations. Same feel as
+// `spring` above, expressed in the physics Reanimated uses.
+export const reSpring = {
+  press: { damping: 18, stiffness: 420, mass: 0.6 },   // tap down/up
+  snappy: { damping: 20, stiffness: 260, mass: 0.8 },  // thumbs returning, digits settling
+  bouncy: { damping: 9, stiffness: 220, mass: 0.7 },   // hearts, pops
+  gentle: { damping: 22, stiffness: 140, mass: 1 },    // large surfaces
+} as const;
