@@ -16,6 +16,7 @@
 // checkout total is the sum. Delivery and the other fee rules apply to each store's part exactly as
 // they used to apply to a whole order. A coupon counts against the checkout total, unless it
 // belongs to one store (ol_coupons.store_id), when it counts against that store's part only.
+import { assertWithinCaps } from './order-risk';
 import { applyCoupon, findProduct, getCatalog, inCity, Product } from './catalog';
 import { HttpError } from './http';
 
@@ -115,7 +116,7 @@ export async function quote(city: string, rawLines: unknown, rawCoupon: unknown)
     const product = typeof line.id === 'string' ? await findProduct(city, line.id) : undefined;
     if (!product) throw new HttpError(400, 'An item in your cart is no longer available. Please review your cart.');
     const qty = line.qty as number;
-    if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new HttpError(400, 'Please check the quantities in your cart.');
+    if (!Number.isInteger(qty) || qty < 1) throw new HttpError(400, 'Please check the quantities in your cart.');
     const food = product.department === 'food';
     const gst = food ? PRICING.foodGstPct : INCLUDED_GST_BY_CATEGORY[product.category_id] ?? DEFAULT_INCLUDED_GST;
     return {
@@ -124,6 +125,9 @@ export async function quote(city: string, rawLines: unknown, rawCoupon: unknown)
       gst_pct: gst, gst_mode: food ? 'added' : 'included', line_total: r2(product.price * qty),
     };
   }));
+
+  // Most of one item, and most items in one basket (order-risk.ts): refused before anything is priced or charged.
+  assertWithinCaps(lines);
 
   // The cart rules, checked here too, so an older app version or a hand-made request gets the same
   // answer as the app: food is its own cart, and a food cart holds one restaurant.

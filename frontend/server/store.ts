@@ -12,6 +12,8 @@ import { caller } from './auth';
 import { db, dbConfigured, fromDbError } from './db';
 import { customerKey, HttpError, readBody } from './http';
 import { limitCaller } from './limits';
+import { holdCheckout, holdReasons } from './order-risk';
+import { cancelUnfulfillable } from './refunds';
 import { CartKind, cartKindOf, quote } from './pricing';
 import { features } from './features';
 import { codRule } from './payment-provider';
@@ -267,9 +269,19 @@ export async function createCheckout(request: Request, city: string, online = fa
     })));
   if (lineError) console.error('[store] ol_order_items insert failed for checkout', head.id, lineError.message);
 
+  // An unusual basket (order-risk.ts) is held for a person before any restaurant sees it; the database refuses to adopt a held
+  // order (0331), so a paid online order stays held after its payment too. Holds need the checkouts table (always there since 0026).
+  const reasons = ready ? await holdReasons({ kind: head.kind, customerHash: customer.hash, userId: customer.userId, checkoutId: head.id, paymentMethod: head.payment_method, total: head.total, orders }) : [];
+  if (reasons.length) {
+    // If the hold cannot be recorded the orders must not slip through to a restaurant (the dispatch sweep adopts unadopted cash
+    // orders): cancel them, then tell the customer to try again.
+    try { await holdCheckout(head.id, orders.map(o => o.id), reasons); }
+    catch (error) { for (const o of orders) await cancelUnfulfillable(o.id, 'Could not be confirmed').catch(() => {}); throw error; }
+  }
+
   // A cash order is successful the moment it is placed: ping the rider pool. An online order waits for
   // its payment (payments.ts markPaid). A retried request returned above, so this runs once per checkout.
-  if (!online) { await dispatchOrders(await adoptOrders(orders.map(o => o.id))); }
+  if (!online && !reasons.length) { await dispatchOrders(await adoptOrders(orders.map(o => o.id))); }
 
   return ready ? checkout : fromOrders(orders[0].id, orders.map(o => ({ ...o, checkout_id: null })));
 }

@@ -58,6 +58,9 @@ const subscribeQty = (l: () => void) => { qtyStore.listeners.add(l); return () =
 const KEY = "onelatur.cart.v2";
 const OLD_KEY = "onelatur.cart.v1"; // one list, before the two carts
 const EMPTY: Carts = { food: [], shopping: [] };
+// Most of one item per order; the server refuses more (server/order-risk.ts ORDER_CAPS). The cart stops here so the
+// customer never builds a basket that checkout will refuse.
+export const MAX_LINE_QTY: Record<CartKind, number> = { food: 20, shopping: 25 };
 
 const freshImage = (item: CartItem): CartItem => { const key = item.image?.split('/api/media/')[1]; return { ...item, image: item.id === 'p6' ? mediaUrl('snacks') : key ? mediaUrl(key) : item.image }; };
 // Every item in the cart its department says.
@@ -108,7 +111,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCarts(prev => {
       let list = prev[k];
       for (const { product, qty } of lines) {
-        list = list.some(i => i.id === product.id) ? list.map(i => (i.id === product.id ? { ...i, qty: i.qty + qty } : i)) : [...list, { ...product, qty }];
+        list = list.some(i => i.id === product.id) ? list.map(i => (i.id === product.id ? { ...i, qty: Math.min(MAX_LINE_QTY[k], i.qty + qty) } : i)) : [...list, { ...product, qty: Math.min(MAX_LINE_QTY[k], qty) }];
       }
       return { ...prev, [k]: list };
     });
