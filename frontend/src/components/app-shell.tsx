@@ -12,7 +12,7 @@ import { useCart } from '../cart';
 import { DepartmentStrip } from './department-strip';
 import { useCityScroll } from '../motion';
 import { FloatingCart } from './floating-cart';
-import { BottomNavigation } from './bottom-navigation';
+import { BottomNavigation, dockSpace } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
 import { DeliveryLocationContext, Point } from '../delivery-location';
 import { useQuery } from '@tanstack/react-query';
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isHome = path === '/';
   // Photo-led pages draw edge to edge under the status bar and place their own buttons below it.
   const immersive = IMMERSIVE.some(p => path.startsWith(p));
-  const { y, headerHeight, setHeaderHeight, scrollRef } = useCityScroll();
+  const { y, headerHeight, setHeaderHeight, scrollRef, scrollUnderDock } = useCityScroll();
   const [compact, setCompact] = useState(false);
   // Only once the real header is measured and its search bar has scrolled away; before layout the
   // height is 0, which used to show both search bars at the top of the page.
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Tap>
       <Tap testID="compact-voice" accessibilityLabel={t('shell.searchByVoice')} hitSlop={6} style={styles.compactIcon} onPress={() => router.push('/smart-search?mode=voice' as any)}><Icon name="mic-outline" size={19} color={colors.forest} /></Tap>
     </Animated.View>}
-    <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
+    <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
