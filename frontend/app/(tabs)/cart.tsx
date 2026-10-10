@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/ionicons";
 import { haptic } from "@/src/haptics";
 import { RollingNumber } from "@/src/components/motion/rolling-number";
+import { SlideToConfirm } from "@/src/components/motion/slide-to-confirm";
 import { colors, radius, spacing } from "@/src/theme";
 import { CartKind, useCart } from "@/src/cart";
 import { apiGet, apiPost, Bill, Checkout, Coupon, CouponResult, PaymentResult, PaymentStart, randomId } from "@/src/api";
@@ -551,15 +552,16 @@ export default function CartScreen() {
                 <Text style={styles.payUsing}>{t('checkout.payUsing')} <Icon name="caret-up" size={10} color={colors.muted} /></Text>
                 <Text testID="checkout-selected-payment" style={styles.payMethod}>{cfMode ? quickLabel : paymentLabel(choice.method, choice.method === 'upi' ? choice.app : undefined)}</Text>
               </Pressable>
-              <TouchableOpacity style={styles.payNow} accessibilityRole="button" testID="checkout-btn" disabled={placing || !bill || !!session || !!cfFlow || (cfMode && !quick)}
-                onPress={() => {
+              <SlideToConfirm style={styles.payNow} testID="checkout-btn" disabled={!bill || !!session || !!cfFlow || (cfMode && !quick)} busy={placing}
+                thumbColor={colors.onBrandSecondary} arrowColor={colors.brandSecondary} textStyle={[styles.payNowText, styles.slideText]} hint={t('checkout.slideHint')}
+                label={(cfMode ? quick?.method === 'cod' : choice.method === 'cod') ? t('checkout.slideToPlace', { amount: fmt.money(grand) }) : t('checkout.slideToPay', { amount: fmt.money(grand) })}
+                tapLabel={(cfMode ? quick?.method === 'cod' : choice.method === 'cod') ? t('checkout.placeOrder', { amount: fmt.money(grand) }) : t('checkout.pay', { amount: fmt.money(grand) })}
+                onConfirm={() => {
                   if (!cfMode) return handleCheckout();
-                  // One tap pays with the last-used method; if the payment needs more from the customer (a mobile number), the options open instead.
+                  // One slide pays with the last-used method; if the payment needs more from the customer (a mobile number), the options open instead.
                   if (quick && (quick.method === 'cod' || quick.phone)) return handleCheckout({ method: quick.method, app: quick.app }, quick);
                   setSheet(true);
-                }}>
-                {placing ? <ActivityIndicator color={colors.onBrandSecondary} /> : <Text style={styles.payNowText}>{(cfMode ? quick?.method === 'cod' : choice.method === 'cod') ? t('checkout.placeOrder', { amount: fmt.money(grand) }) : t('checkout.pay', { amount: fmt.money(grand) })}</Text>}
-              </TouchableOpacity>
+                }} />
             </View>
           ) : (
             <View testID="checkout-footer" style={[styles.checkoutBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>
@@ -704,6 +706,7 @@ const styles = StyleSheet.create({
   payMethod: { fontSize: 14, fontWeight: "800", color: colors.onSurface, marginTop: 2 },
   payNow: { flex: 1.3, minHeight: 52, backgroundColor: colors.brandSecondary, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   payNowText: { color: colors.onBrandSecondary, fontWeight: "800", fontSize: 16 },
+  slideText: { fontSize: 14 },
   ask: { flexDirection: "row", alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.limeSoft, borderWidth: 1, borderColor: colors.forest },
   askTitle: { color: colors.onSurface, fontSize: 14, fontWeight: '800' },
   askText: { color: colors.onSurfaceSecondary, fontSize: 12, lineHeight: 17, marginTop: 2 },

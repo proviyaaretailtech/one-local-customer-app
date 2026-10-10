@@ -1474,7 +1474,10 @@
     "pay": "Pay {{amount}}",
     "sampleNotice": "Sample order · no charge",
     "placing": "Placing...",
-    "placeSample": "Place sample order"
+    "placeSample": "Place sample order",
+    "slideToPay": "Slide to pay {{amount}}",
+    "slideToPlace": "Slide to order · {{amount}}",
+    "slideHint": "Slide the button all the way to the right to pay"
   },
   "payment": {
     "upiId": "UPI ID",
