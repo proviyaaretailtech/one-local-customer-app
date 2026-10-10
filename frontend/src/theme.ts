@@ -1,4 +1,4 @@
-// OneCity: soft, translucent surfaces and flowing department gradients.
+// OneLocal: soft, translucent surfaces and flowing department gradients.
 import { useMemo } from "react";
 import { Appearance, StyleSheet, useColorScheme } from "react-native";
 

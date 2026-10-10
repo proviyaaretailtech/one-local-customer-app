@@ -16,8 +16,8 @@ export function useDiscovery() {
       const product = catalog.products.find(p => p.id === id);
       if (!product || featured.has(id)) return [];
       const brand = catalog.brands.find(b => b.id === product.brand_id);
-      // i18n-ignore: caption is replaced by select() above; tag and tagline are not shown; 'OneCity Fresh' is a brand name
-      return [{ id: `photo-${id}`, video: '', video_web: '', product, caption: `${product.name}. A little find for your everyday.`, creator: brand?.name || 'OneCity Fresh', likes: 0, tag: 'Catalogue photo', brand: brand || { id: product.store_id, name: 'OneCity Fresh', department: product.department || 'grocery', logo: '', image: product.image, tagline: 'Your local finds' } }];
+      // i18n-ignore: caption is replaced by select() above; tag and tagline are not shown; 'OneLocal Fresh' is a brand name
+      return [{ id: `photo-${id}`, video: '', video_web: '', product, caption: `${product.name}. A little find for your everyday.`, creator: brand?.name || 'OneLocal Fresh', likes: 0, tag: 'Catalogue photo', brand: brand || { id: product.store_id, name: 'OneLocal Fresh', department: product.department || 'grocery', logo: '', image: product.image, tagline: 'Your local finds' } }];
     });
     return [...reels, ...photos];
   }, retry: 1 });

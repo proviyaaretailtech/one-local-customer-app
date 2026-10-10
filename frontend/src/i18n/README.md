@@ -52,7 +52,7 @@ anything that breaks when text grows ~35% will not survive Hindi.
 - **Layout for Hindi** (~20-30% longer, taller glyphs): no fixed `height` on buttons, rows or inputs (use `minHeight`);
   `lineHeight` at least 1.35 × `fontSize` (`safeLineHeight()`); do not force a label onto one line with `numberOfLines={1}`
   unless a truncated label is acceptable. Check the screen in pseudo-locale.
-- **Acronyms stay Latin** in Hindi (UPI, GST, OTP, EMI, QR, PIN). Brand names stay as written (OneCity, One Local).
+- **Acronyms stay Latin** in Hindi (UPI, GST, OTP, EMI, QR, PIN). Brand names stay as written (OneLocal, One Local).
 - An `// i18n-ignore` comment on (or above) a line tells the checker that string is not for translation (a developer-only error, say).
 
 ## How the pieces fit

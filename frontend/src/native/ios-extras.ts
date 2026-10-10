@@ -50,7 +50,7 @@ export async function scheduleOrderJourney(orderId: string, placedAt: number) {
     if (seconds <= 0) continue;
     await N.scheduleNotificationAsync({
       identifier: `order-${orderId}-${st.at}`,
-      content: { title: `OneCity · ${t(`notifications.${st.id}.title`)}`, body: t(`notifications.${st.id}.body`), data: { url: `/order/${orderId}` } },
+      content: { title: `OneLocal · ${t(`notifications.${st.id}.title`)}`, body: t(`notifications.${st.id}.body`), data: { url: `/order/${orderId}` } },
       trigger: { type: N.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
     }).catch(() => {});
   }

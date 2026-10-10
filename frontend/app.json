@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "OneCity",
+    "name": "OneLocal",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,7 @@
         "NSCameraUsageDescription": "Find products using a photo",
         "NSMicrophoneUsageDescription": "Search for products with your voice",
         "NSPhotoLibraryUsageDescription": "Choose product photos for visual search",
-        "NSLocationWhenInUseUsageDescription": "OneCity uses your location to find your delivery address."
+        "NSLocationWhenInUseUsageDescription": "OneLocal uses your location to find your delivery address."
       },
       "bundleIdentifier": "com.emergent.onelaturmarket.rrvr15"
     },
@@ -68,7 +68,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "OneCity uses your location to find your delivery address."
+          "locationWhenInUsePermission": "OneLocal uses your location to find your delivery address."
         }
       ]
     ],

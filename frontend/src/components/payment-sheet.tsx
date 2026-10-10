@@ -89,7 +89,7 @@ export function PaymentSheet({ onClose, choice, onPay, paying, itemCount, total,
 
         {(wallet || coins) && <View style={[s.row, s.walletRow]}>
           <View style={s.badge}><Icon name="wallet" size={20} color={colors.forest} /></View>
-          <View style={s.copy}><Text style={s.rowTitle}>{wallet ? 'OneCity Wallet' : 'OneLocal Coins'}</Text><Text style={s.rowSub}>{t('payment.sheet.walletNote')}</Text></View>
+          <View style={s.copy}><Text style={s.rowTitle}>{wallet ? 'OneLocal Wallet' : 'OneLocal Coins'}</Text><Text style={s.rowSub}>{t('payment.sheet.walletNote')}</Text></View>
           <Switch value={false} disabled accessibilityLabel={t('payment.sheet.walletA11y')} />
         </View>}
 

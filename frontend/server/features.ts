@@ -8,7 +8,7 @@ export type Features = {
   assistant: boolean;        // One AI shopping assistant
   maps: boolean;             // Google Maps pin-drop and address search
   online_payments: boolean;  // UPI / card / net banking (Cashfree, else Razorpay)
-  wallet: boolean;           // OneCity Wallet
+  wallet: boolean;           // OneLocal Wallet
   coins: boolean;            // OneLocal Coins
   google_sign_in: boolean;   // mirrors Supabase's own setting; the app also asks Supabase directly
 };
