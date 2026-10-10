@@ -7,7 +7,7 @@ import { colors } from '@/src/theme';
 import { api, Store } from '@/src/api';
 import { useCatalog } from '@/src/use-catalog';
 import { useFollowedStores } from '@/src/followed';
-import { BrandSpotlight } from '@/src/components/brand-spotlight';
+import { HomeHero } from '@/src/components/home-hero';
 import { StoreRail } from '@/src/components/store-rail';
 import { CityScroll } from '@/src/motion';
 import { BrandRail, CategoryRail, EventRail, LoadState, ProductGrid as ProductRail, SectionTitle } from '@/src/components/catalog-sections';
@@ -34,9 +34,9 @@ function LiveHome() {
   const followed = stores.filter(s => isFollowing(s.id));
   const go = (route: string) => () => router.navigate(route as any);
   const selected = (ids: string[]) => ids.flatMap(id => data.products.filter(p => p.id === id));
-  return <CityScroll testID="home-screen" showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+  return <CityScroll testID="home-screen" bleed showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <HomeHero catalog={data} />
     {followed.length > 0 && <><SectionTitle id="followed" title={t('home.followedTitle')} subtitle={t('home.followedSubtitle')} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><Text style={styles.storeName}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
-    <BrandSpotlight switchable />
     <View style={styles.sheet}>
     <SectionTitle id="home-shop-by-store" title={t('home.storesTitle')} subtitle={t('home.storesSubtitle')} onPress={go('/categories')} />
     <StoreRail stores={data.themed_stores || []} scope="home" />

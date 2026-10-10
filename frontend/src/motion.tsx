@@ -31,7 +31,8 @@ export function CityMotionProvider({ children }: { children: React.ReactNode }) 
 export const useCityScroll = () => useContext(ScrollContext)!;
 // The scroll position drives the collapsing header on the native (UI) thread, so the header follows the
 // finger without waiting for JavaScript. The listener only remembers the offset for when the tab returns.
-export function CityScroll({ contentContainerStyle, ...props }: ScrollViewProps) {
+// `bleed`: the screen draws its own header (home's photo hero), so content starts at the very top.
+export function CityScroll({ contentContainerStyle, bleed = false, ...props }: ScrollViewProps & { bleed?: boolean }) {
   const { y, headerHeight, scrollRef } = useCityScroll();
   const ownRef = useRef<ScrollView>(null); const offset = useRef(0);
   useFocusEffect(useCallback(() => { scrollRef.current = ownRef.current; y.setValue(offset.current); }, [scrollRef, y]));
@@ -39,6 +40,6 @@ export function CityScroll({ contentContainerStyle, ...props }: ScrollViewProps)
     useNativeDriver: nativeDriver,
     listener: (e: { nativeEvent: { contentOffset: { y: number } } }) => { offset.current = Math.max(0, e.nativeEvent.contentOffset.y); },
   }), [y]);
-  return <Animated.ScrollView {...props} ref={ownRef} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={[styles.content, contentContainerStyle, { paddingTop: headerHeight, paddingBottom: 125 }]} />;
+  return <Animated.ScrollView {...props} ref={ownRef} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={[styles.content, contentContainerStyle, { paddingTop: bleed ? 0 : headerHeight, paddingBottom: 125 }]} />;
 }
 const styles = StyleSheet.create({ content: { flexGrow: 1 } });

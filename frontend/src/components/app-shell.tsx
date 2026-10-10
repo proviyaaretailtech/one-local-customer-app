@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CITY_CENTER, coverageAt } from '../places';
 import { OneGlyph } from './one-button';
 import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
+import { HOME_COMPACT_AT } from './home-hero';
 
 const BARE = ['/sign-in'];
 const IMMERSIVE = ['/product/', '/brand/'];
@@ -55,8 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [compact, setCompact] = useState(false);
   // Only once the real header is measured and its search bar has scrolled away; before layout the
   // height is 0, which used to show both search bars at the top of the page.
-  const compactFrom = headerHeight - 70;
-  useEffect(() => { const id = y.addListener(({ value }) => setCompact(headerHeight > 0 && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom]);
+  // Home draws its own photo hero instead of this header; the compact bar arrives once the hero has gone.
+  const compactFrom = isHome ? HOME_COMPACT_AT : headerHeight - 70;
+  useEffect(() => { const id = y.addListener(({ value }) => setCompact((isHome || headerHeight > 0) && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom, isHome]);
   // i18n-ignore: the default place name is data, not UI copy
   const [location, setLocationText] = useState('Latur, Maharashtra'); const [point, setPoint] = useState<Point | null>(null);
   const [hasSaved, setHasSaved] = useState<boolean | null>(null);
@@ -79,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
   if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
   return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
-    {!reels && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
+    {!reels && !isHome && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
         <View style={styles.topRow}>{!isHome && <Pressable testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Pressable>}<Pressable testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><Image testID="company-logo" accessibilityLabel="OneCity" source={mediaUrl('city-logo')} contentFit="contain" style={styles.logo} /></Pressable>
           <View style={styles.topActions}>{[{ id: 'wallet', label: t('shell.wallet'), icon: 'wallet-outline', route: '/wallet' }, { id: 'cart', label: t('shell.cart'), icon: 'bag-handle-outline', route: '/cart' }, { id: 'profile', label: t('shell.profile'), icon: 'person-outline', route: '/account' }].map(b => <Pressable testID={b.id === 'profile' ? 'header-profile-btn' : `header-${b.id}-button`} accessibilityLabel={b.label} key={b.id} onPress={() => router.navigate(b.route as any)} style={styles.iconButton}><Icon name={b.icon as any} size={18} color={colors.onSurface} />{b.id === 'cart' && totalItems > 0 && <View style={styles.badge}><Text testID="header-cart-count" style={styles.badgeText}>{fmt.number(totalItems)}</Text></View>}</Pressable>)}</View>
@@ -88,8 +90,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <View style={styles.searchRow}><Pressable testID="header-search-button" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as any)} style={styles.searchText}><Icon name="search-outline" size={18} color={colors.onSurface} /><Text style={styles.placeholder}>{t('shell.searchPlaceholder')}</Text></Pressable><Pressable testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as any)} style={styles.searchIcon}><Icon name="mic-outline" size={18} color={colors.onSurface} /></Pressable><View style={styles.searchDivider} /><Pressable testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as any)} style={styles.searchIcon}><Icon name="camera-outline" size={19} color={colors.onSurface} /></Pressable></View>
       </View><DepartmentStrip /></View>
     </LinearGradient></Animated.View>}
-    {scrolling && headerHeight > 0 && <Animated.View pointerEvents="none" style={[styles.scrim, { height: insets.top + 40, opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }) }]}><LinearGradient colors={[colors.surface, colors.surface, 'rgba(255,255,255,0)']} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} /></Animated.View>}
-    {scrolling && headerHeight > 0 && <Animated.View testID="compact-header" pointerEvents={compact ? 'auto' : 'none'} style={[styles.compact, { top: insets.top + 6,
+    {scrolling && (isHome || headerHeight > 0) && <Animated.View pointerEvents="none" style={[styles.scrim, { height: insets.top + 40, opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }) }]}><LinearGradient colors={[colors.surface, colors.surface, 'rgba(255,255,255,0)']} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} /></Animated.View>}
+    {scrolling && (isHome || headerHeight > 0) && <Animated.View testID="compact-header" pointerEvents={compact ? 'auto' : 'none'} style={[styles.compact, { top: insets.top + 6,
       opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }),
       transform: [{ translateY: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [-14, 0], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0.96, 1], extrapolate: 'clamp' }) }] }]}>
       {isHome
