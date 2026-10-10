@@ -213,6 +213,10 @@
       "smsFailed": "We couldn’t send the code. Check the number and try again in a minute.",
       "codeMissing": "Enter the code we sent you.",
       "signOut": "Couldn’t sign out right now. Check your connection and try again."
+    },
+    "switch": {
+      "toSignup": "New here? Create an account",
+      "toSignin": "Already have an account? Sign in"
     }
   },
   "account": {
