@@ -1,5 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Tap } from './tap';
+import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { House, LayoutGrid, Play, Ticket, UtensilsCrossed, type LucideIcon } from 'lucide-react-native';
 import { colors } from '../theme';
@@ -24,9 +25,9 @@ export function BottomNavigation() {
   // Full-screen flows, and product pages (they carry their own sticky add-to-bag bar).
   if (['/location', '/address-map', '/address-form', '/sign-in'].includes(path) || path.startsWith('/product/')) return null;
   return <View testID="bottom-navigation" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 9) }, dark && styles.dark]}>
-    {tabs.map(tab => tab.id === 'discover' ? <View key={tab.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>{labels.discover}</Text></View> : <Pressable key={tab.id} testID={`tab-${tab.id}`} accessibilityRole="tab" accessibilityLabel={labels[tab.id]} accessibilityState={{ selected: selected(tab.id, tab.path) }} onPress={() => router.navigate((tab.id === 'home' ? '/(tabs)' : `/(tabs)/${tab.id}`) as any)} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+    {tabs.map(tab => tab.id === 'discover' ? <View key={tab.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>{labels.discover}</Text></View> : <Tap key={tab.id} testID={`tab-${tab.id}`} accessibilityRole="tab" accessibilityLabel={labels[tab.id]} accessibilityState={{ selected: selected(tab.id, tab.path) }} onPress={() => router.navigate((tab.id === 'home' ? '/(tabs)' : `/(tabs)/${tab.id}`) as any)} style={[styles.item]}>
       <tab.icon size={21} strokeWidth={selected(tab.id, tab.path) ? 2.2 : 1.7} color={selected(tab.id, tab.path) ? palette.forest : dark ? colors.surface : colors.muted} /><Text testID={`tab-label-${tab.id}`} style={[styles.label, selected(tab.id, tab.path) && styles.active, selected(tab.id, tab.path) && { color: palette.forest }, dark && styles.light]}>{labels[tab.id]}</Text>{selected(tab.id, tab.path) && <View style={[styles.dot, { backgroundColor: palette.forest }]} />}
-    </Pressable>)}
+    </Tap>)}
   </View>;
 }
 const styles = StyleSheet.create({

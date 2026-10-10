@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Tap } from './tap';
 import { useAppDimensions } from '../layout';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
@@ -33,10 +34,10 @@ function LiveDepartment({ id }: { id: DepartmentId }) {
     <View style={styles.sheet}><SectionTitle title={id === 'shops' ? t('departments.screen.brandsTitleShops') : t('departments.screen.brandsTitle')} id={`${id}-brands`} subtitle={t('departments.screen.brandsSubtitle')} /><BrandRail brands={brands} scope={`${id}-page`} onSelect={value => setBrand(brand === value ? '' : value)} active={brand} />
       {id === 'grocery' && <View style={styles.space}><CategoryRail categories={categories} scope="grocery-page" /></View>}
       <SectionTitle id={`${id}-products`} title={brand ? brands.find(b => b.id === brand)?.name || t('departments.screen.pickedForYou') : id === 'care' ? t('departments.screen.productsCare') : id === 'shops' ? t('departments.screen.productsShops') : id === 'food' ? t('departments.screen.productsFood') : t('departments.screen.productsDefault')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{d.filters.map(f => <Pressable key={f} testID={`${id}-filter-${f.toLowerCase().replaceAll(' ', '-')}`} onPress={() => setFilter(f)} style={[styles.filter, filter === f && { backgroundColor: d.soft }]}><Text style={[styles.filterText, filter === f && { color: d.color }]}>{departmentFilterLabel(t, f)}</Text></Pressable>)}</ScrollView>
-      {!!brand && <View style={styles.brandActions}><Pressable testID={`${id}-clear-brand`} onPress={() => setBrand('')} style={styles.clear}><Icon name="close-circle-outline" size={15} color={d.color} /><Text style={styles.filterText}>{t('departments.screen.clearBrand')}</Text></Pressable><Pressable testID={`${id}-visit-store`} onPress={() => router.push(`/brand/${brand}` as any)} style={styles.clear}><Text style={styles.filterText}>{t('departments.screen.exploreBrand')}</Text><Icon name="arrow-forward" size={15} color={d.color} /></Pressable></View>}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{d.filters.map(f => <Tap key={f} testID={`${id}-filter-${f.toLowerCase().replaceAll(' ', '-')}`} onPress={() => setFilter(f)} style={[styles.filter, filter === f && { backgroundColor: d.soft }]}><Text style={[styles.filterText, filter === f && { color: d.color }]}>{departmentFilterLabel(t, f)}</Text></Tap>)}</ScrollView>
+      {!!brand && <View style={styles.brandActions}><Tap testID={`${id}-clear-brand`} onPress={() => setBrand('')} style={styles.clear}><Icon name="close-circle-outline" size={15} color={d.color} /><Text style={styles.filterText}>{t('departments.screen.clearBrand')}</Text></Tap><Tap testID={`${id}-visit-store`} onPress={() => router.push(`/brand/${brand}` as any)} style={styles.clear}><Text style={styles.filterText}>{t('departments.screen.exploreBrand')}</Text><Icon name="arrow-forward" size={15} color={d.color} /></Tap></View>}
       <View style={styles.grid}>{products.map(p => <ProductCard key={p.id} product={p} width={cardWidth} scope={id} />)}</View>
-      {!products.length && <View testID={`${id}-empty-results`} style={styles.empty}><Text style={styles.noteText}>{t('departments.screen.noResults')}</Text><Pressable testID={`${id}-reset-filters`} onPress={() => { setFilter('All'); setBrand(''); }} style={styles.clear}><Text style={styles.filterText}>{t('departments.screen.showAll')}</Text></Pressable></View>}
+      {!products.length && <View testID={`${id}-empty-results`} style={styles.empty}><Text style={styles.noteText}>{t('departments.screen.noResults')}</Text><Tap testID={`${id}-reset-filters`} onPress={() => { setFilter('All'); setBrand(''); }} style={styles.clear}><Text style={styles.filterText}>{t('departments.screen.showAll')}</Text></Tap></View>}
       <Text testID={`${id}-sample-notice`} style={styles.note}>{id === 'care' ? t('departments.screen.noteCare') : t('departments.screen.noteDefault')}</Text>
     </View>
   </CityScroll>;

@@ -4,8 +4,9 @@
 // scrolled away (HOME_COMPACT_AT, read by app-shell).
 // The hero's picture and words are one campaign object so Home Studio can replace them later
 // without an app update (specs/home-cms).
+import { Tap } from './tap';
 import { memo, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { setStatusBarStyle } from 'expo-status-bar';
@@ -33,9 +34,9 @@ const campaign = { image: 'vegetables', eyebrow: 'home.hero.eyebrow', title: 'ho
 const ESSENTIALS = ['c1', 'c2', 'c3', 'c5', 'c24'];
 
 function HeroIcon({ testID, label, onPress, children, badge }: { testID: string; label: string; onPress: () => void; children: React.ReactNode; badge?: string }) {
-  return <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={({ pressed }) => [s.glass, pressed && s.pressed]}>
+  return <Tap testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={[s.glass]}>
     {children}{!!badge && <View style={s.badge}><Text testID="header-cart-count" style={s.badgeText}>{badge}</Text></View>}
-  </Pressable>;
+  </Tap>;
 }
 
 function Hero() {
@@ -50,29 +51,29 @@ function Hero() {
     <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', colors.surface]} locations={[0, 0.6, 1]} style={[s.fade, { top: height - 150 }]} />
     <View style={[s.heroInner, { paddingTop: insets.top + 6 }]}>
       <View style={s.topRow}>
-        <Pressable testID="header-brand-home" accessibilityRole="button" accessibilityLabel={t('shell.home')} style={s.brand}>
+        <Tap testID="header-brand-home" accessibilityRole="button" accessibilityLabel={t('shell.home')} style={s.brand}>
           <BrandLogo testID="company-logo" tone="dark" height={28} />
-        </Pressable>
+        </Tap>
         <View style={s.actions}>
           <HeroIcon testID="header-wallet-button" label={t('shell.wallet')} onPress={() => router.navigate('/wallet' as never)}><Wallet size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
           <HeroIcon testID="header-cart-button" label={t('shell.cart')} onPress={() => router.navigate('/cart' as never)} badge={totalItems > 0 ? fmt.number(totalItems) : undefined}><ShoppingBag size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
           <HeroIcon testID="header-profile-btn" label={t('shell.profile')} onPress={() => router.navigate('/account' as never)}><User size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
         </View>
       </View>
-      <Pressable testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.location}>
+      <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.location}>
         <MapPin size={15} color="#FFFFFF" fill="rgba(255,255,255,0.18)" strokeWidth={2} />
         <Text testID="selected-location" numberOfLines={1} style={s.address}>{location}</Text>
         <ChevronDown size={14} color="#FFFFFF" strokeWidth={2.2} />
-      </Pressable>
+      </Tap>
       <Text testID="home-hero-eyebrow" style={s.eyebrow}>{t(campaign.eyebrow)}</Text>
       <Text testID="home-hero-title" accessibilityRole="header" style={[s.title, { maxWidth: Math.min(300, width * 0.78) }]}>{t(campaign.title)}</Text>
       <View style={s.search}>
-        <Pressable testID="header-search-button" accessibilityRole="search" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as never)} style={s.searchText}>
+        <Tap testID="header-search-button" accessibilityRole="search" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as never)} style={s.searchText}>
           <Search size={20} color={INK} strokeWidth={2} /><Text numberOfLines={1} style={s.placeholder}>{t('home.hero.searchPlaceholder')}</Text>
-        </Pressable>
-        <Pressable testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as never)} style={s.searchIcon}><Mic size={19} color={INK} strokeWidth={1.9} /></Pressable>
+        </Tap>
+        <Tap testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as never)} style={s.searchIcon}><Mic size={19} color={INK} strokeWidth={1.9} /></Tap>
         <View style={s.divider} />
-        <Pressable testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as never)} style={s.searchIcon}><ScanLine size={19} color={INK} strokeWidth={1.9} /></Pressable>
+        <Tap testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as never)} style={s.searchIcon}><ScanLine size={19} color={INK} strokeWidth={1.9} /></Tap>
       </View>
     </View>
   </View>;
@@ -82,10 +83,10 @@ function DepartmentTiles() {
   const router = useRouter(); const { t } = useTranslation();
   return <View testID="department-strip" style={s.tiles}>{departments.map(d => {
     const name = departmentName(t, d.id);
-    return <Pressable key={d.id} testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={name.replace('\n', ' ')} onPress={() => router.navigate(d.route as never)} style={({ pressed }) => [s.tile, pressed && s.pressed]}>
+    return <Tap key={d.id} testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={name.replace('\n', ' ')} onPress={() => router.navigate(d.route as never)} style={[s.tile]}>
       <Image testID={`department-icon-${d.id}`} source={mediaUrl(`icon-${d.id}-v2`)} style={s.tileIcon} contentFit="contain" cachePolicy="memory-disk" />
       <Text testID={`department-label-${d.id}`} numberOfLines={2} style={s.tileLabel}>{name}</Text>
-    </Pressable>;
+    </Tap>;
   })}</View>;
 }
 
@@ -95,16 +96,16 @@ function OfferTiles({ catalog }: { catalog: Catalog }) {
   const best = (deps: string[]) => Math.max(0, ...catalog.products.filter(p => deps.includes(p.department ?? '')).map(p => p.discount_pct ?? 0));
   const grocery = best(['grocery']); const care = best(['pharmacy', 'beauty']);
   return <View style={s.offers}>
-    {grocery > 0 && <Pressable testID="home-offer-grocery" accessibilityRole="button" onPress={() => router.navigate('/grocery' as never)} style={({ pressed }) => [s.offer, s.offerWide, pressed && s.pressed]}>
+    {grocery > 0 && <Tap testID="home-offer-grocery" accessibilityRole="button" onPress={() => router.navigate('/grocery' as never)} style={[s.offer, s.offerWide]}>
       <LinearGradient colors={['#FFF7E1', '#FCEBC4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <View style={s.offerCopy}><Text style={s.offerTitle}>{t('home.offers.groceryTitle', { pct: fmt.percent(grocery) })}</Text><Text style={[s.offerSub, { color: '#9A6A00' }]}>{t('home.offers.grocerySub')}</Text></View>
       <Image source={mediaUrl('item-cereal')} style={s.offerImage} contentFit="cover" cachePolicy="memory-disk" /><View style={s.offerArrow}><ArrowRight size={13} color={INK} strokeWidth={2.2} /></View>
-    </Pressable>}
-    {care > 0 && <Pressable testID="home-offer-care" accessibilityRole="button" onPress={() => router.navigate('/care' as never)} style={({ pressed }) => [s.offer, pressed && s.pressed]}>
+    </Tap>}
+    {care > 0 && <Tap testID="home-offer-care" accessibilityRole="button" onPress={() => router.navigate('/care' as never)} style={[s.offer]}>
       <LinearGradient colors={['#ECF8F2', '#DCF1E7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <View style={s.offerCopy}><Text style={s.offerTitle}>{t('home.offers.careTitle')}</Text><Text style={[s.offerSub, { color: '#1F7A55' }]}>{t('home.offers.careSub', { pct: fmt.percent(care) })}</Text></View>
       <Image source={mediaUrl('skincare')} style={[s.offerImage, s.offerImageSmall]} contentFit="cover" cachePolicy="memory-disk" /><View style={s.offerArrow}><ArrowRight size={13} color={INK} strokeWidth={2.2} /></View>
-    </Pressable>}
+    </Tap>}
   </View>;
 }
 
@@ -119,13 +120,13 @@ function Essentials({ catalog }: { catalog: Catalog }) {
   return <View style={s.essentials}>
     <View style={s.sectionHead}>
       <Text accessibilityRole="header" style={s.sectionTitle}>{t('home.essentialsTitle')}</Text>
-      <Pressable testID="home-essentials-see-all" accessibilityRole="button" accessibilityLabel={t('home.seeAllLabel', { title: t('home.essentialsTitle') })} onPress={() => router.navigate('/grocery' as never)} hitSlop={8} style={s.seeAll}><Text style={s.seeAllText}>{t('common.seeAll')}</Text><ArrowRight size={16} color={DEEP} strokeWidth={2.2} /></Pressable>
+      <Tap testID="home-essentials-see-all" accessibilityRole="button" accessibilityLabel={t('home.seeAllLabel', { title: t('home.essentialsTitle') })} onPress={() => router.navigate('/grocery' as never)} hitSlop={8} style={s.seeAll}><Text style={s.seeAllText}>{t('common.seeAll')}</Text><ArrowRight size={16} color={DEEP} strokeWidth={2.2} /></Tap>
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rail}>
-      {items.map(c => <Pressable key={c.id} testID={`home-essential-${c.id}`} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => router.push(`/category/${c.id}` as never)} style={({ pressed }) => [s.essential, pressed && s.pressed]}>
+      {items.map(c => <Tap key={c.id} testID={`home-essential-${c.id}`} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => router.push(`/category/${c.id}` as never)} style={[s.essential]}>
         <Image source={c.image} style={s.essentialImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         <View style={s.essentialCopy}><Text numberOfLines={1} style={s.essentialName}>{c.name}</Text><Text style={s.essentialFrom}>{t('home.fromPrice', { price: fmt.money(c.from) })}</Text></View>
-      </Pressable>)}
+      </Tap>)}
     </ScrollView>
   </View>;
 }
