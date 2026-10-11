@@ -340,6 +340,10 @@ export default function OrderTrackingScreen() {
 
         <CancelOrderCard order={order} onCancelled={() => setRetry(v => v + 1)} />
 
+        <TouchableOpacity style={styles.homeBtn} accessibilityRole="button" onPress={() => router.push(`/help?order=${encodeURIComponent(order.id)}` as any)} testID="order-get-help">
+          <Text style={styles.homeBtnText}>{t('tracking.getHelp')}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.homeBtn} onPress={() => router.replace("/(tabs)" as any)} testID="continue-shopping">
           <Text style={styles.homeBtnText}>{t('tracking.continueShopping')}</Text>
         </TouchableOpacity>

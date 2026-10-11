@@ -10,6 +10,8 @@ import * as Haptics from "expo-haptics";
 import { colors, radius, spacing } from "@/src/theme";
 import { api, Order } from "@/src/api";
 import { useCart } from "@/src/cart";
+import { useAuth } from "@/src/auth";
+import { supabase } from "@/src/lib/supabase";
 import { orderStatusKey, useFormat, useTranslation } from "@/src/i18n";
 
 export default function OrdersScreen() {
@@ -18,6 +20,11 @@ export default function OrdersScreen() {
   const { addMany } = useCart();
   const { t } = useTranslation();
   const fmt = useFormat();
+  // GET /orders answers for this phone's key AND, when signed in, the account (server/store.ts listOrders via
+  // caller().matches). So a guest still sees the orders placed on this phone; signing in adds the account's orders
+  // from any phone. Signed out (and this build has sign-in at all, as in the cart): offer sign-in, keep the list.
+  const auth = useAuth();
+  const signedOut = !!supabase && auth.ready && !auth.session;
   const [orders, setOrders] = useState<Order[]>([]);
   // Newest checkout first; its store orders in the order they were in the cart.
   const checkouts = useMemo(() => {
@@ -43,7 +50,8 @@ export default function OrdersScreen() {
       .finally(() => setRefreshing(false));
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchOrders(); }, [fetchOrders]));
+  // Also refetches when the account changes (back from sign-in, or signed out), so the list matches who is asking.
+  useFocusEffect(useCallback(() => { fetchOrders(); }, [fetchOrders, auth.session?.user?.id])); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Everything from the checkout, into the right cart (food from another restaurant asks first).
   const reorder = (key: string, list: Order[]) => {
@@ -68,6 +76,16 @@ export default function OrdersScreen() {
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchOrders} />}
       >
+        {signedOut && <View style={styles.signInCard} testID="orders-signed-out">
+          <Icon name="person-circle-outline" size={28} color={colors.onSurface} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.signInTitle}>{t('orders.signedOutTitle')}</Text>
+            <Text style={styles.emptySub}>{t('orders.signedOutSub')}</Text>
+          </View>
+          <TouchableOpacity testID="orders-sign-in" accessibilityRole="button" style={styles.signInBtn} onPress={() => router.push('/sign-in?next=/orders' as never)}>
+            <Text style={styles.shopBtnText}>{t('orders.signIn')}</Text>
+          </TouchableOpacity>
+        </View>}
         {failed && <View style={styles.empty} testID="orders-error"><Text style={styles.emptySub}>{t('orders.loadError')}</Text><TouchableOpacity testID="orders-retry" style={styles.shopBtn} onPress={fetchOrders}><Text style={styles.shopBtnText}>{t('common.retry')}</Text></TouchableOpacity></View>}
         {orders.length === 0 && !failed ? (
           <View style={styles.empty}>
@@ -145,6 +163,9 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 13, color: colors.muted, marginTop: 4 },
   shopBtn: { marginTop: spacing.lg, backgroundColor: colors.brandPrimary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: radius.pill },
   shopBtnText: { color: colors.onBrandPrimary, fontWeight: "800" },
+  signInCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  signInTitle: { fontSize: 14, fontWeight: "800", color: colors.onSurface },
+  signInBtn: { minHeight: 44, justifyContent: "center", backgroundColor: colors.brandPrimary, paddingHorizontal: 16, borderRadius: radius.pill },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
   cardHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderId: { fontSize: 14, fontWeight: "800", color: colors.onSurface },

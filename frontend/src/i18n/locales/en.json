@@ -125,7 +125,9 @@
       "online_payments_off": "Online payment is not available right now. Please choose cash on delivery.",
       "session_expired": "This payment session ended. Please try again.",
       "upi_id_invalid": "That UPI ID does not look right. Check it and try again.",
-      "upi_direct_unavailable": "Direct UPI is not available. Use the secure payment page."
+      "upi_direct_unavailable": "Direct UPI is not available. Use the secure payment page.",
+      "update_required": "Please update OneLocal to continue.",
+      "maintenance": "OneLocal is taking a short break. Please try again in a few minutes."
     }
   },
   "auth": {
@@ -138,7 +140,7 @@
     "heroTitle": {
       "checkout": "Sign in to place\nyour order.",
       "signin": "Your whole city,\none sign-in away.",
-      "signup": "Make OneCity\nfeel like yours."
+      "signup": "Make OneLocal\nfeel like yours."
     },
     "heroSub": {
       "checkout": "Your bag is saved. Sign in once and we’ll take you straight back to pay.",
@@ -212,7 +214,14 @@
       "phoneOff": "Sign-in by mobile number isn’t switched on yet. Please use your email for now.",
       "smsFailed": "We couldn’t send the code. Check the number and try again in a minute.",
       "codeMissing": "Enter the code we sent you.",
-      "signOut": "Couldn’t sign out right now. Check your connection and try again."
+      "signOut": "Couldn’t sign out right now. Check your connection and try again.",
+      "appleOff": "Apple sign-in is not switched on yet. Please try again later.",
+      "appleStart": "Could not start Apple sign-in.",
+      "appleUnfinishedRetry": "Apple sign-in did not finish. Please try again.",
+      "appleUnfinished": "Apple sign-in did not finish."
+    },
+    "apple": {
+      "continue": "Continue with Apple"
     },
     "switch": {
       "toSignup": "New here? Create an account",
@@ -269,9 +278,9 @@
       "payments": "Payment Preferences",
       "privacy": "Privacy & your data",
       "refer": "Refer & Earn",
-      "wallet": "OneCity Wallet",
+      "wallet": "OneLocal Wallet",
       "help": "Help & Support",
-      "about": "About OneCity"
+      "about": "About OneLocal"
     },
     "rowSub": {
       "orders": "Track a delivery or order again",
@@ -299,7 +308,8 @@
     "deviceNoticeGuest": "Your profile and preferences are saved on this device.",
     "storageLoadError": "Could not load your saved preferences. Please reopen this screen.",
     "storageSaveError": "Could not save your changes. Please try again.",
-    "profileLoading": "Your profile is still loading"
+    "profileLoading": "Your profile is still loading",
+    "coinsTitle": "OneLocal Coins"
   },
   "profile": {
     "title": "Make it yours",
@@ -349,7 +359,7 @@
       "a4": "You can copy or share your invite code. Referral tracking and rewards are not active yet, so sharing does not earn money."
     },
     "requestTitle": "Leave a support request",
-    "serviceNotice": "Your request is saved in OneCity. Live chat, email delivery and response times are not connected yet. Do not include passwords, card details or sensitive information.",
+    "serviceNotice": "Your request is saved in OneLocal. Live chat, email delivery and response times are not connected yet. Do not include passwords, card details or sensitive information.",
     "topic": {
       "order": "order",
       "payment": "payment",
@@ -369,13 +379,13 @@
   },
   "about": {
     "title": "One city. Endless possibilities.",
-    "madeIn": "OneCity · Made in Latur",
+    "madeIn": "OneLocal · Made in Latur",
     "story": "A little closer to home.",
-    "storyBody": "Food you crave. Essentials you need. Local finds you love. OneCity brings shopping and discovery together in one place, for Latur.",
+    "storyBody": "Food you crave. Essentials you need. Local finds you love. OneLocal brings shopping and discovery together in one place, for Latur.",
     "experienceTitle": "About this experience",
     "sampleNotice": "This is a sample shopping experience. Catalogue prices, delivery estimates, orders, bookings and wallet balances are demonstrations, not live merchant services. No payments are collected.",
     "privacyNotice": "Your profile, saved addresses, wishlist, referral code and payment preference stay on this device. No login or cross-device profile sync is connected. Do not enter sensitive payment information.",
-    "version": "OneCity · Version 1.0"
+    "version": "OneLocal · Version 1.0"
   },
   "refer": {
     "title": "Good finds. Better together.",
@@ -386,7 +396,7 @@
     "copy": "Copy code",
     "copied": "Invite code copied. Share it with a friend!",
     "copyFailed": "Could not copy. You can select and copy the code below.",
-    "shareMessage": "Discover little local favourites with OneCity, made for Latur. My invite code is {{code}}. Referral rewards are not active yet.",
+    "shareMessage": "Discover little local favourites with OneLocal, made for Latur. My invite code is {{code}}. Referral rewards are not active yet.",
     "shareReady": "Invite ready to share.",
     "shareFailed": "Sharing is unavailable here. Use Copy code instead.",
     "statusTitle": "Rewards are coming later",
@@ -396,7 +406,7 @@
     "title": "Your little city wallet",
     "demoBadge": "DEMO WALLET",
     "balanceLabel": "A little something for later",
-    "balanceFoot": "OneCity · Sample balance only",
+    "balanceFoot": "OneLocal · Sample balance only",
     "addDemo": "Add {{amount}} demo",
     "adding": "Adding…",
     "explore": "Explore the city",
@@ -466,7 +476,8 @@
     "addItem": "Add {{name}}",
     "removeOneItem": "Remove one {{name}}",
     "addOneItem": "Add one {{name}}",
-    "add": "ADD"
+    "add": "ADD",
+    "moreFromBrand": "More from {{name}}"
   },
   "store": {
     "loading": "Loading store...",
@@ -475,7 +486,9 @@
     "follow": "Follow store",
     "allItems": "All Items",
     "allProducts": "All Products",
-    "emptyCategory": "No products in this category"
+    "emptyCategory": "No products in this category",
+    "notFound": "This store isn’t here.",
+    "backHome": "Back to OneLocal"
   },
   "category": {
     "notFound": "Category not found",
@@ -510,7 +523,7 @@
     "packSize": "Pack size",
     "linkCopied": "Category link copied",
     "shareFailed": "Could not share this category. Please try again.",
-    "shareMessage": "{{title}} on OneCity: {{url}}",
+    "shareMessage": "{{title}} on OneLocal: {{url}}",
     "searchThis": "Search this category",
     "searchPlaceholder": "Search these items",
     "changeAddress": "Change delivery address, {{location}}",
@@ -545,7 +558,7 @@
   },
   "brand": {
     "notFound": "Brand not found",
-    "backHome": "Back to OneCity",
+    "backHome": "Back to OneLocal",
     "eyebrow": "THE BRAND EDIT",
     "storeProfile": "Store profile",
     "following": "Following",
@@ -630,7 +643,7 @@
     "videoUnavailable": "Video unavailable. You can still shop this find.",
     "likeFailed": "Could not save your like. Please try again.",
     "copyFailed": "Select the link to copy it manually.",
-    "shareMessage": "Found on OneCity: {{name}} — {{link}}",
+    "shareMessage": "Found on OneLocal: {{name}} — {{link}}",
     "backToDiscover": "Back to Discover grid",
     "title": "‹ City finds.",
     "tagline": "LITTLE ADS. LOVELY DISCOVERIES.",
@@ -692,7 +705,7 @@
     "webOff": "Location access is off for this site. Allow it in your browser’s site settings, or search for your town above.",
     "off": {
       "canAsk": "Location access is off. Allow it to use your current location, or search for your town above.",
-      "settings": "Location access is turned off for OneCity. Turn it on in Settings, or search for your town above."
+      "settings": "Location access is turned off for OneLocal. Turn it on in Settings, or search for your town above."
     },
     "cannotFind": "Couldn’t find where you are right now. Check that location is switched on, or search for your town above."
   },
@@ -734,8 +747,6 @@
     },
     "form": {
       "addTitle": "Add address details",
-      "receiver": "Receiver",
-      "addressSection": "Address",
       "name": "Name *",
       "mobile": "Mobile number *",
       "mobileHelp": "Our delivery partner calls this number if they can't find you.",
@@ -744,9 +755,7 @@
       "area": "Area / locality *",
       "pincode": "Pincode",
       "saveAs": "Save address as *",
-      "pinnedLabel": "Area (from the map pin)",
       "change": "Change",
-      "directions": "Directions for the delivery partner (optional)",
       "directionsHint": "E.g. Ring the bell twice, blue gate opposite the temple",
       "saving": "Saving…",
       "errName": "Add the receiver's name.",
@@ -755,19 +764,30 @@
       "errArea": "Add your area or locality.",
       "errPin": "Pincode should have 6 digits.",
       "errSaveAs": "Give this address a name, like \"Mom's place\".",
-      "saveFailed": "Could not save this address. Please try again."
+      "saveFailed": "Could not save this address. Please try again.",
+      "locationDetails": "Location details",
+      "receiverDetails": "Receiver details",
+      "areaLabel": "Area",
+      "noStreetFound": "We couldn't find a street address for this pin. Add your area below.",
+      "instructions": "Delivery instructions (recommended)",
+      "instructionsRow": "Instructions to reach your door",
+      "addAction": "Add"
     },
     "map": {
       "hint": "Move the map to place the pin on your door",
       "searchAnother": "Search another area",
-      "eyebrow": "YOUR ORDER WILL BE DELIVERED HERE",
       "finding": "Finding this address…",
       "pinned": "Pinned location",
       "pinnedAt": "Pinned at {{latitude}}, {{longitude}}. You'll type the street and area on the next step.",
-      "notServiceable": "OneCity doesn't deliver here yet. We're live in {{city}} — move the pin inside the city.",
-      "confirm": "Confirm & add details",
+      "notServiceable": "OneLocal doesn't deliver here yet. We're live in {{city}} — move the pin inside the city.",
       "missingTitle": "The map is not switched on yet",
-      "missingBody": "It needs a Google Maps key. You can still search for your area or type your address."
+      "missingBody": "It needs a Google Maps key. You can still search for your area or type your address.",
+      "deliveredHere": "Order will be delivered here",
+      "distanceAway": "This is {{distance}} away from your current location.",
+      "meters": "{{count}} m",
+      "km": "{{count}} km",
+      "noStreet": "No street address found here. You can add it on the next step.",
+      "confirmProceed": "Confirm & proceed"
     }
   },
   "search": {
@@ -803,7 +823,7 @@
     "smart": {
       "titleVoice": "Say it. Find it.",
       "titleImage": "See it. Find it.",
-      "subtitle": "A little help from OneCity AI",
+      "subtitle": "A little help from OneLocal AI",
       "descVoice": "Tell us what’s on your shopping list. We’ll look through the catalogue for you.",
       "descImage": "Snap a product or pick a photo. We’ll help you find it, or something similar.",
       "takePhoto": "Take a photo",
@@ -1083,29 +1103,29 @@
     "foodSpotlight": {
       "eyebrow": "FRESH CRAVINGS. FAMILIAR FAVOURITES.",
       "mcdonalds": {
-        "title": "A good mood,\nwith a side of fries.",
-        "copy": "Golden little moments. Made for your cravings.",
+        "title": "Burgers, brownies,\nbig smiles.",
+        "copy": "NIKS: stacked burgers and gooey brownies, made in Latur.",
         "cta": "Find my bite"
       },
       "kfc": {
-        "title": "Crispy outside.\nHappy inside.",
-        "copy": "Bring your favourite people. We’ll bring the crunch.",
-        "cta": "Bring the crunch"
+        "title": "All day.\nEvery craving.",
+        "copy": "Rooftop All Day Kitchen: crispy chicken to iced coffee.",
+        "cta": "See the menu"
       },
       "starbucks": {
-        "title": "A little pause.\nA lovely latte.",
-        "copy": "Make a little time for your daily coffee ritual.",
-        "cta": "Find my coffee"
+        "title": "A little scoop.\nA lot of happy.",
+        "copy": "Baskin Robbins ice creams, delivered cold.",
+        "cta": "Pick my scoop"
       },
       "burgerking": {
-        "title": "Big flavour.\nYour kind of bite.",
-        "copy": "Burgers, fries and all the good stuff.",
-        "cta": "Explore the menu"
+        "title": "A full thali.\nA full heart.",
+        "copy": "Shri Shyam Bhoj: home-style thali, served warm.",
+        "cta": "Order a thali"
       },
       "dominos": {
-        "title": "Good times,\none slice at a time.",
-        "copy": "Make tonight a pizza kind of night.",
-        "cta": "Pick my pizza"
+        "title": "Pav bhaji, pizza,\ngood times.",
+        "copy": "MH 12: buttery pav bhaji and cheesy pizzas.",
+        "cta": "Pick my plate"
       },
       "show": "Show {{name}} spotlight",
       "note": "Tap a logo to change the mood · sample brand spotlights"
@@ -1202,11 +1222,24 @@
       "shopping_character": "Shopping Buddy",
       "rider": "Your Rider",
       "store": "Store"
-    }
+    },
+    "hero": {
+      "eyebrow": "GOOD FOOD · BRIGHTER DAYS",
+      "title": "Fresh choices\nfor a happier you.",
+      "searchPlaceholder": "Search for food, groceries, shops…",
+      "photoLabel": "A fresh salad bowl"
+    },
+    "offers": {
+      "groceryTitle": "Up to {{pct}} off",
+      "grocerySub": "on daily groceries",
+      "careTitle": "Pharmacy & Beauty",
+      "careSub": "Up to {{pct}} off"
+    },
+    "essentialsTitle": "Your daily essentials"
   },
   "shell": {
     "goPrevious": "Go to previous page",
-    "home": "OneCity home",
+    "home": "OneLocal home",
     "wallet": "wallet",
     "cart": "cart",
     "profile": "profile",
@@ -1230,7 +1263,7 @@
       "freeDelivery": "Free delivery unlocked · Saving {{amount}}",
       "awayFromFree": "{{amount}} away from free delivery"
     },
-    "introLoading": "OneCity is loading",
+    "introLoading": "OneLocal is loading",
     "introTagline": "YOUR CITY · AT YOUR DOORSTEP",
     "introMade": "Made in Latur",
     "panel": {
@@ -1257,7 +1290,7 @@
       "point3": "Adds everything in one tap"
     },
     "wallet": {
-      "title": "OneCity Wallet",
+      "title": "OneLocal Wallet",
       "body": "Refunds, store credit and OneLocal Coins in one place, spendable at checkout.",
       "point1": "Instant refunds to your wallet",
       "point2": "Pay with one tap",
@@ -1455,7 +1488,7 @@
       "view": "View bag · {{n}}"
     },
     "character": {
-      "a11y": "A smiling 3D-style OneCity helper waving hello"
+      "a11y": "A smiling 3D-style OneLocal helper waving hello"
     },
     "celebration": {
       "added": "Added to Cart!",
@@ -1588,7 +1621,10 @@
     "itemsTogether_one": "{{count}} item · paid together",
     "itemsTogether_other": "{{count}} items · paid together",
     "reorder": "Reorder",
-    "reordered": "Added"
+    "reordered": "Added",
+    "signedOutTitle": "You’re not signed in",
+    "signedOutSub": "Orders placed on this phone show here. Sign in to see your account’s orders on any phone.",
+    "signIn": "Sign in"
   },
   "tracking": {
     "title": "Your delivery story",
@@ -1689,7 +1725,8 @@
       "scooter": "scooter",
       "cycle": "cycle",
       "car": "car"
-    }
+    },
+    "getHelp": "Get help with this order"
   },
   "notifications": {
     "placed": {
@@ -2169,6 +2206,48 @@
       "processedManual": "Refund of {{amount}} was paid out by our team.",
       "failed": "Refund of {{amount}} is delayed. Our team is retrying it.",
       "support": "Contact support"
+    }
+  },
+  "updates": {
+    "ready": "A new version of OneLocal is ready.",
+    "restart": "Restart"
+  },
+  "network": {
+    "offline": "You're offline. Showing what was saved.",
+    "retry": "Retry",
+    "checking": "Checking…",
+    "backOnline": "Back online",
+    "update": {
+      "title": "Update OneLocal to keep ordering",
+      "body": "This version of the app is too old to place orders. Updating takes about a minute.",
+      "button": "Update now",
+      "reload": "Reload"
+    },
+    "maintenance": {
+      "title": "OneLocal is taking a short break",
+      "body": "We are doing some quick upkeep. Please try again in a few minutes.",
+      "retry": "Try again",
+      "still": "Still on a break. Please try again in a few minutes."
+    }
+  },
+  "popups": {
+    "ad": "Ad",
+    "close": "Close",
+    "closeA11y": "Close this offer",
+    "skip": "Skip",
+    "open": "Open",
+    "dialogA11y": "Offer",
+    "comingSoon": {
+      "stamp": "COMING SOON",
+      "kind": "KIND",
+      "city": "CITY",
+      "status": "STATUS",
+      "opening": "OPENING SOON",
+      "thanks": "THANK YOU FOR WAITING",
+      "page": "Store {{n}} of {{total}}",
+      "menuSoon": "{{name}} is joining OneLocal. Its menu will be here soon.",
+      "explore": "See what’s open now",
+      "soon": "Soon"
     }
   }
 }

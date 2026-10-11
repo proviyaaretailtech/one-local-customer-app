@@ -52,12 +52,14 @@ export const ERROR_CODES = [
   // Online payment (docs/PAYMENTS.md "App API (Cashfree)")
   'choose_method', 'phone_required', 'price_changed', 'payment_in_progress', 'gateway_unavailable', 'online_payments_off',
   'session_expired', 'upi_id_invalid', 'upi_direct_unavailable',
+  // Whole-app blocks (src/network/app-blocked-state.ts): HTTP 426, and 503 with code 'maintenance'
+  'update_required', 'maintenance',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 export type ErrorKey = `errors.code.${ErrorCode}` | 'errors.generic';
 
 const STATUS_TO_CODE: Record<number, ErrorCode> = {
-  400: 'validation', 401: 'unauthorized', 403: 'unauthorized', 404: 'not_found', 409: 'conflict', 413: 'validation', 422: 'validation',
+  400: 'validation', 426: 'update_required', 401: 'unauthorized', 403: 'unauthorized', 404: 'not_found', 409: 'conflict', 413: 'validation', 422: 'validation',
   429: 'rate_limited', 500: 'server_error', 502: 'server_error', 503: 'server_error', 504: 'timeout',
 };
 

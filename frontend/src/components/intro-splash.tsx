@@ -12,7 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useMotionAllowed } from '../motion';
-import { OneGlyph } from './one-button';
+import { BrandLogo } from './brand-logo';
 import { colors } from '../theme';
 import { useTranslation } from '../i18n';
 
@@ -35,12 +35,17 @@ export function IntroSplash() {
   const sweep = useSharedValue(0);  // light band across the lockup
   const tag = useSharedValue(0);    // tagline
   const exit = useSharedValue(0);   // ease forward + dissolve
+  // The animation starts once the logo image is drawn (on the web it is fetched), or after 1.2 s whatever happens.
+  const [logoReady, setLogoReady] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setLogoReady(true), 1200); return () => clearTimeout(id); }, []);
 
   useEffect(() => {
     void SplashScreen.hideAsync().catch(() => {});
-    if (!visible) return;
+    if (!visible || !logoReady) return;
     launch.__onecityIntroPlayed = true;
-    const done = () => setVisible(false);
+    // Read by the pop-up host so no pop-up opens over the intro.
+    (globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing = true;
+    const done = () => { (globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing = false; setVisible(false); };
     if (!motion) {
       glyph.value = 1; word.value = 1; tag.value = 1; bloom.value = 0.6;
       exit.value = withDelay(650, withTiming(1, { duration: 260 }, f => { if (f) runOnJS(done)(); }));
@@ -52,7 +57,7 @@ export function IntroSplash() {
     sweep.value = withDelay(620, withTiming(1, { duration: 700, easing: inOut }));
     tag.value = withDelay(820, withTiming(1, { duration: 500, easing: outExpo }));
     exit.value = withDelay(1450, withSequence(withTiming(1, { duration: 450, easing: Easing.bezier(0.4, 0, 0.2, 1) }, f => { if (f) runOnJS(done)(); })));
-  }, [visible, motion, bloom, glyph, word, sweep, tag, exit]);
+  }, [visible, logoReady, motion, bloom, glyph, word, sweep, tag, exit]);
 
   const screen = useAnimatedStyle(() => ({ opacity: interpolate(exit.value, [0, 1], [1, 0]) }));
   const stage = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(exit.value, [0, 1], [1, 1.12]) }] }));
@@ -87,8 +92,7 @@ export function IntroSplash() {
         </RadialGradient></Defs><Rect width={420} height={420} fill="url(#introHalo)" /></Svg>
       </Animated.View>
       <View style={s.lockup}>
-        <Animated.View style={one}><OneGlyph size={92} /></Animated.View>
-        <View style={s.wordClip}><Animated.Text style={[s.word, wordmark]}>neCity</Animated.Text></View>
+        <Animated.View style={one}><Animated.View style={wordmark}><BrandLogo tone="dark" height={64} onLoad={() => setLogoReady(true)} /></Animated.View></Animated.View>
         <Animated.View style={[s.band, band]} />
       </View>
       <Animated.Text style={[s.tagline, tagline]}>{t('shell.introTagline')}</Animated.Text>
@@ -102,8 +106,6 @@ const s = StyleSheet.create({
   center: { alignItems: 'center' },
   halo: { position: 'absolute', top: -170, width: 420, height: 420 },
   lockup: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, overflow: 'hidden', paddingHorizontal: 6 },
-  wordClip: { overflow: 'hidden' },
-  word: { color: '#FFFFFF', fontSize: 46, fontWeight: '800', letterSpacing: -1.5, marginBottom: 6 },
   band: { position: 'absolute', top: -20, bottom: -20, left: 0, width: 46, backgroundColor: 'rgba(255,255,255,0.16)' },
   tagline: { color: colors.electricLime, fontSize: 11, fontWeight: '700', letterSpacing: 3.2, marginTop: 24 },
   made: { position: 'absolute', bottom: 58, color: 'rgba(255,255,255,0.42)', fontSize: 10, letterSpacing: 1.6 },

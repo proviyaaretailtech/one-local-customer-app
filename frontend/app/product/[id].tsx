@@ -142,6 +142,9 @@ export default function ProductDetail() {
           <View style={{ flex: 1 }}><Text style={s.storeName}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{`${story.store.tagline || t('product.storeFallback')} · ${fmt.deliveryTime(story.store.delivery_time)}`}</Text></View>
           <Icon name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>}
+        {!!story.brand && <Pressable testID="pd-brand-link" accessibilityRole="link" onPress={() => router.push(`/brand/${story.brand!.id}` as any)} style={s.brandLink}>
+          <Text style={s.catLinkText}>{t('product.moreFromBrand', { name: story.brand.name })}</Text><Icon name="chevron-forward" size={12} color={colors.forest} />
+        </Pressable>}
       </View>
 
       {story.related.length > 0 && <View style={s.relatedWrap}><Text style={s.sectionTitle}>{t('product.moreLikeThis')}</Text><ProductRail products={story.related} scope="pd-related" /></View>}
@@ -152,7 +155,7 @@ export default function ProductDetail() {
         <LinearGradient colors={[colors.surface, `${palette.mid}CC`, `${palette.color}F2`]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
         <Image source={product.image} style={s.footerShot} contentFit="contain" />
         <Text style={s.footerTitle}>{story.brand?.tagline || t('product.footerTagline')}</Text>
-        <Text style={s.footerSub}>{t('product.footerSub', { name: story.brand?.name ?? story.store?.name ?? 'OneCity' })}</Text>
+        <Text style={s.footerSub}>{t('product.footerSub', { name: story.brand?.name ?? story.store?.name ?? 'OneLocal' })}</Text>
       </View>
     </ScrollView>
 
@@ -211,7 +214,7 @@ const s = StyleSheet.create({
   deliveryText: { fontSize: 11, fontWeight: '800', color: colors.onSurface, textTransform: 'uppercase' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.surfaceSecondary, paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill },
   ratingText: { fontSize: 11, fontWeight: '800', color: colors.onSurface },
-  catLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginLeft: 'auto' }, catLinkText: { fontSize: 11, fontWeight: '700', color: colors.forest, flexShrink: 1 },
+  catLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginLeft: 'auto' }, brandLink: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, marginTop: 6, alignSelf: 'flex-start' }, catLinkText: { fontSize: 11, fontWeight: '700', color: colors.forest, flexShrink: 1 },
   name: { fontSize: 24, fontWeight: '800', color: colors.onSurface, letterSpacing: -0.5 },
   weight: { fontSize: 14, color: colors.muted, marginTop: 4 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 14 },
