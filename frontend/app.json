@@ -8,14 +8,15 @@
     "scheme": "onecity",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Find products using a photo",
         "NSMicrophoneUsageDescription": "Search for products with your voice",
         "NSPhotoLibraryUsageDescription": "Choose product photos for visual search",
-        "NSLocationWhenInUseUsageDescription": "OneLocal uses your location to find your delivery address."
+        "NSLocationWhenInUseUsageDescription": "OneLocal uses your location to find your delivery address.",
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.emergent.onelaturmarket.rrvr15"
+      "bundleIdentifier": "com.proviyaa.onelatur"
     },
     "android": {
       "permissions": [
@@ -24,9 +25,9 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#0B0F0C"
       },
-      "package": "com.emergent.onelaturmarket.rrvr15"
+      "package": "com.proviyaa.onelatur"
     },
     "web": {
       "bundler": "metro",
@@ -38,10 +39,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-image.png",
-          "imageWidth": 200,
+          "image": "./assets/images/brand/onelocal-logo-on-dark.png",
+          "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#050605"
         }
       ],
       "expo-font",
