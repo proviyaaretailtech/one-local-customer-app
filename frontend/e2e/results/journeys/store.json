@@ -6,31 +6,31 @@
     {
       "name": "open home and the Latur Fresh Mart store card",
       "ok": true,
-      "ms": 3905,
+      "ms": 68748,
       "shot": "journey-store-01.png"
     },
     {
       "name": "follow the store",
       "ok": true,
-      "ms": 228,
+      "ms": 166,
       "shot": "journey-store-02.png"
     },
     {
       "name": "filter by a category chip",
       "ok": true,
-      "ms": 701,
+      "ms": 699,
       "shot": "journey-store-03.png"
     },
     {
       "name": "add a product from the store",
       "ok": true,
-      "ms": 186,
+      "ms": 173,
       "shot": "journey-store-04.png"
     },
     {
       "name": "back returns home, where the followed store now appears first",
       "ok": true,
-      "ms": 974,
+      "ms": 922,
       "shot": "journey-store-05.png"
     }
   ],

@@ -6,13 +6,13 @@
     {
       "name": "open Groceries and a product",
       "ok": true,
-      "ms": 3760,
+      "ms": 69913,
       "shot": "journey-product-back-01.png"
     },
     {
       "name": "tap the back arrow (top-left)",
       "ok": true,
-      "ms": 1567,
+      "ms": 3432,
       "shot": "journey-product-back-02.png"
     }
   ],

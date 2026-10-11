@@ -6,25 +6,25 @@
     {
       "name": "open Help from the profile",
       "ok": true,
-      "ms": 2360,
+      "ms": 67945,
       "shot": "journey-help-01.png"
     },
     {
       "name": "expand an FAQ",
       "ok": true,
-      "ms": 124,
+      "ms": 99,
       "shot": "journey-help-02.png"
     },
     {
       "name": "a too-short message is rejected",
       "ok": true,
-      "ms": 194,
+      "ms": 189,
       "shot": "journey-help-03.png"
     },
     {
       "name": "a proper message is saved with a reference",
       "ok": true,
-      "ms": 302,
+      "ms": 307,
       "shot": "journey-help-04.png"
     }
   ],

@@ -6,37 +6,37 @@
     {
       "name": "open Saved Addresses from the profile",
       "ok": true,
-      "ms": 2399,
+      "ms": 67770,
       "shot": "journey-addresses-01.png"
     },
     {
       "name": "invalid details are rejected",
       "ok": true,
-      "ms": 228,
+      "ms": 193,
       "shot": "journey-addresses-02.png"
     },
     {
       "name": "add a Home address",
       "ok": true,
-      "ms": 202,
+      "ms": 199,
       "shot": "journey-addresses-03.png"
     },
     {
       "name": "edit it to Work and change the area",
       "ok": true,
-      "ms": 294,
+      "ms": 296,
       "shot": "journey-addresses-04.png"
     },
     {
       "name": "deliver here updates the delivery location",
       "ok": true,
-      "ms": 72,
+      "ms": 70,
       "shot": "journey-addresses-05.png"
     },
     {
       "name": "remove it (with confirmation)",
       "ok": true,
-      "ms": 167,
+      "ms": 175,
       "shot": "journey-addresses-06.png"
     }
   ],

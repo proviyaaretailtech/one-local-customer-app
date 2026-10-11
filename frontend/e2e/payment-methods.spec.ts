@@ -51,7 +51,7 @@ const ORDER = (over: Record<string, unknown> = {}) => ({
   address: { label: 'Home', text: '12 Gandhi Chowk, Latur', lat: 18.42, lng: 76.57, notes: '' },
   items: [{ id: 'p1', name: 'Fresh Tomatoes', weight: '500 g', price: 25, mrp: 40, image: PIXEL, qty: 2 }],
   subtotal: 50, discount: 0, delivery_fee: 0, gst: 0, total: 50, coupon_code: null,
-  payment_method: 'upi', payment_status: 'paid', status: 'accepted', rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date().toISOString(), ...over,
+  payment_method: 'upi', payment_status: 'paid', status: 'accepted', rider_name: 'Sample rider', rider_phone: '', eta_minutes: 10, created_at: new Date(Date.now() - 20 * 60_000).toISOString(), ...over,
 });
 
 type Mock = {
@@ -105,15 +105,14 @@ async function setup(page: Page, o: Partial<Mock> = {}): Promise<Mock> {
       m.statusCalls.push(Date.now());
       if (m.failStatus > 0) { m.failStatus--; return route.abort('internetdisconnected'); }
       const s = m.statuses.length > 1 ? m.statuses.shift() : m.statuses[0];
-      console.log('DBG status', Date.now() % 100000, (s as any).outcome, m.statuses.length);
       return route.fulfill({ json: s });
     }
     if (p === 'cod') { m.codCalls++; return route.fulfill({ json: { order_id: ORDER_ID } }); }
     if (p === 'refund-status') return route.fulfill({ json: { checkout_id: CHECKOUT, refunded_total: 0, refunds: m.refunds } });
     return route.fulfill({ status: 404, json: { detail: 'not mocked' } });
   });
-  // The page a hosted payment opens in the popup: Cashfree is replaced by a page that reports back the way return_url does.
-  await page.route('**/api/payments/checkout-page**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Pay</title><p id="x">Test payment page</p><button id="done" onclick="window.opener.postMessage({type:\'done\',checkout_id:\'' + CHECKOUT + '\',hint:\'pending\'}, location.origin)">Done</button>' }));
+  // The page a hosted payment opens in the popup (a popup is another page, so the route is on the context): Cashfree is replaced by a page that reports back the way return_url does.
+  await page.context().route('**/api/payments/checkout-page**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Pay</title><p id="x">Test payment page</p><button id="done" onclick="window.opener.postMessage({type:\'done\',checkout_id:\'' + CHECKOUT + '\',hint:\'pending\'}, location.origin)">Done</button>' }));
   await page.route('**/api/checkouts', route => { if (route.request().method() !== 'POST') return route.fallback(); m.checkoutPosts.push(route.request().postDataJSON()); return route.fulfill({ json: { id: 'co-cash', orders: [{ id: ORDER_ID }], created_at: new Date().toISOString() } }); });
   await page.route(`**/api/orders/${ORDER_ID}`, route => route.fulfill({ json: ORDER(m.orderReply) }));
   await page.route(`**/api/orders/${ORDER_ID}/tracking`, route => route.fulfill({ json: { live: false } }));
@@ -298,9 +297,6 @@ test('hosted page (card): popup, confirming "do not pay again", then paid; Idemp
   await shot(page, '11-hosted-window-open');
   await popup.waitForLoadState('domcontentloaded');
   m.statuses = [status('pending'), status('pending'), status('pending'), status('pending'), status('paid')]; // the bank takes a few seconds after the page says done
-  console.log('DBG popup closed?', popup.isClosed(), await popup.evaluate(() => document.body.innerText).catch(e => 'ERR ' + e.message));
-  await page.evaluate(() => { window.addEventListener('message', e => console.log('DBG MSG ' + e.origin + ' ' + JSON.stringify(e.data))); });
-  page.on('console', c => { if (c.text().startsWith('DBG')) console.log(c.text()); });
   await popup.locator('#done').click().catch(() => { /* the app closes the window as soon as it hears the cue */ }); // the result page's cue; the app then asks the server
   await expect(page.getByTestId('pay-confirming-title')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('pay-confirming-body')).toContainText('Please do not pay again');
@@ -448,7 +444,7 @@ test('refund line on the order screen: initiated, processed, failed (support lin
 
 test('Hindi: the method list and the pending warning are in Hindi', async ({ page }) => {
   await setup(page);
-  await page.addInitScript(() => { try { const c = JSON.parse(localStorage.getItem('onecity.customer.v1') || '{}'); c.profile.language = 'hi'; localStorage.setItem('onecity.customer.v1', JSON.stringify(c)); } catch { /* storage blocked */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('onecity.language.v1', JSON.stringify({ locale: 'hi', confirmed: true })); } catch { /* storage blocked */ } });
   await openCart(page);
   await openSheet(page);
   await expect(page.getByTestId('pay-method-cod')).toContainText('कैश ऑन डिलीवरी');

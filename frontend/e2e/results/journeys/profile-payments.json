@@ -6,25 +6,25 @@
     {
       "name": "open Edit profile from the account screen",
       "ok": true,
-      "ms": 4480,
+      "ms": 68567,
       "shot": "journey-profile-payments-01.png"
     },
     {
       "name": "an invalid phone number is rejected",
       "ok": true,
-      "ms": 166,
+      "ms": 132,
       "shot": "journey-profile-payments-02.png"
     },
     {
       "name": "save a valid profile and see it on the account screen",
       "ok": true,
-      "ms": 454,
+      "ms": 347,
       "shot": "journey-profile-payments-03.png"
     },
     {
       "name": "save a payment preference",
       "ok": true,
-      "ms": 379,
+      "ms": 349,
       "shot": "journey-profile-payments-04.png"
     }
   ],

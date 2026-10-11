@@ -6,37 +6,37 @@
     {
       "name": "open Book It from the bottom navigation",
       "ok": true,
-      "ms": 3174,
+      "ms": 68483,
       "shot": "journey-book-it-01.png"
     },
     {
       "name": "open a movie",
       "ok": true,
-      "ms": 272,
+      "ms": 298,
       "shot": "journey-book-it-02.png"
     },
     {
       "name": "submitting empty shows a validation message",
       "ok": true,
-      "ms": 110,
+      "ms": 124,
       "shot": "journey-book-it-03.png"
     },
     {
       "name": "choose time, 2 guests, name and phone",
       "ok": true,
-      "ms": 246,
+      "ms": 249,
       "shot": "journey-book-it-04.png"
     },
     {
       "name": "save the enquiry",
       "ok": true,
-      "ms": 296,
+      "ms": 424,
       "shot": "journey-book-it-05.png"
     },
     {
       "name": "view it in My Bookings",
       "ok": true,
-      "ms": 187,
+      "ms": 171,
       "shot": "journey-book-it-06.png"
     }
   ],

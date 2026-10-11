@@ -6,31 +6,31 @@
     {
       "name": "open Groceries",
       "ok": true,
-      "ms": 3609,
+      "ms": 70833,
       "shot": "journey-wishlist-01.png"
     },
     {
       "name": "tap the heart on Fresh Tomatoes",
       "ok": true,
-      "ms": 240,
+      "ms": 216,
       "shot": "journey-wishlist-02.png"
     },
     {
       "name": "open Wishlist from the profile",
       "ok": true,
-      "ms": 1241,
+      "ms": 1077,
       "shot": "journey-wishlist-03.png"
     },
     {
       "name": "un-heart it from the Wishlist",
       "ok": true,
-      "ms": 250,
+      "ms": 217,
       "shot": "journey-wishlist-04.png"
     },
     {
       "name": "save from the product page heart",
       "ok": true,
-      "ms": 3276,
+      "ms": 2998,
       "shot": "journey-wishlist-05.png"
     }
   ],
