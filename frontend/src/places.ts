@@ -69,6 +69,9 @@ export async function knownPoint(): Promise<Point | null> {
   }
 }
 
+// True for "18.39124, 76.56176": what the server sends as the address when Google knows no street at the pin.
+export const isCoordinateText = (s: string) => /^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$/.test(s);
+
 export function distanceKm(a: Point, b: Point) {
   const rad = (d: number) => (d * Math.PI) / 180;
   const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;

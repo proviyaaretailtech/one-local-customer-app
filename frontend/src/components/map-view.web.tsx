@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import Icon from '@react-native-vector-icons/ionicons';
 import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps';
 import type { MapViewProps } from './map-view';
+import { LIGHT_MAP_STYLE } from './map-style';
 import { useTranslation } from '../i18n';
 import { colors } from '../theme';
 
@@ -19,7 +20,7 @@ function Mover({ moveTo }: Pick<MapViewProps, 'moveTo'>) {
   return null;
 }
 
-export function MapView({ initial, moveTo, onSettle, style }: MapViewProps) {
+export function MapView({ initial, moveTo, onSettle, onMoveStart, style }: MapViewProps) {
   const { t, i18n } = useTranslation();
   // The map's own labels follow the app language (Google loads one language per page: the one active when the map first opens).
   const mapLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'en').startsWith('hi') ? 'hi' : 'en';
@@ -42,6 +43,8 @@ export function MapView({ initial, moveTo, onSettle, style }: MapViewProps) {
           gestureHandling="greedy"
           disableDefaultUI
           clickableIcons={false}
+          styles={LIGHT_MAP_STYLE}
+          onCenterChanged={onMoveStart ? () => onMoveStart() : undefined}
           onIdle={e => {
             const c = e.map.getCenter();
             if (c) onSettle({ lat: c.lat(), lng: c.lng() });
