@@ -7,7 +7,8 @@ function corsOrigin(request: Request): string | null {
   const origin = request.headers.get('origin');
   if (!origin) return null;
   const allowed = (process.env.PARTNER_SITE_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean);
-  const local = process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  // Development: this machine, or a phone on the same Wi-Fi (private network addresses only).
+  const local = process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
   return allowed.includes(origin) || local ? origin : null;
 }
 function withCors(request: Request, response: Response): Response {
