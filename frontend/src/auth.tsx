@@ -1,5 +1,5 @@
 // Customer sign-in through Supabase Auth: email + password; a one-time code by SMS to an Indian
-// mobile number once Supabase's Phone provider is on; Google once its keys exist. Browsing and
+// mobile number once Supabase's Phone provider is on; Google and Apple once their keys exist. Browsing and
 // filling the cart never need an account; placing an order does (the cart opens sign-in at Pay).
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
@@ -12,8 +12,9 @@ import { afterSignIn } from './privacy';
 import { t } from '@/src/i18n';
 
 type AuthState = {
-  ready: boolean; session: Session | null; googleAvailable: boolean; phoneAvailable: boolean;
+  ready: boolean; session: Session | null; googleAvailable: boolean; appleAvailable: boolean; phoneAvailable: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
   sendPhoneCode: (mobile: string) => Promise<void>;
@@ -41,16 +42,22 @@ const AuthContext = createContext<AuthState | null>(null);
 
 // Ask Supabase (public settings) which sign-in methods are switched on, so a customer is never
 // offered one that ends on a raw error page.
-async function providers(): Promise<{ google: boolean; phone: boolean }> {
+async function providers(): Promise<{ google: boolean; apple: boolean; phone: boolean }> {
   try {
     const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY ?? '' } });
     const external = (await r.json())?.external ?? {};
-    return { google: !!external.google, phone: !!external.phone };
+    return { google: !!external.google, apple: !!external.apple, phone: !!external.phone };
   } catch {
-    return { google: false, phone: false };
+    return { google: false, apple: false, phone: false };
   }
 }
-const googleEnabled = async () => (await providers()).google;
+
+type OAuth = 'google' | 'apple';
+// The words for each provider's failures (same flow, different name on screen).
+const OAUTH_ERRORS = {
+  google: { off: 'auth.error.googleOff', start: 'auth.error.googleStart', retry: 'auth.error.googleUnfinishedRetry' },
+  apple: { off: 'auth.error.appleOff', start: 'auth.error.appleStart', retry: 'auth.error.appleUnfinishedRetry' },
+} as const;
 
 // Indian mobile numbers only for now: 10 digits starting 6–9, sent as +91…
 export const mobileDigits = (value: string) => value.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
@@ -62,10 +69,11 @@ function e164(mobile: string) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null); const [ready, setReady] = useState(!supabase);
-  const [googleAvailable, setGoogleAvailable] = useState(false); const [phoneAvailable, setPhoneAvailable] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false); const [appleAvailable, setAppleAvailable] = useState(false);
+  const [phoneAvailable, setPhoneAvailable] = useState(false);
   const { profile, update, ready: customerReady } = useCustomer();
 
-  useEffect(() => { void providers().then(p => { setGoogleAvailable(p.google); setPhoneAvailable(p.phone); }); }, []);
+  useEffect(() => { void providers().then(p => { setGoogleAvailable(p.google); setAppleAvailable(p.apple); setPhoneAvailable(p.phone); }); }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -93,24 +101,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // another phone come back (src/privacy.ts).
   useEffect(() => { if (session?.user?.id) void afterSignIn(); }, [session?.user?.id]);
 
-  const signInWithGoogle = async () => {
+  // Google and Apple both run as Supabase OAuth in the browser (PKCE): the web page leaves and comes
+  // back to /account; on a phone a secure in-app browser opens and hands back a one-time code.
+  const signInWithOAuth = async (provider: OAuth) => {
+    const words = OAUTH_ERRORS[provider];
     if (!supabase) throw new Error(t('auth.error.notConfigured'));
-    if (!(await googleEnabled())) throw new Error(t('auth.error.googleOff'));
+    if (!(await providers())[provider]) throw new Error(t(words.off));
     if (Platform.OS === 'web') {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/account` } });
+      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/account` } });
       if (error) throw error;
-      return; // the browser now goes to Google and comes back to /account
+      return; // the browser now goes to the provider and comes back to /account
     }
     const redirectTo = Linking.createURL('account');
-    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect: true } });
-    if (error || !data?.url) throw error ?? new Error(t('auth.error.googleStart'));
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
+    if (error || !data?.url) throw error ?? new Error(t(words.start));
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success') return; // cancelled
     const code = new URL(result.url).searchParams.get('code');
-    if (!code) throw new Error(t('auth.error.googleUnfinishedRetry'));
+    if (!code) throw new Error(t(words.retry));
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) throw exchangeError;
   };
+  const signInWithGoogle = () => signInWithOAuth('google');
+  const signInWithApple = () => signInWithOAuth('apple');
 
   const signInWithEmail = async (email: string, password: string) => {
     if (!supabase) throw new Error(t('auth.error.notConfigured'));
@@ -150,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(t('auth.error.signOut'));
   };
 
-  return <AuthContext.Provider value={{ ready, session, googleAvailable, phoneAvailable, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ready, session, googleAvailable, appleAvailable, phoneAvailable, signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

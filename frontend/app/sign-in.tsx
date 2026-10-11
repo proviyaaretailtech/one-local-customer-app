@@ -27,7 +27,7 @@ const LINE = '#E7EBE4';
 const SOFT = '#6B746D';
 
 export default function SignIn() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, googleAvailable, phoneAvailable, sendPhoneCode, verifyPhoneCode } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, googleAvailable, appleAvailable, phoneAvailable, sendPhoneCode, verifyPhoneCode } = useAuth();
   const router = useRouter(); const insets = useSafeAreaInsets(); const motion = useMotionAllowed();
   // Sections rise in one after another on arrival; nothing moves under Reduce Motion.
   const rise = (i: number) => motion ? FadeInDown.delay(60 + i * 55).duration(420).springify().damping(20) : undefined;
@@ -36,7 +36,7 @@ export default function SignIn() {
   const checkout = next === 'checkout';
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
-  const [reveal, setReveal] = useState(false); const [busy, setBusy] = useState<'' | 'email' | 'google' | 'phone'>('');
+  const [reveal, setReveal] = useState(false); const [busy, setBusy] = useState<'' | 'email' | 'google' | 'apple' | 'phone'>('');
   const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   // Mobile number + one-time code: offered first whenever Supabase has phone sign-in switched on.
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
@@ -122,6 +122,12 @@ export default function SignIn() {
     try { await recordConsent(); await signInWithGoogle(); } catch (e) { setError(e instanceof Error ? e.message : t('auth.error.googleUnfinished')); } finally { setBusy(''); }
   };
 
+  const apple = async () => {
+    setError('');
+    if (!confirmedAdult()) return;
+    setBusy('apple');
+    try { await recordConsent(); await signInWithApple(); } catch (e) { setError(e instanceof Error ? e.message : t('auth.error.appleUnfinished')); } finally { setBusy(''); }
+  };
 
   const switchMode = (m: 'signin' | 'signup') => { setMode(m); setError(''); setNotice(''); };
   const status = <>
@@ -202,6 +208,9 @@ export default function SignIn() {
 
       <Animated.View entering={rise(3)}>
         <View style={s.orRow}><View style={s.orLine} /><Text style={s.or}>{t('common.or')}</Text><View style={s.orLine} /></View>
+        {appleAvailable && <Pressable testID="sign-in-apple" accessibilityRole="button" disabled={!!busy} onPress={apple} style={s.apple}>
+          {busy === 'apple' ? <ActivityIndicator color="#fff" /> : <><Icon name="logo-apple" size={19} color="#fff" /><Text style={s.appleText}>{t('auth.apple.continue')}</Text></>}
+        </Pressable>}
         <Pressable testID="sign-in-google" accessibilityRole="button" accessibilityState={{ disabled: !googleAvailable }} disabled={!googleAvailable || !!busy} onPress={google} style={[s.social, !googleAvailable && s.socialOff]}>
           {busy === 'google' ? <ActivityIndicator color={INK} /> : <><Text style={s.g}>G</Text><Text style={s.socialText}>{t('auth.google.continue')}</Text></>}
           {!googleAvailable && <View testID="sign-in-google-soon" style={s.soon}><Text style={[s.soonText, deva && s.devaSoon]}>{t('common.soon').toUpperCase()}</Text></View>}
@@ -273,6 +282,8 @@ const s = StyleSheet.create({
   social: { minHeight: 54, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1.5, borderColor: LINE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   socialOff: { opacity: 0.6 },
   socialText: { color: INK, fontSize: 15, fontWeight: '700', flexShrink: 1 },
+  apple: { marginBottom: 10, minHeight: 54, borderRadius: 16, backgroundColor: '#000', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  appleText: { color: '#fff', fontSize: 15, fontWeight: '700', flexShrink: 1 },
   g: { fontSize: 19, fontWeight: '800', color: '#4285F4' },
   soon: { position: 'absolute', right: 14, backgroundColor: FILL, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   soonText: { color: SOFT, fontSize: 9, fontWeight: '800', letterSpacing: 1 },

@@ -98,7 +98,7 @@ export default function AccountScreen() {
     <View testID="account-coins-card" style={s.coins}>
       <View style={s.coinRow}>
         <View style={s.coinBadge}><OneGlyph size={22} /></View>
-        <View style={s.flex}><Text style={s.coinTitle}>OneLocal Coins</Text><Text style={s.coinSub}>{t('account.coinsSub')}</Text></View>
+        <View style={s.flex}><Text style={s.coinTitle}>{t('account.coinsTitle')}</Text><Text style={s.coinSub}>{t('account.coinsSub')}</Text></View>
         <View style={s.soonDark}><Text style={[s.soonDarkText, deva && s.devaSoon]}>{t('common.soon').toUpperCase()}</Text></View>
       </View>
       {wouldEarn > 0 && <Text testID="account-coins-teaser" style={s.coinTeaser}><Trans i18nKey="account.coinsTeaser" count={delivered.length} values={{ coins: fmt.number(wouldEarn) }} components={{ bold: <Text style={s.coinStrong} /> }} /></Text>}
