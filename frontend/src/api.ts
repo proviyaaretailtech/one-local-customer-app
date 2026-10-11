@@ -2,6 +2,9 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { accessToken } from './lib/supabase';
+import { updateHeaders } from './app-identity';
+import { isNetworkError, reportNetworkFailure, reportNetworkSuccess } from './network/online-state';
+import { noteResponse } from './network/app-blocked-state';
 // backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
 // In development on a phone (Expo Go), fall back to the dev server that served the app,
 // which also serves app/api.
@@ -44,7 +47,7 @@ function getCustomerKey(): Promise<string> {
 // Exported for the payment WebView, which loads its page with these same headers.
 export async function identity(): Promise<Record<string, string>> {
   const [key, token] = await Promise.all([getCustomerKey(), accessToken().catch(() => null)]);
-  return token ? { 'X-Customer-Key': key, Authorization: `Bearer ${token}` } : { 'X-Customer-Key': key };
+  return token ? { ...updateHeaders, 'X-Customer-Key': key, Authorization: `Bearer ${token}` } : { ...updateHeaders, 'X-Customer-Key': key };
 }
 
 // `code` is the server's machine-readable reason ('outside_delivery_area'); screens show a translated sentence for
@@ -53,16 +56,27 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 
+// Every call to our server goes through here: a fetch that never reached the server tells the offline detector
+// (src/network/online-state.ts); any answer says we are online, and a 426 / maintenance-503 blocks the app
+// (src/network/app-blocked-state.ts). The response and any error are passed on unchanged.
+async function send(url: string, init?: RequestInit): Promise<Response> {
+  let r: Response;
+  try { r = await fetch(url, init); } catch (e) { if (isNetworkError(e)) reportNetworkFailure(); throw e; }
+  reportNetworkSuccess();
+  await noteResponse(r).catch(() => {});
+  return r;
+}
+
 // Like api(), but failures carry the server's own message (the `detail` field).
 export async function apiGet<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { headers: await identity() });
+  const r = await send(`${API}${path}`, { headers: await identity() });
   const body = await r.json().catch(() => null);
   if (!r.ok) throw new ApiError(r.status, typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.', typeof body?.code === 'string' ? body.code : undefined); // i18n-ignore (fallback for the English detail; screens map status/code)
   return resolveMedia(body);
 }
 
 export async function api<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { headers: await identity() });
+  const r = await send(`${API}${path}`, { headers: await identity() });
   if (!r.ok) throw new ApiError(r.status, `API ${path} ${r.status}`);
   return resolveMedia(await r.json());
 }
@@ -144,7 +158,7 @@ export type PaymentResult =
   | { type: 'failed'; reason?: string };
 
 export async function apiPost<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
-  const r = await fetch(`${API}${path}`, {
+  const r = await send(`${API}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await identity()), ...headers },
     body: JSON.stringify(body),
@@ -185,7 +199,7 @@ export async function uploadSearch(mode: 'image' | 'voice', uri: string, name: s
   const form = new FormData();
   if (Platform.OS === 'web') { const response = await fetch(uri); form.append('file', await response.blob(), name); }
   else form.append('file', { uri, name, type } as any);
-  const response = await fetch(`${API}/search/${mode}`, { method: 'POST', body: form, signal });
+  const response = await send(`${API}/search/${mode}`, { method: 'POST', body: form, signal });
   const payload = await response.json();
   // Carries status + code so screens show a translated line (useErrorMessage) instead of the English `detail`.
   if (!response.ok) throw new ApiError(response.status, typeof payload.detail === 'string' ? payload.detail : 'Search is unavailable. Please try again.', typeof payload.code === 'string' ? payload.code : undefined); // i18n-ignore (English fallback behind the code mapping)

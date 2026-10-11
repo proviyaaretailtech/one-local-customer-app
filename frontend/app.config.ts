@@ -8,14 +8,16 @@ export const APP_GROUP = `group.${bundleIdentifier}`;
 // Over-the-air updates (expo-updates / EAS Update): JavaScript and UI changes ship without a store
 // rebuild. The runtime version is a fingerprint of the native code, so an update only reaches
 // builds whose native side it matches; adding native modules or widget Swift needs a new build.
-// Switches on once EAS_PROJECT_ID is set (`eas init` creates it) — see docs/OTA_UPDATES.md.
-const easProjectId = process.env.EAS_PROJECT_ID;
+// Project id from `eas init` (public, not a secret). Kept in code, not .env, because .env is not
+// uploaded to EAS build servers and a build without it could never receive updates.
+// EAS_PROJECT_ID overrides it for a different Expo project — see docs/OTA_UPDATES.md.
+const easProjectId = process.env.EAS_PROJECT_ID || '08ae9031-c338-4b72-82a9-4b655d93382e';
 
 // Only public values go into `extra` (it ships inside the app). Server secrets such as
 // GOOGLE_MAPS_API_KEY stay in process.env and are read only by app/api routes.
 export default {
   ...config.expo,
-  name: 'OneCity',
+  name: 'OneLocal',
   runtimeVersion: { policy: 'fingerprint' },
   updates: easProjectId
     ? { enabled: true, url: `https://u.expo.dev/${easProjectId}`, checkAutomatically: 'ON_LOAD', fallbackToCacheTimeout: 0 }
@@ -42,7 +44,9 @@ export default {
   extra: {
     ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     backendUrl: process.env.BACKEND_URL,
-    supabaseUrl: process.env.SUPABASE_URL,
+    // APP_SUPABASE_URL: the address a phone on the same Wi-Fi uses (e.g. http://192.168.x.x:54321), while
+    // the dev server itself keeps SUPABASE_URL=http://127.0.0.1:54321 (server/env.ts only accepts local hosts).
+    supabaseUrl: process.env.APP_SUPABASE_URL || process.env.SUPABASE_URL,
     supabaseAnonKey: process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY,
     googleMapsBrowserKey: process.env.GOOGLE_MAPS_BROWSER_KEY,
     appGroup: APP_GROUP,

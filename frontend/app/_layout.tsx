@@ -19,6 +19,9 @@ import { IntroSplash } from '@/src/components/intro-splash';
 import { CompareProvider } from '@/src/compare';
 import { AppFrame } from '@/src/layout';
 import { I18nProvider, LanguageFirstRun, ProfileLanguageSync } from '@/src/i18n';
+import { UpdateGate } from '@/src/app-updates';
+import { PopupHost } from '@/src/popups/popup-host';
+import { NetworkStatus } from '@/src/network/network-status';
 
 LogBox.ignoreAllLogs(true);
 
@@ -46,8 +49,8 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <CartProvider>
               <StatusBar style="dark" />
-              {Platform.OS === "web" && <Head><title>OneCity</title></Head>}
-              <CustomerProvider><ProfileLanguageSync /><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneCity', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><LanguageFirstRun /><IntroSplash /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
+              {Platform.OS === "web" && <Head><title>OneLocal</title></Head>}
+              <CustomerProvider><ProfileLanguageSync /><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>
