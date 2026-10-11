@@ -2249,5 +2249,10 @@
       "explore": "See what’s open now",
       "soon": "Soon"
     }
+  },
+  "notFound": {
+    "title": "This page took a wrong turn.",
+    "body": "The link may be old or mistyped. Let’s get you back.",
+    "home": "Go to home"
   }
 }
