@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ComingSoonBrand, useComingSoon } from '@/src/components/coming-soon-brand';
 import { MAX_APP_WIDTH } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { Image } from "expo-image";
@@ -7,10 +8,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/ionicons";
 import { colors, radius, spacing } from "@/src/theme";
-import { api, Category, Product, Store, StoreMedia } from "@/src/api";
+import { api, ApiError, Category, Product, Store, StoreMedia } from "@/src/api";
 import { ProductCard } from "@/src/components/product-card";
 import { useFollowedStores } from "@/src/followed";
 import { useFormat, useTranslation } from "@/src/i18n";
+import { LoadState } from "@/src/components/catalog-sections";
 
 // Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
 const SCREEN_W = Math.min(Dimensions.get("window").width, MAX_APP_WIDTH);
@@ -72,29 +74,66 @@ export default function StoreProfileScreen() {
   const { t } = useTranslation();
   const fmt = useFormat();
   const { isFollowing, toggle } = useFollowedStores();
-  const [store, setStore] = useState<Store | null>(null);
+  // Each answer is tagged with the load it belongs to (store id + retry count), so a retry or another store shows the loader
+  // until its own answer arrives, without clearing state inside the effect.
+  const [loaded, setLoaded] = useState<{ key: string; store: Store } | null>(null);
   const [slide, setSlide] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
+  // 'missing' = the server answered 404 (no such store in this city); 'error' = the store or its products could not be loaded.
+  const [failed, setFailed] = useState<{ key: string; kind: 'missing' | 'error' } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const loadKey = `${id}:${attempt}`;
 
   useEffect(() => {
     if (!id) return;
-    api<Store>(`/stores/${id}`).then(setStore).catch(() => {});
-    api<Product[]>(`/stores/${id}/products`).then(setProducts).catch(() => {});
-    api<Category[]>("/categories").then(setCategories).catch(() => {});
-  }, [id]);
+    let live = true;
+    const fail = (e: unknown) => { if (live) setFailed(f => f?.key === loadKey && f.kind === 'missing' ? f : { key: loadKey, kind: e instanceof ApiError && e.status === 404 ? 'missing' : 'error' }); };
+    api<Store>(`/stores/${id}`).then(s => { if (live) setLoaded({ key: loadKey, store: s }); }).catch(fail);
+    api<Product[]>(`/stores/${id}/products`).then(p => { if (live) setProducts(p); }).catch(fail);
+    api<Category[]>("/categories").then(c => { if (live) setCategories(c); }).catch(() => {}); // chip labels only; without them a chip shows its id
+    return () => { live = false; };
+  }, [id, loadKey]);
+  const failure = failed?.key === loadKey ? failed.kind : null;
+  // No menu yet anywhere in the catalogue: show the coming-soon receipt, not an empty store.
+  const comingSoon = useComingSoon(id);
+  const store = loaded?.key === loadKey ? loaded.store : null;
 
-  if (!store) {
+  const back = (
+    <TouchableOpacity
+      style={[styles.backBtn, { top: insets.top + 8 }]}
+      onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+      testID="back-btn"
+    >
+      <Icon name="chevron-back" size={22} color={colors.onSurface} />
+    </TouchableOpacity>
+  );
+
+  if (failure === 'missing') {
+    return (
+      <View style={styles.loader} testID="store-not-found">
+        {back}
+        <Icon name="storefront-outline" size={32} color={colors.muted} />
+        <Text style={styles.missingTitle}>{t('store.notFound')}</Text>
+        <TouchableOpacity testID="store-not-found-home" style={styles.missingLink} onPress={() => router.replace('/(tabs)' as any)}>
+          <Text style={styles.missingLinkText}>{t('store.backHome')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  if (failure === 'error' || !store) {
     return (
       <View style={styles.loader}>
-        <Text style={{ color: colors.muted }}>{t('store.loading')}</Text>
+        {back}
+        <LoadState error={failure === 'error'} retry={() => setAttempt(n => n + 1)} />
       </View>
     );
   }
 
   const slideW = Math.min(SCREEN_W * 0.72, 340);
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+  if (comingSoon) return <ComingSoonBrand name={store.name} logo={store.logo} line={store.tagline} />;
   const cats = ["all", ...Array.from(new Set(products.map((p) => p.category_id)))];
 
   const shown = activeCat === "all" ? products : products.filter((p) => p.category_id === activeCat);
@@ -102,13 +141,7 @@ export default function StoreProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID="store-screen">
       {/* Back button - floating */}
-      <TouchableOpacity
-        style={[styles.backBtn, { top: insets.top + 8 }]}
-        onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
-        testID="back-btn"
-      >
-        <Icon name="chevron-back" size={22} color={colors.onSurface} />
-      </TouchableOpacity>
+      {back}
 
       <ScrollView contentContainerStyle={{ paddingBottom: spacing["3xl"] }} showsVerticalScrollIndicator={false}>
         {/* Top: swipeable carousel of the store's photos and videos */}
@@ -219,6 +252,9 @@ const styles = StyleSheet.create({
   carouselDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
   carouselDotOn: { width: 18, backgroundColor: colors.onSurface },
   loader: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  missingTitle: { fontSize: 18, fontWeight: "800", color: colors.onSurface, marginTop: spacing.md, textAlign: "center", paddingHorizontal: spacing.lg },
+  missingLink: { minHeight: 44, justifyContent: "center", marginTop: spacing.sm },
+  missingLinkText: { color: colors.forest, fontSize: 13, fontWeight: "700" },
   backBtn: {
     position: "absolute",
     left: spacing.lg,
