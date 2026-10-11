@@ -4,5 +4,5 @@ import { ownRider, startDigilocker } from '../../../../../server/rider-onboardin
 export const POST = route(async (request, params) => {
   const applicant = await ownRider(request);
   limit(applicant.id, 'rider-kyc', 20, 60000);
-  return json(startDigilocker());
+  return json(await startDigilocker(applicant, request));
 });
