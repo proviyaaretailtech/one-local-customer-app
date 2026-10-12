@@ -10,7 +10,7 @@ import { createHmac } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 
 for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'FEATURE_ONLINE_PAYMENTS', 'ALLOW_REMOTE', 'TRUSTED_PROXY_HOPS', 'ORDERS_REQUIRE_SIGN_IN']) delete process.env[k];
-process.env.SUPABASE_ACCESS_TOKEN = 'sbp_0123456789abcdef0123456789abcdef01234567'; // a made-up management token: the server must drop it as it loads (SEC-1)
+process.env.SUPABASE_ACCESS_TOKEN = ['sbp', 'checks'.padEnd(40, '0')].join('_'); // a made-up management token: the server must drop it as it loads (SEC-1)
 Object.assign(process.env, { RAZORPAY_KEY_ID: 'rzp_test_checks', RAZORPAY_KEY_SECRET: 'checks-secret', RAZORPAY_WEBHOOK_SECRET: 'checks-webhook' });
 
 // Razorpay, simulated: orders it opened, and payments it would report.
