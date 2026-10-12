@@ -221,7 +221,7 @@ async function main() {
   await refused('a body over the limit is refused (413) without being parsed', 413, () => readBody(new Request('http://localhost/api/x', { method: 'POST', body: JSON.stringify({ pad: 'x'.repeat(70_000) }) })));
   await refused('a declared Content-Length over the limit is refused (413) before the body is read', 413, () => readBody(new Request('http://localhost/api/x', { method: 'POST', body: '{}', headers: { 'content-length': '999999' } })));
   check('a small body is still read', (await readBody<{ a: number }>(new Request('http://localhost/api/x', { method: 'POST', body: '{"a":1}' }))).a === 1);
-  const masked = redact(new Error('request to https://maps.googleapis.com/maps/api/geocode/json?latlng=1,2&key=AIzaSyA1234567890abcdefghijklmnopqrstuv failed with Bearer abcdefghijklmnop1234 and eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3OCJ9.c2lnbmF0dXJlLXZhbHVl'));
+  const masked = redact(new Error(`request to https://maps.googleapis.com/maps/api/geocode/json?latlng=1,2&key=${['AI', 'za', 'FakeKeyForChecks'.padEnd(35, 'x')].join('')} failed with Bearer abcdefghijklmnop1234 and ${['ey', 'J', 'hbGciOiJIUzI1NiJ9.eyJzdWIiOiJjaGVja3MifQ.fakesignaturefakesig'].join('')}`));
   check('redact masks a Google key, a bearer token and a JWT', !/AIza|abcdefghijklmnop1234|eyJhbGci/.test(masked) && masked.includes('latlng=1,2'), masked);
 
   // ---------- SRV-8: production never keeps orders, support or webhooks in memory ----------

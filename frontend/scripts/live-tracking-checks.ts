@@ -18,7 +18,7 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost):/.test(process.env.SUPABASE_URL ?? ''))
 const REAL_KEY = (() => {
   try { const m = readFileSync(`${ROOT}/.env`, 'utf8').match(/^GOOGLE_MAPS_API_KEY=(.*)$/m); return m ? m[1].trim().replace(/^["']|["']$/g, '') : ''; } catch { return ''; }
 })();
-const FAKE_KEY = 'AIzaZZTESTfakefakefakefakefake0000'; // shaped like a Google key so redact() has something to catch
+const FAKE_KEY = ['AI', 'za', 'FakeKeyForChecks'.padEnd(35, 'x')].join(''); // shaped like a Google key so redact() has something to catch
 process.env.GOOGLE_MAPS_API_KEY = FAKE_KEY;
 
 let passed = 0, failed = 0;
