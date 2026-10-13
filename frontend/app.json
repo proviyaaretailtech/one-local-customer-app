@@ -43,7 +43,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/brand/onelocal-logo-on-dark.png",
-          "imageWidth": 220,
+          "imageWidth": 160,
           "resizeMode": "contain",
           "backgroundColor": "#050605"
         }

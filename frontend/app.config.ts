@@ -39,9 +39,8 @@ export default {
     ['expo-notifications', { color: '#B3F400' }],
     '@bacons/apple-targets',
     'expo-dev-client',
-    // Native launch screen: the OneLocal wordmark on the intro's ink colour, so launch → intro has no white flash.
-    // Square canvas with the logo inside its middle: Android 12 and later crop the launch icon to a circle, which cut the wide logo to "OneLoca".
-    ['expo-splash-screen', { image: './assets/images/brand/splash-onelocal.png', imageWidth: 300, resizeMode: 'contain', backgroundColor: '#050605', dark: { image: './assets/images/brand/splash-onelocal.png', backgroundColor: '#050605' } }],
+    // The launch screen (expo-splash-screen) is configured in app.json: Android 12+ shows it inside a 192 dp circle, so its
+    // imageWidth stays at 160 dp to keep the whole wide logo visible (220 cut it to "OneLoca").
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
   ],
