@@ -6,7 +6,7 @@
 //
 // Reads the files rebuilt by backend/scripts/rebuild_media.py (backend/.media_build, git-ignored) from MEDIA_BUILD_DIR, or from ../backend/.media_build.
 // Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY of the project the apps use. The key is read from the environment only: it is never written,
-// printed or sent anywhere except to that project. Safe to run again: existing files are overwritten with the same bytes, the manifest is merged.
+// printed or sent anywhere except to that project. Safe to run again: keys already in media.json are skipped (--force uploads them again), the manifest is merged.
 import { createClient } from '@supabase/supabase-js';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -37,15 +37,17 @@ if (b.error) {
 } else if (!b.data.public) { console.error(`Bucket ${BUCKET} exists but is not public: customers could not load the images. Make it public in the Supabase dashboard (Storage) and run again.`); process.exit(1); }
 
 const published = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {};
-let done = 0, failed = 0;
+const TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm' };
+let done = 0, failed = 0, skipped = 0;
 for (const [k, e] of entries) {
   if (missing.some(([mk]) => mk === k)) continue;
+  if (published[k] && !process.argv.includes('--force')) { skipped++; continue; } // already uploaded on an earlier run
   const objectPath = e.storage_path;
-  const up = await sb.storage.from(BUCKET).upload(objectPath, readFileSync(path.join(DIR, objectPath)), { contentType: e.content_type || undefined, upsert: true, cacheControl: '31536000' });
+  const up = await sb.storage.from(BUCKET).upload(objectPath, readFileSync(path.join(DIR, objectPath)), { contentType: e.content_type || TYPES[path.extname(objectPath).toLowerCase()] || 'application/octet-stream', upsert: true, cacheControl: '31536000' });
   if (up.error) { failed++; console.error(`  failed ${k}: ${up.error.message}`); continue; }
   published[k] = sb.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
   if (++done % 25 === 0) console.log(`  ${done}/${entries.length}`);
 }
 writeFileSync(OUT, JSON.stringify(Object.fromEntries(Object.entries(published).sort()), null, 1) + '\n');
-console.log(`Uploaded ${done}, failed ${failed}. Wrote ${Object.keys(published).length} keys to server/data/media.json. Now commit that file and deploy.`);
+console.log(`Uploaded ${done}, already done ${skipped}, failed ${failed}. Wrote ${Object.keys(published).length} keys to server/data/media.json. Now commit that file and deploy.`);
 process.exit(failed ? 1 : 0);
