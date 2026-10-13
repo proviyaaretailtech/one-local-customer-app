@@ -280,7 +280,8 @@
       "refer": "Refer & Earn",
       "wallet": "OneLocal Wallet",
       "help": "Help & Support",
-      "about": "About OneLocal"
+      "about": "About OneLocal",
+      "notifications": "Notifications"
     },
     "rowSub": {
       "orders": "Track a delivery or order again",
@@ -293,7 +294,8 @@
       "refer": "Good things are better shared",
       "wallet": "Store credit and refunds, in one place",
       "help": "Find answers and save a request",
-      "about": "A little closer to your city"
+      "about": "A little closer to your city",
+      "notifications": "Order updates and alerts"
     },
     "signedInTitle": "Signed in",
     "yourAccount": "Your account",
@@ -1746,7 +1748,17 @@
       "body": "Enjoy! Your order has arrived."
     },
     "yourOrder": "Your order",
-    "summaryMore": "{{name}} + {{n}} more · {{total}}"
+    "summaryMore": "{{name}} + {{n}} more · {{total}}",
+    "inbox": {
+      "title": "Notifications",
+      "subtitle_one": "{{count}} new",
+      "subtitle_other": "{{count}} new",
+      "subtitleNone": "You're all caught up",
+      "emptyTitle": "Nothing here yet",
+      "emptyBody": "Order updates will show up here as they happen.",
+      "markRead": "Mark all as read",
+      "clear": "Clear all"
+    }
   },
   "privacy": {
     "title": "Privacy & your data",

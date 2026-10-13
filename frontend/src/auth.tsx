@@ -9,6 +9,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, SUPABASE_KEY, SUPABASE_URL } from './lib/supabase';
 import { useCustomer } from './customer';
 import { afterSignIn } from './privacy';
+import { unregisterPush } from './push';
 import { t } from '@/src/i18n';
 
 type AuthState = {
@@ -159,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // This phone only by default (Supabase's own default signs out every device); "everywhere"
   // ends every session of the account, e.g. after losing a phone.
   const signOut = async (everywhere = false) => {
+    await unregisterPush(); // while the session still exists, so the server knows whose phone it is
     const { error } = (await supabase?.auth.signOut({ scope: everywhere ? 'global' : 'local' })) ?? { error: null };
     if (error) throw new Error(t('auth.error.signOut'));
   };
