@@ -191,7 +191,8 @@
     "noticeVersion": "version {{version}}",
     "notice": {
       "codeSent": "We sent a code by SMS to +91 {{number}}.",
-      "confirmEmail": "Almost there — confirm your email from the link we sent, then sign in."
+      "confirmEmail": "Almost there — confirm your email from the link we sent, then sign in.",
+      "emailCodeSent": "We sent a 6-digit code to {{email}}. Enter it here to finish."
     },
     "error": {
       "confirmAdult": "Please confirm you are {{age}} or older to continue.",
@@ -226,7 +227,8 @@
     "switch": {
       "toSignup": "New here? Create an account",
       "toSignin": "Already have an account? Sign in"
-    }
+    },
+    "changeEmail": "Change email"
   },
   "account": {
     "language": "Language",
