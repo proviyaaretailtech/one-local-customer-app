@@ -30,7 +30,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B0F0C"
       },
-      "package": "com.proviyaa.onelatur"
+      "package": "com.proviyaa.onelatur",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
