@@ -12,6 +12,7 @@
 // An order never fails because dispatch is down: the hook logs, the order stays, and the sweep
 // (POST /api/dispatch/sweep, also run from rider heartbeats) retries any order that has no job yet.
 import { distanceKm, serviceability } from './catalog';
+import { pickupStatus } from './pickup-location';
 import { db, dbConfigured, fromDbError, rpc } from './db';
 import { isProduction } from './env';
 import { constantTimeEqual, HttpError, hmacHex, readText, sha256, signatureOk } from './http';
@@ -490,6 +491,10 @@ export function listingMenuItemId(storeId: string | null, productId: string): st
   return m ? m[1].toLowerCase() : null;
 }
 
+// 'verified' (default): only a pickup point the restaurant confirmed is trusted. 'coordinates': any point will do (rollout switch,
+// server env OL_PICKUP_LOCATION_ENFORCE), so restaurants still confirming their point keep receiving orders.
+export const pickupEnforcement = (): 'verified' | 'coordinates' => (process.env.OL_PICKUP_LOCATION_ENFORCE === 'coordinates' ? 'coordinates' : 'verified');
+
 // Before a customer is charged or an order is placed: every store in the checkout must be a merchant that can take it right now,
 // and the drop must be a map point inside the delivery area (a rider navigates to a point, and dispatch refuses one outside the
 // area). Refused here, nothing is charged and nothing is created. Checked again after payment by adoptOrders, because a restaurant
@@ -513,8 +518,9 @@ export async function assertFulfillable(
       throw refuse('it is not set up to receive orders');
     }
     const listed = g.items.map(i => listingMenuItemId(g.store_id, i.id)).filter((m): m is string => !!m);
-    const [{ data: channel, error: channelError }, { data: products, error: productError }, { data: menu, error: menuError }] = await Promise.all([
+    const [{ data: channel, error: channelError }, pickup, { data: products, error: productError }, { data: menu, error: menuError }] = await Promise.all([
       db().from('ol_merchant_channels').select('accepting, lat, lng').eq('organization_id', store.organization_id).maybeSingle(),
+      pickupStatus(store.organization_id),
       db().from('ol_products').select('id, menu_item_id').in('id', g.items.map(i => i.id)),
       listed.length ? db().from('menu_items').select('id').eq('organization_id', store.organization_id).in('id', listed) : Promise.resolve({ data: [] as { id: string }[], error: null }),
     ]);
@@ -522,7 +528,11 @@ export async function assertFulfillable(
     if (productError) fromDbError(productError);
     if (menuError) fromDbError(menuError);
     if (!channel?.accepting) throw refuse('the restaurant is not accepting orders');
-    if (channel.lat == null || channel.lng == null) throw refuse('the restaurant has no map location yet');
+    // Pickup point (specs/restaurant-pickup-location): riders go where the restaurant confirmed. No point, or a point nobody at the
+    // restaurant confirmed, is refused with its own reason code. pickup null = the database has no 0341 table yet: coordinates only.
+    const notReady = (code: string) => new HttpError(409, `${g.store_name || 'This restaurant'} is not ready for delivery yet. Nothing was charged.`, undefined, code);
+    if (channel.lat == null || channel.lng == null || pickup === 'missing') throw notReady('pickup_location_missing');
+    if (pickup && pickup !== 'verified' && pickupEnforcement() === 'verified') throw notReady('pickup_location_unverified');
     // An item is "mapped" when the restaurant can find it on its own menu: a catalogue product linked to a menu item (ol_products), or a menu
     // item of this very restaurant sold under its listing (the made-up id above).
     const linked = new Map((products ?? []).map(p => [p.id as string, p.menu_item_id as string | null]));

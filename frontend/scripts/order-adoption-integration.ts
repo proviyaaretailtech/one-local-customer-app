@@ -60,6 +60,10 @@ async function main() {
       { id: 'oa-orphan', name: 'OA Orphan', organization_id: null, is_demo: false },
     ]));
     must(await d.from('ol_merchant_channels').upsert({ organization_id: org, accepting: true, address: 'Main Road, Latur', lat: 18.4088, lng: 76.5604 }, { onConflict: 'organization_id' }));
+    // Checkout trusts only a pickup point the restaurant confirmed (migration 0341): an owner or manager of this organization confirms it.
+    const lead = (await d.from('org_users').select('user_id, role:roles!inner(slug)').eq('organization_id', org).eq('status', 'active').in('roles.slug', ['org_owner', 'org_admin', 'manager', 'business_manager']).limit(1)).data?.[0];
+    if (lead) must(await d.rpc('ol_set_pickup_location', { p_org: org, p_actor: lead.user_id, p_lat: 18.4088, p_lng: 76.5604, p_address: 'Main Road, Latur', p_place_id: null, p_source: 'map_pin', p_accuracy_m: null, p_confirm: true, p_request_key: null }));
+    else process.env.OL_PICKUP_LOCATION_ENFORCE = 'coordinates';
     must(await d.from('ol_products').upsert([
       { id: 'oa-prod', name: menu.name, price: menu.price, mrp: menu.price, department: 'food', store_id: 'oa-store', menu_item_id: menu.id },
       { id: 'oa-loose', name: 'Unmapped', price: 10, mrp: 10, department: 'food', store_id: 'oa-store', menu_item_id: null },
@@ -139,8 +143,11 @@ async function main() {
     await refuse('SRV-2: a paused restaurant: online payment refused BEFORE a Razorpay order is opened', async () => pay.startPayment(await asCustomer('paused-online', 'payments/order', { ...basket(), payment_method: 'upi' }), 'latur'), 409, 'merchant_unavailable');
     check('SRV-2: ...no Razorpay order was opened and no checkout row exists (nothing could be charged)', rzp.orders === razorpayOrdersBefore && await rowsFor('paused-online') === 0);
     await channel({ accepting: true, lat: null, lng: null });
-    await refuse('SRV-2: a restaurant with no map location is refused too (a rider could never be sent)', async () => store.createCheckout(await asCustomer('nomap', 'checkouts', basket()), 'latur'), 409, 'merchant_unavailable');
+    await refuse('SRV-2: a restaurant with no map location is refused too (a rider could never be sent)', async () => store.createCheckout(await asCustomer('nomap', 'checkouts', basket()), 'latur'), 409, 'pickup_location_missing');
     await channel({ accepting: true, lat: 18.4088, lng: 76.5604 });
+    // that direct write is captured as an admin point nobody confirmed (0341): checkout says so, and the restaurant confirms again
+    await refuse('SRV-2: a point nobody at the restaurant confirmed is refused (pickup_location_unverified)', async () => store.createCheckout(await asCustomer('unconfirmed', 'checkouts', basket()), 'latur'), 409, process.env.OL_PICKUP_LOCATION_ENFORCE === 'coordinates' ? 'merchant_unavailable' : 'pickup_location_unverified');
+    if (lead) must(await d.rpc('ol_set_pickup_location', { p_org: org, p_actor: lead.user_id, p_lat: 18.4088, p_lng: 76.5604, p_address: 'Main Road, Latur', p_place_id: null, p_source: 'map_pin', p_accuracy_m: null, p_confirm: true, p_request_key: null }));
     must(await d.from('ol_stores').upsert({ id: 'oa-demo-store', name: 'OA Demo Kitchen', organization_id: org, is_demo: true }));
     must(await d.from('ol_products').upsert({ id: 'oa-loose-demo', name: 'Unmapped dish', price: 10, mrp: 10, department: 'food', store_id: 'oa-demo-store', menu_item_id: null }));
     invalidateCatalog();
