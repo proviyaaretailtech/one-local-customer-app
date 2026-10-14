@@ -4,6 +4,7 @@ import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 import RNMapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import type { Point } from '../delivery-location';
 import { LIGHT_MAP_STYLE } from './map-style';
+import { nativeMapsReady } from '../native-maps';
 
 export type MapViewProps = {
   initial: Point;
@@ -43,4 +44,4 @@ export function MapView({ initial, moveTo, onSettle, onMoveStart, style }: MapVi
   );
 }
 
-export const mapsAvailable = true;
+export const mapsAvailable = nativeMapsReady;
