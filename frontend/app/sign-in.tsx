@@ -150,6 +150,13 @@ export default function SignIn() {
           : <><Text style={[s.title, deva && s.noTrack]}>{mode === 'signin' ? t('auth.heroTitle.signin') : t('auth.heroTitle.signup')}</Text><Text style={s.sub}>{t('auth.heroSub.default')}</Text></>}
       </Animated.View>
 
+      {/* Big, obvious tabs: everyone can see which one they are on, and the switch is a tap, not a buried link. */}
+      {!checkout && !byPhone && <Animated.View entering={rise(1)} testID="sign-in-mode-tabs" accessibilityRole="tablist" style={s.segment}>
+        {(['signin', 'signup'] as const).map(m => <Pressable key={m} testID={`sign-in-mode-${m}-tab`} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} onPress={() => switchMode(m)} style={[s.segmentItem, mode === m && s.segmentOn]}>
+          <Text style={[s.segmentText, mode === m && s.segmentTextOn]}>{m === 'signin' ? t('auth.signIn') : t('auth.createAccount')}</Text>
+        </Pressable>)}
+      </Animated.View>}
+
       {phoneAvailable && <Animated.View entering={rise(1)} testID="sign-in-method" accessibilityRole="tablist" style={s.segment}>
         {(['phone', 'email'] as const).map(m => <Pressable key={m} testID={`sign-in-method-${m}`} accessibilityRole="tab" accessibilityState={{ selected: method === m }} onPress={() => { setMethod(m); setError(''); setNotice(''); }} style={[s.segmentItem, method === m && s.segmentOn]}>
           <Text style={[s.segmentText, method === m && s.segmentTextOn]}>{m === 'phone' ? t('auth.method.phone') : t('auth.method.email')}</Text>
