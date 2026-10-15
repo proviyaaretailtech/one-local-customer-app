@@ -5,7 +5,7 @@
 // The hero's picture and words are one campaign object so Home Studio can replace them later
 // without an app update (specs/home-cms).
 import { Tap } from './tap';
-import { memo, useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,7 +29,10 @@ export const HOME_COMPACT_AT = 360;
 
 const INK = '#0B1F16';
 const DEEP = '#0F3D2E';
-const campaign = { image: 'vegetables', eyebrow: 'home.hero.eyebrow', title: 'home.hero.title', alt: 'home.hero.photoLabel' } as const;
+const campaign = { eyebrow: 'home.hero.eyebrow', title: 'home.hero.title', alt: 'home.hero.photoLabel' } as const;
+// Hero backdrop photos, shown one after another (cross-fading) every few seconds.
+const campaignImages = ['vegetables', 'fruit', 'milk'] as const;
+const CAMPAIGN_INTERVAL_MS = 5000;
 // Daily essentials: grocery categories, in this order, when the catalogue has them.
 const ESSENTIALS = ['c1', 'c2', 'c3', 'c5', 'c24'];
 
@@ -43,9 +46,14 @@ function Hero() {
   const router = useRouter(); const insets = useSafeAreaInsets(); const { width } = useWindowDimensions();
   const { t } = useTranslation(); const fmt = useFormat(); const { totalItems } = useCart();
   const { location, edit } = useDeliveryLocation();
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSlide(i => (i + 1) % campaignImages.length), CAMPAIGN_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
   const height = HOME_HERO_HEIGHT + insets.top;
   return <View testID="home-hero" style={[s.hero, { height }]}>
-    <Image source={mediaUrl(campaign.image)} accessibilityLabel={t(campaign.alt)} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: '28%', left: '60%' }} transition={250} cachePolicy="memory-disk" />
+    <Image source={mediaUrl(campaignImages[slide])} accessibilityLabel={t(campaign.alt)} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: '28%', left: '60%' }} transition={900} cachePolicy="memory-disk" />
     {/* Legibility: a soft dark wash from the top-left, then the photo melts into the page. */}
     <LinearGradient pointerEvents="none" colors={['rgba(6,18,11,0.74)', 'rgba(6,18,11,0.42)', 'rgba(6,18,11,0.06)']} locations={[0, 0.5, 0.9]} start={{ x: 0, y: 0.1 }} end={{ x: 1, y: 0.75 }} style={StyleSheet.absoluteFill} />
     <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', colors.surface]} locations={[0, 0.6, 1]} style={[s.fade, { top: height - 150 }]} />
@@ -178,8 +186,8 @@ const s = StyleSheet.create({
   below: { marginTop: -44, paddingHorizontal: 16, gap: 18 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, minHeight: 96, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', paddingTop: 10, paddingHorizontal: 3, paddingBottom: 8, gap: 6, boxShadow: shadow },
-  tileIcon: { width: 50, height: 46, borderRadius: 14 },
-  tileLabel: { color: '#1A1A1A', fontSize: 10.5, lineHeight: 13, fontWeight: '600', textAlign: 'center' },
+  tileIcon: { width: 46, height: 46 },
+  tileLabel: { color: '#1A1A1A', fontSize: 10.5, lineHeight: 13, minHeight: 26, fontWeight: '600', textAlign: 'center' },
   offers: { flexDirection: 'row', gap: 10 },
   offer: { flex: 1, height: 100, borderRadius: 18, overflow: 'hidden', flexDirection: 'row' },
   offerWide: { flex: 1.35 },

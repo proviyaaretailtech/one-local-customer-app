@@ -13,6 +13,7 @@ import { ProductCard } from "@/src/components/product-card";
 import { useFollowedStores } from "@/src/followed";
 import { useFormat, useTranslation } from "@/src/i18n";
 import { LoadState } from "@/src/components/catalog-sections";
+import { logoSize, logoTile } from "@/src/logo-tile";
 
 // Capped to the app column so the layout holds on tablets and desktop (src/layout.tsx).
 const SCREEN_W = Math.min(Dimensions.get("window").width, MAX_APP_WIDTH);
@@ -157,7 +158,7 @@ export default function StoreProfileScreen() {
         {/* Overlapping centered logo + store info */}
         <View style={styles.logoWrap}>
           <View style={styles.logoRing}>
-            <Image source={store.logo} style={styles.logo} contentFit="cover" />
+            <Image source={store.logo} style={styles.logo} contentFit="contain" />
           </View>
           <Text style={styles.storeName}>{store.name}</Text>
           <Text style={styles.tagline}>{store.tagline}</Text>
@@ -273,14 +274,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },
-  logoRing: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: colors.surface,
-    padding: 4,
-    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: colors.border }],
-    elevation: 6,
-  },
-  logo: { width: "100%", height: "100%", borderRadius: 46 },
+  // Same white logo tile as every brand rail (src/logo-tile.ts), at page-header size.
+  logoRing: { ...logoTile(96), borderRadius: 26 },
+  logo: { width: logoSize(96), height: logoSize(96) },
   storeName: { fontSize: 22, fontWeight: "800", color: colors.onSurface, marginTop: spacing.md, textAlign: "center" },
   tagline: { fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" },
   metaRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md, flexWrap: "wrap", justifyContent: "center" },

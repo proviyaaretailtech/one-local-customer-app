@@ -14,6 +14,7 @@ import { haptic } from "@/src/haptics";
 import { RollingNumber } from "@/src/components/motion/rolling-number";
 import { SlideToConfirm } from "@/src/components/motion/slide-to-confirm";
 import { colors, radius, spacing } from "@/src/theme";
+import { logoSize, logoTile } from "@/src/logo-tile";
 import { CartKind, useCart } from "@/src/cart";
 import { apiGet, apiPost, Bill, Checkout, Coupon, CouponResult, PaymentResult, PaymentStart, randomId } from "@/src/api";
 import { VendorNote } from '@/src/components/vendor-note';
@@ -376,7 +377,7 @@ export default function CartScreen() {
               const id = (name: string) => (index === 0 ? name : `${name}-${g.id}`);
               return <View key={g.id || 'store'} style={[styles.card, { marginBottom: spacing.md }]} testID={`cart-store-${g.id}`}>
                 <View style={styles.storeHead}>
-                  {!!gb?.store_logo && <Image source={gb.store_logo} style={styles.storeLogo} contentFit="cover" />}
+                  {!!gb?.store_logo && <View style={styles.storeLogo}><Image source={gb.store_logo} style={styles.storeLogoImage} contentFit="contain" /></View>}
                   <View style={{ flex: 1 }}>
                     <Text testID={id('cart-store-name')} style={styles.storeName} numberOfLines={1}>{gb?.store_name ?? t(kind === 'food' ? 'cart.store.yourRestaurant' : 'cart.store.fallback')}</Text>
                     {!!gb && <Text style={styles.storeMeta}>{gb.delivery_time ? t(gb.delivery_fee === 0 ? 'cart.store.metaTimeFree' : 'cart.store.metaTimeFee', { time: fmt.deliveryTime(gb.delivery_time), fee: fmt.money(gb.delivery_fee) }) : t(gb.delivery_fee === 0 ? 'cart.store.metaFree' : 'cart.store.metaFee', { fee: fmt.money(gb.delivery_fee) })}</Text>}
@@ -652,7 +653,7 @@ const styles = StyleSheet.create({
   deliverySub: { fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 2, lineHeight: 19 },
   notes: { minHeight: 44, marginTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.onSurface, fontSize: 13 },
   storeHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  storeLogo: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary },
+  storeLogo: { ...logoTile(40), borderRadius: 12 }, storeLogoImage: { width: logoSize(40), height: logoSize(40) },
   storeName: { fontSize: 15, fontWeight: '800', color: colors.onSurface },
   storeMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   storeSubtotal: { fontSize: 14, fontWeight: '800', color: colors.onSurface },

@@ -13,6 +13,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import Icon from '@react-native-vector-icons/ionicons';
 import * as Haptics from 'expo-haptics';
 import { colors, radius, spacing } from '@/src/theme';
+import { logoSize, logoTile } from '@/src/logo-tile';
 import { apiGet, Product } from '@/src/api';
 import { useCart } from '@/src/cart';
 import { useCustomer } from '@/src/customer';
@@ -138,8 +139,8 @@ export default function ProductDetail() {
         </Pressable>}
 
         {!!story.store && <Pressable testID="pd-store-card" onPress={() => router.push(`/store/${story.store!.id}` as any)} style={s.store}>
-          {story.store.logo ? <Image source={story.store.logo} style={s.storeLogo} contentFit="contain" /> : <View style={s.storeLogo} />}
-          <View style={{ flex: 1 }}><Text style={s.storeName}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{`${story.store.tagline || t('product.storeFallback')} · ${fmt.deliveryTime(story.store.delivery_time)}`}</Text></View>
+          <View style={s.storeLogo}>{!!story.store.logo && <Image source={story.store.logo} style={s.storeLogoImage} contentFit="contain" />}</View>
+          <View style={{ flex: 1 }}><Text style={s.storeName} numberOfLines={1}>{story.store.name}</Text><Text style={s.storeMeta} numberOfLines={1}>{`${story.store.tagline || t('product.storeFallback')} · ${fmt.deliveryTime(story.store.delivery_time)}`}</Text></View>
           <Icon name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>}
         {!!story.brand && <Pressable testID="pd-brand-link" accessibilityRole="link" onPress={() => router.push(`/brand/${story.brand!.id}` as any)} style={s.brandLink}>
@@ -231,7 +232,7 @@ const s = StyleSheet.create({
   compareThumbs: { flexDirection: 'row' }, compareThumb: { width: 30, height: 30, borderRadius: 10, marginRight: -8, borderWidth: 2, borderColor: INK, backgroundColor: colors.surface },
   compareBarText: { flex: 1, color: colors.surface, fontSize: 13, fontWeight: '700', marginLeft: 8 },
   store: { marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 20, backgroundColor: colors.surfaceSecondary },
-  storeLogo: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.surface },
+  storeLogo: logoTile(48), storeLogoImage: { width: logoSize(48), height: logoSize(48) },
   storeName: { fontSize: 14, fontWeight: '800', color: colors.onSurface }, storeMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
   relatedWrap: { marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.onSurface, marginHorizontal: 20, marginBottom: 12, letterSpacing: -0.3 },

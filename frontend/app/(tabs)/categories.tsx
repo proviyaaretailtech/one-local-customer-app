@@ -23,7 +23,7 @@ const groups = [
 ] as const;
 function CategoryTiles({ categories, scope }: { categories: Category[]; scope: string }) {
   const router = useRouter();
-  return <View style={styles.grid}>{categories.map(c => <Pressable testID={`${scope}-category-${c.id}`} key={c.id} onPress={() => router.push(`/category/${c.id}` as any)} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}><View style={styles.tileArt}><Image testID={`${scope}-category-image-${c.id}`} source={c.image} contentFit="contain" style={styles.tileImage} transition={160} /></View><Text testID={`${scope}-category-label-${c.id}`} style={styles.tileLabel}>{c.name}</Text></Pressable>)}</View>;
+  return <View style={styles.grid}>{categories.map(c => <Pressable testID={`${scope}-category-${c.id}`} key={c.id} onPress={() => router.push(`/category/${c.id}` as any)} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}><View style={styles.tileArt}><Image testID={`${scope}-category-image-${c.id}`} source={c.image} contentFit="contain" style={styles.tileImage} transition={160} /></View><Text testID={`${scope}-category-label-${c.id}`} style={styles.tileLabel} numberOfLines={2}>{c.name}</Text></Pressable>)}</View>;
 }
 export default function Categories() {
   const { data, isError, refetch } = useCatalog(); const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat();

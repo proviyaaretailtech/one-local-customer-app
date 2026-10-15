@@ -14,6 +14,7 @@ import { BrandRail, CategoryRail, EventRail, LoadState, ProductGrid as ProductRa
 import { ExploreTown } from '@/src/components/explore-town';
 import { useDeliveryLocation } from '@/src/delivery-location';
 import { useFormat, useTranslation } from '@/src/i18n';
+import { logoSize, logoTile } from '@/src/logo-tile';
 
 export default function HomeScreen() {
   // Outside our delivery cities, home becomes the town's real local places.
@@ -36,7 +37,7 @@ function LiveHome() {
   const selected = (ids: string[]) => ids.flatMap(id => data.products.filter(p => p.id === id));
   return <CityScroll testID="home-screen" bleed showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
     <HomeHero catalog={data} />
-    {followed.length > 0 && <><SectionTitle id="followed" title={t('home.followedTitle')} subtitle={t('home.followedSubtitle')} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><Text style={styles.storeName}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
+    {followed.length > 0 && <><SectionTitle id="followed" title={t('home.followedTitle')} subtitle={t('home.followedSubtitle')} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><View style={styles.storeLogoTile}><Image source={s.logo} style={styles.storeImage} contentFit="contain" /></View><Text style={styles.storeName} numberOfLines={1}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
     <View style={styles.sheet}>
     <SectionTitle id="home-shop-by-store" title={t('home.storesTitle')} subtitle={t('home.storesSubtitle')} onPress={go('/categories')} />
     <StoreRail stores={data.themed_stores || []} scope="home" />
@@ -62,7 +63,7 @@ function LiveHome() {
     <SectionTitle id="home-book" title={t('home.bookTitle')} subtitle={t('home.bookSubtitle')} onPress={go('/book-it')} />
     <EventRail events={data.events} scope="home-book" />
     <SectionTitle id="home-stores" title={t('home.neighbourhoodTitle')} subtitle={t('home.neighbourhoodSubtitle')} />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{stores.filter(s => s.id.startsWith('s') || s.id.startsWith('org-')).map(s => <Pressable testID={`store-card-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><Image source={s.logo} style={styles.storeImage} /><View><Text style={styles.storeName}>{s.name}</Text><Text style={styles.meta}>{t('home.storeMeta', { time: fmt.deliveryTime(s.delivery_time), rating: fmt.number(s.rating, { maxFractionDigits: 2 }) })}</Text></View></Pressable>)}</ScrollView>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{stores.filter(s => s.id.startsWith('s') || s.id.startsWith('org-')).map(s => <Pressable testID={`store-card-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><View style={styles.storeLogoTile}><Image source={s.logo} style={styles.storeImage} contentFit="contain" /></View><View><Text style={styles.storeName} numberOfLines={1}>{s.name}</Text><Text style={styles.meta}>{t('home.storeMeta', { time: fmt.deliveryTime(s.delivery_time), rating: fmt.number(s.rating, { maxFractionDigits: 2 }) })}</Text></View></Pressable>)}</ScrollView>
     <SectionTitle id="home-budget" title={t('home.budgetTitle')} subtitle={t('home.budgetSubtitle', { amount: fmt.money(99) })} onPress={go('/search?collection=budget')} /><ProductRail products={data.products.filter(p => p.price < 99).slice(-10)} scope="home-budget" />
     <SectionTitle id="home-brand-discovery" title={t('home.brandsTitle')} subtitle={t('home.brandsSubtitle', { value: fmt.number(data.brands.length) })} /><BrandRail brands={data.brands.slice(16)} scope="home-new-brands" />
     <View style={styles.footer}><Text style={styles.footerTitle}>{t('home.footerTitle')}</Text><Text style={styles.footerSub}>{t('home.footerSub')}</Text><Text testID="sample-catalog-notice" style={styles.notice}>{t('home.sampleNotice')}</Text></View>
@@ -72,7 +73,7 @@ function LiveHome() {
 const styles = StyleSheet.create({
   content: { paddingBottom: 20 }, sheet: { backgroundColor: colors.glassBright, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingTop: 1, overflow: 'hidden' }, rule: { height: 7, backgroundColor: colors.cream, marginTop: 26 }, railSpace: { marginTop: 18 },
   stores: { paddingHorizontal: 20, gap: 12 }, store: { padding: 12, borderRadius: 16, backgroundColor: colors.cream, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  storeImage: { width: 42, height: 42, borderRadius: 13 }, storeName: { color: colors.onSurface, fontSize: 12, fontWeight: '700' }, meta: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  storeLogoTile: logoTile(48), storeImage: { width: logoSize(48), height: logoSize(48) }, storeName: { color: colors.onSurface, fontSize: 12, fontWeight: '700', maxWidth: 140 }, meta: { color: colors.muted, fontSize: 10, marginTop: 4 },
   footer: { marginTop: 38, paddingHorizontal: 24, paddingVertical: 30, backgroundColor: colors.limeSoft }, footerTitle: { color: colors.forest, fontSize: 25, letterSpacing: -1, fontWeight: '700', maxWidth: 250 },
   footerSub: { color: colors.forest, fontSize: 12, marginTop: 10 }, notice: { color: colors.muted, fontSize: 9, lineHeight: 15, marginTop: 22 },
 });

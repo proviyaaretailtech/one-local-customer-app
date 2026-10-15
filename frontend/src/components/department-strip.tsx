@@ -8,6 +8,7 @@ import { departments, departmentName } from '../departments';
 import { useTranslation } from '../i18n';
 import { mediaUrl } from '../api';
 import { nativeDriver, useMotionAllowed } from '../motion';
+import { logoTile } from '../logo-tile';
 
 function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean; delay: number }) {
   const tilt = useRef(new Animated.Value(0)).current; const motion = useMotionAllowed();
@@ -16,7 +17,7 @@ function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean
     const animation = Animated.sequence([Animated.delay(delay), Animated.timing(tilt, { toValue: -6, duration: 240, useNativeDriver: nativeDriver }), Animated.spring(tilt, { toValue: 0, friction: 3, useNativeDriver: nativeDriver })]);
     animation.start(); return () => animation.stop();
   }, [delay, motion, selected, tilt]);
-  return <Animated.View style={[styles.circle, selected && styles.selected, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v2`)} style={[styles.icon, { borderRadius: 18 }]} contentFit="contain" /></Animated.View>;
+  return <Animated.View style={[styles.circle, selected && styles.selected, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v2`)} style={styles.icon} contentFit="contain" /></Animated.View>;
 }
 export function DepartmentStrip() {
   const path = usePathname(); const router = useRouter(); const { t } = useTranslation();
@@ -27,4 +28,5 @@ export function DepartmentStrip() {
     </Tap>;
   })}</View>;
 }
-const styles = StyleSheet.create({ row: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 9, paddingBottom: 5 }, item: { flex: 1, alignItems: 'center', minHeight: 81, gap: 3 }, circle: { width: 51, height: 47, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }, icon: { width: 51, height: 47 }, selected: { backgroundColor: colors.glassBright, boxShadow: [{ offsetX: 0, offsetY: 5, blurRadius: 10, color: colors.shadow }] }, label: { color: colors.onSurface, fontSize: 9, lineHeight: 12, fontWeight: '500', textAlign: 'center' }, active: { fontWeight: '700', color: colors.forest }, dot: { width: 12, height: 3, borderRadius: 2, backgroundColor: colors.forest }, pressed: { transform: [{ scale: 0.9 }], opacity: 0.8 } });
+const styles = StyleSheet.create({ row: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 9, paddingBottom: 5 }, item: { flex: 1, alignItems: 'center', minHeight: 81, gap: 3 }, // Same square white tile for every department, selected or not; selection only changes the border.
+  circle: logoTile(52), icon: { width: 40, height: 40 }, selected: { borderWidth: 2, borderColor: colors.forest }, label: { color: colors.onSurface, fontSize: 9, lineHeight: 12, fontWeight: '500', textAlign: 'center' }, active: { fontWeight: '700', color: colors.forest }, dot: { width: 12, height: 3, borderRadius: 2, backgroundColor: colors.forest }, pressed: { transform: [{ scale: 0.9 }], opacity: 0.8 } });
