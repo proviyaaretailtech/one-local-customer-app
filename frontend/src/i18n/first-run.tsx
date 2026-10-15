@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { OneGlyph } from '../components/one-button';
+import { BrandLogo } from '../components/brand-logo';
 import { colors } from '../theme';
 import { LanguagePicker } from './language-picker';
 import { useLanguage } from './provider';
@@ -28,7 +28,7 @@ export function LanguageFirstRun() {
   if (!show) return null;
   return <View testID="language-first-run" accessibilityViewIsModal aria-modal style={s.screen}>
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
-      <View style={s.brand}><OneGlyph size={30} /><Text style={s.brandWord}>neCity</Text></View>
+      <View style={s.brand}><BrandLogo tone="dark" height={30} /></View>
       <View style={s.hero}>
         {locales.filter(l => !l.dev).map(l => <Text key={l.code} accessibilityLanguage={l.code} style={s.title}>{l.chooser}</Text>)}
       </View>
