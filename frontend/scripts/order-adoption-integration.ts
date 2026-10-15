@@ -55,6 +55,7 @@ async function main() {
   const org = must(await d.from('menu_items').select('organization_id').eq('is_available', true).order('created_at').limit(1))[0].organization_id as string;
   const menu = must(await d.from('menu_items').select('id,name,price').eq('organization_id', org).eq('is_available', true).limit(1))[0];
   const channelBefore = (await d.from('ol_merchant_channels').select('*').eq('organization_id', org)).data?.[0];
+  let laturBefore = 'verified';
   try {
     must(await d.from('ol_stores').upsert([
       { id: 'oa-store', name: 'OA Kitchen', organization_id: org, is_demo: false },
@@ -64,6 +65,7 @@ async function main() {
     // This script uses a real restaurant, whose point nobody confirmed (0341). It must not write a fake confirmation into that
     // restaurant's history, so Latur runs in rollout mode ('coordinates', 0344) for the test and is put back in `finally`.
     // The strict rule itself is tested with throwaway restaurants in scripts/pickup-location-integration.ts.
+    laturBefore = (await d.from('ol_service_areas').select('pickup_enforcement').eq('city_id', 'latur').single()).data?.pickup_enforcement ?? 'verified';
     must(await d.from('ol_service_areas').update({ pickup_enforcement: 'coordinates' }).eq('city_id', 'latur'));
     must(await d.from('ol_products').upsert([
       { id: 'oa-prod', name: menu.name, price: menu.price, mrp: menu.price, department: 'food', store_id: 'oa-store', menu_item_id: menu.id },
@@ -338,7 +340,7 @@ async function main() {
     console.log('Run  ../../../database/purge_test_orders.sh  to remove the tagged test order (orders are append-only for the app).');
     await d.from('ol_products').delete().in('id', ['oa-prod', 'oa-loose', 'oa-loose-demo', 'oa-orphan-prod']);
     await d.from('ol_stores').delete().in('id', ['oa-store', 'oa-orphan', 'oa-demo-store']);
-    await d.from('ol_service_areas').update({ pickup_enforcement: 'verified' }).eq('city_id', 'latur');
+    await d.from('ol_service_areas').update({ pickup_enforcement: laturBefore }).eq('city_id', 'latur');
     if (channelBefore) await d.from('ol_merchant_channels').update({ accepting: channelBefore.accepting }).eq('organization_id', org);
     else await d.from('ol_merchant_channels').delete().eq('organization_id', org);
   }

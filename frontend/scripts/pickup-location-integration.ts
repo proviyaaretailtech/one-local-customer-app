@@ -78,6 +78,9 @@ async function main() {
   };
   const history = async (o: string) => must(await d.from('ol_merchant_location_history').select('change').eq('organization_id', o)).length as number;
 
+  // The strict rule is what this script checks: Latur is strict while it runs, then gets back whatever it was (rollout mode in dev).
+  const latur = must(await d.from('ol_service_areas').select('pickup_enforcement').eq('city_id', 'latur').single()).pickup_enforcement as string;
+  must(await d.from('ol_service_areas').update({ pickup_enforcement: 'verified' }).eq('city_id', 'latur'));
   try {
     const A = await org('a'), B = await org('b');
     const owner = await person('owner-a', A, 'org_owner'), biller = await person('biller-a', A, 'biller'), manager = await person('manager-a', A, 'manager');
@@ -159,7 +162,6 @@ async function main() {
     } finally {
       must(await d.from('ol_service_areas').update({ pickup_enforcement: 'verified' }).eq('city_id', 'latur'));
     }
-    check('Latur is strict again after the test', (await d.from('ol_service_areas').select('pickup_enforcement').eq('city_id', 'latur').single()).data?.pickup_enforcement === 'verified');
     check('checkout, confirmed point: passes the location check (stops later at the unmapped item)', (await refusal(`pickup-a-${RUN}`)) === 'merchant_unavailable');
 
     // maps routes (Google simulated)
@@ -184,6 +186,7 @@ async function main() {
     r = await call(index.GET, 'GET', '/api/partner/pickup-location', owner.token);
     check('GET with no maps key: maps.search and maps.map are false', r.json?.maps?.search === false && r.json?.maps?.map === false, r.json?.maps);
   } finally {
+    await d.from('ol_service_areas').update({ pickup_enforcement: latur }).eq('city_id', 'latur');
     // ol_orders rows are kept as the record of the cancelled test order (tagged customer_hash pickup-it-*): append-only like all orders
     for (const s of made.stores) await d.from('ol_stores').delete().eq('id', s);
     for (const o of made.orgs) {
