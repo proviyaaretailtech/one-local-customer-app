@@ -16,6 +16,12 @@ export function isComingSoonRoute(segments: readonly string[]): boolean {
   return segments[0] === '(tabs)' && BLOCKED_TABS.includes(segments[1] ?? '');
 }
 
+// A person's own data rights stay working while everything else is switched off: recording consent, asking for
+// their data to be erased, raising a grievance, naming a nominee. Google Play and the DPDP Act both require
+// account deletion and these rights to work, so apiPost lets any path under /privacy/ through.
+export const ALWAYS_OPEN_API_PREFIXES = ['/privacy/'];
+export const isAlwaysOpenApi = (path: string) => ALWAYS_OPEN_API_PREFIXES.some(prefix => path.startsWith(prefix));
+
 // A blocked write (any POST through apiPost) tells the screen on top to show the coming-soon banner.
 const listeners = new Set<() => void>();
 export function announceComingSoon() { listeners.forEach(l => l()); }
