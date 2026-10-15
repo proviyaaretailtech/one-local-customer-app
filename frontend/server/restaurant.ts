@@ -117,11 +117,17 @@ export async function act(staff: Staff, posOrderId: string, action: 'accept' | '
 
 // ---------- Outlet (accepting One Local orders) ----------
 export async function getOutlet(staff: Staff) {
-  const { data, error } = await db().from('ol_merchant_channels').select('*').eq('organization_id', staff.organizationId).maybeSingle();
+  const [{ data, error }, { data: org, error: orgError }] = await Promise.all([
+    db().from('ol_merchant_channels').select('*').eq('organization_id', staff.organizationId).maybeSingle(),
+    db().from('organizations').select('control_status').eq('id', staff.organizationId).maybeSingle(),
+  ]);
   if (error) fromDbError(error);
+  if (orgError) fromDbError(orgError);
+  // A store made when the partner signed up is Pending until operations approves it (migration 0345); it cannot take orders yet.
+  const approval_status = org?.control_status === 'Pending' ? 'pending' : org?.control_status === 'Rejected' ? 'rejected' : 'approved';
   return data
-    ? { accepting: data.accepting, back_at: data.back_at, default_prep_minutes: data.default_prep_minutes, accept_window_seconds: data.accept_window_seconds, missed_in_a_row: data.missed_in_a_row, address: data.address, set_up: true }
-    : { accepting: false, back_at: null, default_prep_minutes: 20, accept_window_seconds: 60, missed_in_a_row: 0, address: null, set_up: false };
+    ? { accepting: data.accepting, back_at: data.back_at, default_prep_minutes: data.default_prep_minutes, accept_window_seconds: data.accept_window_seconds, missed_in_a_row: data.missed_in_a_row, address: data.address, set_up: true, approval_status }
+    : { accepting: false, back_at: null, default_prep_minutes: 20, accept_window_seconds: 60, missed_in_a_row: 0, address: null, set_up: false, approval_status };
 }
 
 export async function setOutlet(staff: Staff, body: Row) {

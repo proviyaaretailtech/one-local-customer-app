@@ -18,6 +18,7 @@ async function main() {
   const { createClient } = await import('@supabase/supabase-js');
   const login = await import('../app/api/partner/code-login+api');
   const me = await import('../app/api/partner/me+api');
+  const outlet = await import('../app/api/partner/outlet+api');
   const d = db();
   const must = (r: { data: any; error: any }): any => { if (r.error) throw new Error(JSON.stringify(r.error)); return r.data; };
   const RUN = randomBytes(4).toString('hex');
@@ -75,6 +76,10 @@ async function main() {
     const meRes: Response = await me.GET(new Request('http://localhost/api/partner/me', { headers: { authorization: `Bearer ${token}` } }), {});
     const meJson = await meRes.json();
     check('/api/partner/me opens straight into the new store (owner, not set up for orders, outlet closed)', meRes.status === 200 && meJson.person?.organization_id === a.attach.organization_id && meJson.person?.role === 'org_owner' && meJson.restaurant?.accepting === false, meJson);
+    check('/me says the store is waiting for approval (the app shows a banner)', meJson.restaurant?.approval_status === 'pending', meJson.restaurant);
+    const toggle: Response = await outlet.PATCH(new Request('http://localhost/api/partner/outlet', { method: 'PATCH', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ accepting: true }) }), {});
+    const toggleJson = await toggle.json();
+    check('the partner API refuses to open ordering on a store waiting for approval (409 not_approved)', toggle.status === 409 && toggleJson.code === 'not_approved', { status: toggle.status, toggleJson });
     const turnOn = await d.from('ol_merchant_channels').update({ accepting: true }).eq('organization_id', a.attach.organization_id);
     check('a Pending store cannot switch One Local ordering on', !!turnOn.error && /OL_NOT_APPROVED/.test(turnOn.error.message), turnOn.error?.message);
 
@@ -117,6 +122,8 @@ async function main() {
     if (staff[0]) {
       const dec = must(await d.rpc('master_partner_application_decide', { p_id: a.appId, p_decision: 'approve', p_reason: 'checked on the call', p_actor: staff[0].user_id }));
       check('approving opens the store made at sign-up (same organisation)', dec.organization_id === a.attach.organization_id && dec.status === 'approved', dec);
+      const meAfter: Response = await me.GET(new Request('http://localhost/api/partner/me', { headers: { authorization: `Bearer ${token}` } }), {});
+      check('/me no longer says pending after approval', (await meAfter.json()).restaurant?.approval_status === 'approved');
       r = await post(a.ref, callerIp());
       check('the code still signs in after approval', r.status === 200 && r.json?.application_status === 'approved', r);
     } else console.log('skip  approve: no active platform admin in this database');
