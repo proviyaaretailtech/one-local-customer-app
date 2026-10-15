@@ -2066,7 +2066,8 @@
       "title": "Questions and complaints",
       "p1": "Our grievance officer answers questions about your personal data:",
       "p2": "We reply within {{days}} days. If you are not satisfied, you can complain to the {{board}}: {{link}}. Please use our grievance process first; the Act asks for that.",
-      "email": "Email {{email}}"
+      "email": "Email {{email}}",
+      "p2NoLink": "We reply within {{days}} days. If you are not satisfied, you can also complain to the {{board}}. Please use our grievance process first; the Act asks for that."
     },
     "s10": {
       "title": "Changes and languages",
