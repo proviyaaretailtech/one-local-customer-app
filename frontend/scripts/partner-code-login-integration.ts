@@ -83,6 +83,16 @@ async function main() {
     const turnOn = await d.from('ol_merchant_channels').update({ accepting: true }).eq('organization_id', a.attach.organization_id);
     check('a Pending store cannot switch One Local ordering on', !!turnOn.error && /OL_NOT_APPROVED/.test(turnOn.error.message), turnOn.error?.message);
 
+    // someone who only knows the phone number must not learn the code (review F1)
+    const { submitPartnerApplication } = await import('../server/partner-applications');
+    const known = must(await d.from('ol_partner_applications').select('phone, city_id').eq('id', a.appId).single());
+    const probe = await submitPartnerApplication(new Request('http://localhost/api/partner-applications', { headers: { 'x-forwarded-for': callerIp() } }), {
+      stage: 'submit', partner_type: 'restaurant', business_name: 'Mallory Shop', owner_name: 'Mallory', phone: known.phone, email: `mallory.${RUN}@proviyaa.test`,
+      consent: true, address: 'Other Road, Latur', pin_code: '413512', subcategories: ['Indian'],
+      outlets: '1', services: ['delivery'], password: 'Mallory2026x', submit_key: `ck-mallory-${RUN}-0001`,
+    }).catch(e => ({ error: e?.detail ?? String(e) } as any));
+    check('a second application with a known phone number is answered "existing" with NO reference', (probe as any).existing === true && !(probe as any).reference, probe);
+
     // wrong codes
     const from2 = callerIp();
     r = await post('OLP-00000000', from2);
