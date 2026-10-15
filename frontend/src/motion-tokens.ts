@@ -4,6 +4,7 @@
 //   spring.*   : Animated.spring configs (friction/tension)      stagger : per-item delay in lists
 // Everything must also respect Reduce Motion (useMotionAllowed in src/motion.tsx).
 import { Easing } from 'react-native';
+import { Easing as ReEasing } from 'react-native-reanimated';
 
 export const duration = {
   instant: 90,    // press feedback, toggles
@@ -19,6 +20,15 @@ export const easing = {
   enter: Easing.bezier(0, 0, 0, 1),          // things arriving
   exit: Easing.bezier(0.3, 0, 1, 1),         // things leaving
   emphasized: Easing.bezier(0.2, 0, 0, 1.25) // a little overshoot for celebratory moments
+} as const;
+
+// The same curves for Reanimated (withTiming). Reanimated 4 needs its own Easing (worklets); passing the
+// React Native ones above crashes on the UI thread ("The easing function is not a worklet").
+export const reEasing = {
+  standard: ReEasing.bezier(0.2, 0, 0, 1),
+  enter: ReEasing.bezier(0, 0, 0, 1),
+  exit: ReEasing.bezier(0.3, 0, 1, 1),
+  emphasized: ReEasing.bezier(0.2, 0, 0, 1.25),
 } as const;
 
 export const spring = {
