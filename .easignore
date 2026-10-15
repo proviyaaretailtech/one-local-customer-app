@@ -1,0 +1,27 @@
+# Files EAS Build must not upload. Replaces .gitignore for EAS, so the usual ignores are repeated here.
+.claude/
+partner/
+"New Folder With Items 2 copy"/
+New Folder With Items 2 copy/
+backups/
+ARCHITECTURE_AUDIT/
+test_reports/
+node_modules/
+.expo/
+.metro-cache/
+dist/
+web-build/
+frontend/ios/
+frontend/android/
+frontend/.p3-*.mjs
+.DS_Store
+.env
+.env.*
+**/.env
+**/.env.*
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision

@@ -153,7 +153,8 @@
       "marketingOn": "You get offers and updates. Change this any time in Privacy & your data.",
       "marketing": "Send me offers and updates (optional)",
       "marketingHint": "You can switch this off any time.",
-      "under": "Under {{age}}?"
+      "under": "Under {{age}}?",
+      "whatsapp": "Send me offers and updates on WhatsApp (optional)"
     },
     "minor": {
       "title": "Ask a parent or guardian",
@@ -226,6 +227,9 @@
     "switch": {
       "toSignup": "New here? Create an account",
       "toSignin": "Already have an account? Sign in"
+    },
+    "mobile": {
+      "why": "We use your number for order updates. We never share it with stores."
     }
   },
   "account": {
@@ -309,7 +313,14 @@
     "storageLoadError": "Could not load your saved preferences. Please reopen this screen.",
     "storageSaveError": "Could not save your changes. Please try again.",
     "profileLoading": "Your profile is still loading",
-    "coinsTitle": "OneLocal Coins"
+    "coinsTitle": "OneLocal Coins",
+    "addMobile": {
+      "title": "Add your mobile number",
+      "body": "So we can reach you about your orders. WhatsApp offers are a separate, optional tick.",
+      "save": "Save number",
+      "saved": "Number saved.",
+      "failed": "Couldn’t save your number. Check your connection and try again."
+    }
   },
   "profile": {
     "title": "Make it yours",

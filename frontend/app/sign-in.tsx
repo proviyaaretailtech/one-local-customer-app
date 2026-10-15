@@ -41,6 +41,8 @@ export default function SignIn() {
   // Mobile number + one-time code: offered first whenever Supabase has phone sign-in switched on.
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const byPhone = phoneAvailable && method === 'phone';
+  // Create account (email) also collects a mobile number and an optional WhatsApp offers choice (unticked by default).
+  const [signupMobile, setSignupMobile] = useState(''); const [whatsapp, setWhatsapp] = useState(false);
   const [mobile, setMobile] = useState(''); const [sentTo, setSentTo] = useState(''); const [code, setCode] = useState('');
   const [wait, setWait] = useState(0);
   useEffect(() => { if (wait <= 0) return; const timer = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(timer); }, [wait]);
@@ -100,6 +102,7 @@ export default function SignIn() {
     setError(''); setNotice('');
     if (mode === 'signup' && name.trim().length < 2) return setError(t('auth.error.nameShort'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError(t('auth.error.emailInvalid'));
+    if (mode === 'signup' && !/^[6-9]\d{9}$/.test(mobileDigits(signupMobile))) return setError(t('auth.error.mobileInvalid'));
     if (password.length < 6) return setError(t('auth.error.passwordShort'));
     if (!confirmedAdult()) return;
     setBusy('email');
@@ -107,7 +110,7 @@ export default function SignIn() {
       await recordConsent();
       if (mode === 'signin') await signInWithEmail(email, password);
       else {
-        const { needsConfirmation } = await signUpWithEmail(name, email, password);
+        const { needsConfirmation } = await signUpWithEmail(name, email, password, signupMobile, whatsapp);
         if (needsConfirmation) { setNotice(t('auth.notice.confirmEmail')); setMode('signin'); return; }
       }
       signedIn();
@@ -173,6 +176,8 @@ export default function SignIn() {
         </View> : <View testID="sign-in-mode" style={s.stack}>
           {mode === 'signup' && <Field icon="person-outline" testID="sign-in-name" placeholder={t('auth.placeholder.name')} value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />}
           <Field icon="mail-outline" testID="sign-in-email" placeholder={t('auth.placeholder.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textContentType="emailAddress" autoComplete="email" />
+          {mode === 'signup' && <Field icon="call-outline" prefix="+91" testID="sign-in-signup-mobile" placeholder={t('auth.placeholder.mobile')} value={signupMobile} onChangeText={v => setSignupMobile(v.replace(/[^\d ]/g, ''))}
+            keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" maxLength={14} />}
           <Field icon="lock-closed-outline" testID="sign-in-password" placeholder={mode === 'signup' ? t('auth.placeholder.createPassword') : t('auth.placeholder.password')} value={password} onChangeText={setPassword}
             secureTextEntry={!reveal} autoCapitalize="none" textContentType={mode === 'signup' ? 'newPassword' : 'password'} onSubmitEditing={submit} returnKeyType="go"
             trailing={<Pressable testID="sign-in-reveal" accessibilityLabel={reveal ? t('auth.hidePassword') : t('auth.showPassword')} onPress={() => setReveal(r => !r)} style={s.eye}><Icon name={reveal ? 'eye-off-outline' : 'eye-outline'} size={18} color={SOFT} /></Pressable>} />
@@ -181,6 +186,7 @@ export default function SignIn() {
         {/* DPDP: the short notice sits right where consent is given; 18+ is required, offers are optional and never pre-ticked. */}
         <View testID="sign-in-consent" style={s.consent}>
           <Check id="sign-in-age" checked={adult} onPress={() => { setAdult(a => !a); setError(''); }} label={t('auth.consent.adult', { age: PRIVACY.minimumAge })} />
+          {!byPhone && mode === 'signup' && <Check id="sign-in-whatsapp" checked={whatsapp} onPress={() => setWhatsapp(w => !w)} label={t('auth.consent.whatsapp')} />}
           {privacy.current.marketing
             ? <Text testID="sign-in-marketing-on" style={s.consentNote}>{t('auth.consent.marketingOn')}</Text>
             : <Check id="sign-in-marketing" checked={marketing} onPress={() => setMarketing(m => !m)} label={t('auth.consent.marketing')} />}
