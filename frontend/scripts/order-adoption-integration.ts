@@ -51,7 +51,8 @@ async function main() {
   const must = (r: { data: any; error: any }): any => { if (r.error) throw new Error(JSON.stringify(r.error)); return r.data; };
   const made = { orders: [] as string[], olOrders: [] as string[], hashes: [] as string[] };
 
-  const org = must(await d.from('organizations').select('id').limit(1))[0].id as string;
+  // a restaurant that has something on its menu (an unordered 'first organization' can be a fixture with no menu at all)
+  const org = must(await d.from('menu_items').select('organization_id').eq('is_available', true).order('created_at').limit(1))[0].organization_id as string;
   const menu = must(await d.from('menu_items').select('id,name,price').eq('organization_id', org).eq('is_available', true).limit(1))[0];
   const channelBefore = (await d.from('ol_merchant_channels').select('*').eq('organization_id', org)).data?.[0];
   try {
@@ -60,10 +61,10 @@ async function main() {
       { id: 'oa-orphan', name: 'OA Orphan', organization_id: null, is_demo: false },
     ]));
     must(await d.from('ol_merchant_channels').upsert({ organization_id: org, accepting: true, address: 'Main Road, Latur', lat: 18.4088, lng: 76.5604 }, { onConflict: 'organization_id' }));
-    // Checkout trusts only a pickup point the restaurant confirmed (migration 0341): an owner or manager of this organization confirms it.
-    const lead = (await d.from('org_users').select('user_id, role:roles!inner(slug)').eq('organization_id', org).eq('status', 'active').in('roles.slug', ['org_owner', 'org_admin', 'manager', 'business_manager']).limit(1)).data?.[0];
-    if (lead) must(await d.rpc('ol_set_pickup_location', { p_org: org, p_actor: lead.user_id, p_lat: 18.4088, p_lng: 76.5604, p_address: 'Main Road, Latur', p_place_id: null, p_source: 'map_pin', p_accuracy_m: null, p_confirm: true, p_request_key: null }));
-    else process.env.OL_PICKUP_LOCATION_ENFORCE = 'coordinates';
+    // This script uses a real restaurant, whose point nobody confirmed (0341). It must not write a fake confirmation into that
+    // restaurant's history, so Latur runs in rollout mode ('coordinates', 0344) for the test and is put back in `finally`.
+    // The strict rule itself is tested with throwaway restaurants in scripts/pickup-location-integration.ts.
+    must(await d.from('ol_service_areas').update({ pickup_enforcement: 'coordinates' }).eq('city_id', 'latur'));
     must(await d.from('ol_products').upsert([
       { id: 'oa-prod', name: menu.name, price: menu.price, mrp: menu.price, department: 'food', store_id: 'oa-store', menu_item_id: menu.id },
       { id: 'oa-loose', name: 'Unmapped', price: 10, mrp: 10, department: 'food', store_id: 'oa-store', menu_item_id: null },
@@ -145,9 +146,6 @@ async function main() {
     await channel({ accepting: true, lat: null, lng: null });
     await refuse('SRV-2: a restaurant with no map location is refused too (a rider could never be sent)', async () => store.createCheckout(await asCustomer('nomap', 'checkouts', basket()), 'latur'), 409, 'pickup_location_missing');
     await channel({ accepting: true, lat: 18.4088, lng: 76.5604 });
-    // that direct write is captured as an admin point nobody confirmed (0341): checkout says so, and the restaurant confirms again
-    await refuse('SRV-2: a point nobody at the restaurant confirmed is refused (pickup_location_unverified)', async () => store.createCheckout(await asCustomer('unconfirmed', 'checkouts', basket()), 'latur'), 409, process.env.OL_PICKUP_LOCATION_ENFORCE === 'coordinates' ? 'merchant_unavailable' : 'pickup_location_unverified');
-    if (lead) must(await d.rpc('ol_set_pickup_location', { p_org: org, p_actor: lead.user_id, p_lat: 18.4088, p_lng: 76.5604, p_address: 'Main Road, Latur', p_place_id: null, p_source: 'map_pin', p_accuracy_m: null, p_confirm: true, p_request_key: null }));
     must(await d.from('ol_stores').upsert({ id: 'oa-demo-store', name: 'OA Demo Kitchen', organization_id: org, is_demo: true }));
     must(await d.from('ol_products').upsert({ id: 'oa-loose-demo', name: 'Unmapped dish', price: 10, mrp: 10, department: 'food', store_id: 'oa-demo-store', menu_item_id: null }));
     invalidateCatalog();
@@ -340,6 +338,7 @@ async function main() {
     console.log('Run  ../../../database/purge_test_orders.sh  to remove the tagged test order (orders are append-only for the app).');
     await d.from('ol_products').delete().in('id', ['oa-prod', 'oa-loose', 'oa-loose-demo', 'oa-orphan-prod']);
     await d.from('ol_stores').delete().in('id', ['oa-store', 'oa-orphan', 'oa-demo-store']);
+    await d.from('ol_service_areas').update({ pickup_enforcement: 'verified' }).eq('city_id', 'latur');
     if (channelBefore) await d.from('ol_merchant_channels').update({ accepting: channelBefore.accepting }).eq('organization_id', org);
     else await d.from('ol_merchant_channels').delete().eq('organization_id', org);
   }

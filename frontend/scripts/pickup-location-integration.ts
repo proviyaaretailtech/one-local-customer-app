@@ -43,11 +43,11 @@ async function main() {
   const reverse = await import('../app/api/partner/pickup-location/reverse+api');
   const map = await import('../app/api/partner/pickup-location/map+api');
   const me = await import('../app/api/partner/me+api');
-  const { assertFulfillable } = await import('../server/dispatch');
+  const { adoptOrders, assertFulfillable } = await import('../server/dispatch');
   const d = db();
   const must = (r: { data: any; error: any }): any => { if (r.error) throw new Error(JSON.stringify(r.error)); return r.data; };
   const RUN = randomBytes(4).toString('hex');
-  const made = { users: [] as string[], orgs: [] as string[], stores: [] as string[] };
+  const made = { users: [] as string[], orgs: [] as string[], stores: [] as string[], olOrders: [] as string[] };
   const anon = createClient(process.env.SUPABASE_URL!, (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY)!, { auth: { persistSession: false } });
 
   const roleId = async (slug: string) => must(await d.from('roles').select('id').eq('slug', slug).single()).id as string;
@@ -116,6 +116,13 @@ async function main() {
     r = await call(index.PUT, 'PUT', '/api/partner/pickup-location', manager.token, { ...point, lat: 18.4063 }, { 'Idempotency-Key': `pickup-it-${RUN}-2` });
     check('manager moves the pin: history moved, version 2', r.status === 200 && r.json.location.version === 2 && r.json.history[0]?.change === 'moved' && r.json.history[0]?.by_me === true, r.json);
 
+    r = await call(index.PUT, 'PUT', '/api/partner/pickup-location', owner.token, { ...point, lat: 18.4064, version: 1 });
+    check('a write based on an old version is refused (409 version_conflict)', r.status === 409 && r.json.code === 'version_conflict', r);
+    r = await call(index.PUT, 'PUT', '/api/partner/pickup-location', owner.token, { ...point, source: 'geocoder', accuracy_m: null });
+    check('a search point confirmed without an accuracy is refused (422 accuracy_too_low)', r.status === 422 && r.json.code === 'accuracy_too_low', r);
+    r = await call(index.GET, 'GET', '/api/partner/pickup-location', owner.token);
+    check('GET names the organization (the app checks it is the one it shows)', r.json?.organization_id === A, r.json?.organization_id);
+
     // tenancy
     r = await call(index.GET, 'GET', '/api/partner/pickup-location', ownerB.token);
     check('owner of B sees only B (missing), never A', r.status === 200 && r.json.status === 'missing' && r.json.location === null && r.json.history.length === 0, r.json);
@@ -134,12 +141,26 @@ async function main() {
     const legacy = must(await d.from('ol_merchant_locations').select('source, verification_status').eq('organization_id', B).single());
     check('a direct channel write (Master Admin listing) is captured as admin / unverified', legacy.source === 'admin' && legacy.verification_status === 'unverified', legacy);
     check('checkout, point not confirmed: pickup_location_unverified', (await refusal(`pickup-b-${RUN}`)) === 'pickup_location_unverified');
-    process.env.OL_PICKUP_LOCATION_ENFORCE = 'coordinates';
-    check('rollout switch coordinates: the unconfirmed point passes the location check', (await refusal(`pickup-b-${RUN}`)) === 'merchant_unavailable');
-    delete process.env.OL_PICKUP_LOCATION_ENFORCE;
-    check('checkout, confirmed point: passes the location check (stops later at the unmapped item)', (await refusal(`pickup-a-${RUN}`)) === 'merchant_unavailable');
     r = await call(me.GET, 'GET', '/api/partner/me', ownerB.token);
     check('/me for B: pickup_location.status = unverified (banner stays)', r.json.restaurant.pickup_location?.status === 'unverified', r.json?.restaurant);
+    must(await d.from('ol_service_areas').update({ pickup_enforcement: 'coordinates' }).eq('city_id', 'latur'));
+    try {
+      check('rollout city (coordinates): the unconfirmed point passes the location check', (await refusal(`pickup-b-${RUN}`)) === 'merchant_unavailable');
+      must(await d.from('ol_merchant_channels').update({ lat: 18.4051 }).eq('organization_id', B));
+      const olOrder = randomUUID();
+      must(await d.from('ol_orders').insert({ id: olOrder, customer_hash: `pickup-it-${RUN}`, items: [], subtotal: 100, total: 100, store_id: `pickup-b-${RUN}`, payment_method: 'cod' }));
+      // no organization_id on the order: adoption finds the restaurant through the store, and the cancellation record does not pin the
+      // throwaway organization (so it can be removed afterwards)
+      made.olOrders.push(olOrder);
+      must(await d.from('ol_merchant_channels').update({ lat: null, lng: null }).eq('organization_id', B));
+      await adoptOrders([olOrder]);
+      const after = must(await d.from('ol_orders').select('status, pos_order_id').eq('id', olOrder).single());
+      check('point cleared between checkout and adoption: the order is cancelled, never sent to the restaurant', after.status === 'cancelled' && after.pos_order_id === null, after);
+    } finally {
+      must(await d.from('ol_service_areas').update({ pickup_enforcement: 'verified' }).eq('city_id', 'latur'));
+    }
+    check('Latur is strict again after the test', (await d.from('ol_service_areas').select('pickup_enforcement').eq('city_id', 'latur').single()).data?.pickup_enforcement === 'verified');
+    check('checkout, confirmed point: passes the location check (stops later at the unmapped item)', (await refusal(`pickup-a-${RUN}`)) === 'merchant_unavailable');
 
     // maps routes (Google simulated)
     r = await call(search.GET, 'GET', '/api/partner/pickup-location/search?q=it%20spice', owner.token);
@@ -163,6 +184,7 @@ async function main() {
     r = await call(index.GET, 'GET', '/api/partner/pickup-location', owner.token);
     check('GET with no maps key: maps.search and maps.map are false', r.json?.maps?.search === false && r.json?.maps?.map === false, r.json?.maps);
   } finally {
+    // ol_orders rows are kept as the record of the cancelled test order (tagged customer_hash pickup-it-*): append-only like all orders
     for (const s of made.stores) await d.from('ol_stores').delete().eq('id', s);
     for (const o of made.orgs) {
       await d.from('ol_merchant_channels').delete().eq('organization_id', o);

@@ -22,6 +22,18 @@ function noteMissing() {
   if (!toldMissing) { toldMissing = true; console.warn('[pickup] table ol_merchant_locations is missing: run migration 0341 (docs/online-migrations/ONELOCAL_PICKUP_LOCATION_2026-10-14.sql).'); }
 }
 
+// How strict a city is (ol_service_areas.pickup_enforcement, migration 0344): 'verified' = only confirmed points take orders,
+// 'coordinates' = any point (rollout). A database without the column is treated as 'verified'.
+export async function pickupEnforcement(cityId: string | null | undefined): Promise<'verified' | 'coordinates'> {
+  if (!cityId) return 'verified';
+  const { data, error } = await db().from('ol_service_areas').select('pickup_enforcement').eq('city_id', cityId).maybeSingle();
+  if (error) {
+    if (!/pickup_enforcement/.test(error.message ?? '')) fromDbError(error);
+    return 'verified';
+  }
+  return data?.pickup_enforcement === 'coordinates' ? 'coordinates' : 'verified';
+}
+
 /** missing | unverified | verified | disputed, or null when the database has no pickup table yet. */
 export async function pickupStatus(organizationId: string): Promise<PickupStatus | null> {
   const { data, error } = await db().from('ol_merchant_locations').select('verification_status').eq('organization_id', organizationId).maybeSingle();
@@ -55,6 +67,7 @@ export async function getPickupLocation(staff: Staff) {
   if (historyError) fromDbError(historyError);
   const maps = mapsConfigured();
   return {
+    organization_id: staff.organizationId,
     status: (loc ? loc.verification_status : 'missing') as PickupStatus,
     location: loc ? {
       lat: Number(loc.lat), lng: Number(loc.lng), formatted_address: loc.formatted_address, place_id: loc.place_id, source: loc.source,
@@ -95,8 +108,9 @@ export function parsePickupBody(body: Row) {
   if (!(PARTNER_SOURCES as readonly string[]).includes(source)) throw new HttpError(400, 'Say how the position was found.', undefined, 'invalid_request');
   const accuracy = body.accuracy_m == null ? null : num(body.accuracy_m, 'Accuracy', 0, 100000);
   if (body.confirm != null && typeof body.confirm !== 'boolean') throw new HttpError(400, 'Say whether you confirm this position.', undefined, 'invalid_request');
+  const version = body.version == null ? null : num(body.version, 'The version', 0, 1_000_000_000);
   return {
-    lat, lng, source, accuracy_m: accuracy, confirm: body.confirm !== false,
+    lat, lng, source, accuracy_m: accuracy, confirm: body.confirm !== false, version: version == null ? null : Math.trunc(version),
     formatted_address: text(body.formatted_address, 'The address', 300), place_id: text(body.place_id, 'The place reference', 300),
   };
 }
@@ -110,6 +124,9 @@ export async function setPickupLocation(staff: Staff, body: Row, requestKey: str
   const city = await area(channel.city_id);
   if (!city) throw new HttpError(422, 'One Local does not deliver in this city yet.', undefined, 'outside_delivery_area');
   if (distanceKm(p, city) > city.radius_km) throw new HttpError(422, `This point is outside the One Local delivery area for ${city.name}.`, undefined, 'outside_delivery_area');
+  if (p.confirm && p.accuracy_m == null && p.source !== 'map_pin') {
+    throw new HttpError(422, 'Say how precise this position is, or move the pin onto your shop entrance.', undefined, 'accuracy_too_low');
+  }
   if (p.confirm && p.accuracy_m != null && p.accuracy_m > 100) {
     throw new HttpError(422, `This position is only accurate to about ${Math.round(p.accuracy_m)} m. Move the pin onto your shop entrance, or stand at the entrance and try again.`, undefined, 'accuracy_too_low');
   }
@@ -117,7 +134,7 @@ export async function setPickupLocation(staff: Staff, body: Row, requestKey: str
   try {
     out = await rpc<Row>('ol_set_pickup_location', {
       p_org: staff.organizationId, p_actor: staff.userId, p_lat: p.lat, p_lng: p.lng, p_address: p.formatted_address, p_place_id: p.place_id,
-      p_source: p.source, p_accuracy_m: p.accuracy_m, p_confirm: p.confirm, p_request_key: requestKey,
+      p_source: p.source, p_accuracy_m: p.accuracy_m, p_confirm: p.confirm, p_request_key: requestKey, p_expected_version: p.version,
     });
   } catch (error) {
     if (error instanceof HttpError) error.detail = capitalise(error.detail);
