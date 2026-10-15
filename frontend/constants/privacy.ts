@@ -30,9 +30,9 @@ export const PRIVACY = {
   // DPDP Act s.8(9) and Rule 9: someone who answers questions about personal data, published and
   // named in every reply to a privacy request.
   grievanceOfficer: {
-    name: `${FILL}: grievance officer's name`,
+    name: 'Vaishnavi Baswaraj Yerte',
     email: 'proviyaaretailtech@gmail.com',
-    phone: `${FILL}: phone number`,
+    phone: '+91 86683 20699',
     hours: 'Monday to Saturday, 10 am to 6 pm',
   },
   // Rule 14: the longest we take to answer a grievance or a rights request (the Rules' outer limit is 90 days).
