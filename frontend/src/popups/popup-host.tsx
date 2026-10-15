@@ -24,6 +24,7 @@ import { ComingSoonReceipts } from './coming-soon-receipt';
 import { useDeliveryLocation } from '../delivery-location';
 import { allowedByFrequency, isBlockedPath, markShown, screenOf, session } from './rules';
 import type { Popup } from './types';
+import { COMING_SOON_ALL } from '../coming-soon-mode';
 
 const SETTLE_MS = 1000;
 const INTERACTIONS_CAP_MS = 1500;
@@ -33,7 +34,8 @@ export function PopupHost() {
   const pathname = usePathname() ?? '/';
   // No pop-up over the first-run language chooser either.
   const firstRun = useShowFirstRun();
-  const blocked = isBlockedPath(pathname) || firstRun;
+  // Coming-soon build: no promo pop-ups (their "See offers" buttons lead nowhere yet).
+  const blocked = COMING_SOON_ALL || isBlockedPath(pathname) || firstRun;
   const screen = screenOf(pathname);
   // The town the pop-ups were fetched for, printed on coming-soon receipts. PopupHost sits outside the shell, so this is
   // the saved town's default until the shell's location is lifted higher.

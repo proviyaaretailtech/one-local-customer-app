@@ -22,6 +22,7 @@ import { I18nProvider, LanguageFirstRun, ProfileLanguageSync } from '@/src/i18n'
 import { UpdateGate } from '@/src/app-updates';
 import { PopupHost } from '@/src/popups/popup-host';
 import { NetworkStatus } from '@/src/network/network-status';
+import { ComingSoonGate } from '@/src/components/coming-soon-gate';
 
 LogBox.ignoreAllLogs(true);
 
@@ -50,7 +51,7 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               {Platform.OS === "web" && <Head><title>OneLocal</title></Head>}
-              <CustomerProvider><ProfileLanguageSync /><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
+              <CustomerProvider><ProfileLanguageSync /><AuthProvider><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><ComingSoonGate /><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>
