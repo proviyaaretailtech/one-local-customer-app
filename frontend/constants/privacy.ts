@@ -23,8 +23,10 @@ export const PRIVACY = {
   noticeDateIso: '2026-09-27',
   brand: 'One Local (OneCity)',
   // The Data Fiduciary: the company that decides why and how personal data is used.
-  legalEntity: `${FILL}: registered company name`,
-  registeredAddress: `${FILL}: registered office address`,
+  // From the Certificate of Incorporation dated 2 April 2026. The certificate calls this address the
+  // "mailing address as per record"; confirm it is also the registered office.
+  legalEntity: 'Proviyaa Global (OPC) Private Limited (CIN U70200ME2026OPC474234)',
+  registeredAddress: 'C/o Yerte Manisha Baswaraj, Bunglow No. 37, New Adarsh Colony, Ausa Road, Latur 413512, Maharashtra, India',
   // DPDP Act s.8(9) and Rule 9: someone who answers questions about personal data, published and
   // named in every reply to a privacy request.
   grievanceOfficer: {
