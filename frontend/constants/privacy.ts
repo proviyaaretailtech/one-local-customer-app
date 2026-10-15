@@ -31,7 +31,7 @@ export const PRIVACY = {
   // named in every reply to a privacy request.
   grievanceOfficer: {
     name: `${FILL}: grievance officer's name`,
-    email: `${FILL}: e.g. privacy@yourdomain.in`,
+    email: 'proviyaaretailtech@gmail.com',
     phone: `${FILL}: phone number`,
     hours: 'Monday to Saturday, 10 am to 6 pm',
   },
