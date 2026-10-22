@@ -15,6 +15,7 @@ import { ExploreTown } from '@/src/components/explore-town';
 import { useDeliveryLocation } from '@/src/delivery-location';
 import { useFormat, useTranslation } from '@/src/i18n';
 import { logoSize, logoTile } from '@/src/logo-tile';
+import { isHiddenListing } from '@/src/hidden-listings';
 
 export default function HomeScreen() {
   // Outside our delivery cities, home becomes the town's real local places.
@@ -28,7 +29,7 @@ function LiveHome() {
   const router = useRouter();
   const { isFollowing } = useFollowedStores(); const { t } = useTranslation(); const fmt = useFormat();
   const [stores, setStores] = useState<Store[]>([]);
-  useEffect(() => { api<Store[]>('/stores').then(setStores).catch(() => {}); }, []);
+  useEffect(() => { api<Store[]>('/stores').then(list => setStores(list.filter(s => !isHiddenListing(s.name)))).catch(() => {}); }, []);
   if (isLoading || !data) return <LoadState error={isError} retry={refetch} />;
   // A delivery city with no stores in the catalogue yet: show what's around instead of empty rails.
   if (!data.products.length) return <ExploreTown empty />;
