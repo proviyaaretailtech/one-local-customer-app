@@ -4,17 +4,44 @@
     {
       "name": "Expo Web Preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web"],
+      "runtimeArgs": [
+        "run",
+        "web"
+      ],
       "cwd": "frontend",
       "port": 8081
     },
     {
       "name": "Expo Web Preview (payments UI on)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web", "--", "--port", "8082"],
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8082"
+      ],
       "cwd": "frontend",
-      "env": { "FEATURE_ONLINE_PAYMENTS": "on" },
+      "env": {
+        "FEATURE_ONLINE_PAYMENTS": "on"
+      },
       "port": 8082
+    },
+    {
+      "name": "Expo Web Preview (live features)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8083"
+      ],
+      "cwd": "frontend",
+      "env": {
+        "EXPO_PUBLIC_COMING_SOON": "off"
+      },
+      "port": 8083
     }
   ]
 }

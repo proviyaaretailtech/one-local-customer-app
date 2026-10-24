@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ComingSoonBrand, useComingSoon } from '@/src/components/coming-soon-brand';
-import { MAX_APP_WIDTH } from '@/src/layout';
+import { MAX_APP_WIDTH, useAppDimensions } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -69,6 +69,10 @@ const mediaStyles = StyleSheet.create({
 });
 
 export default function StoreProfileScreen() {
+  // Product grid: 2 columns on phones, more as the screen widens (laptop browsers).
+  const { width: appWidth } = useAppDimensions();
+  const gridCols = appWidth >= 1000 ? 5 : appWidth >= 800 ? 4 : appWidth >= 600 ? 3 : 2;
+  const gridItemWidth = (appWidth - spacing.lg * 2 - spacing.md * (gridCols - 1)) / gridCols;
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -232,8 +236,8 @@ export default function StoreProfileScreen() {
           <Text style={styles.sectionTitle}>{t('store.allProducts')}</Text>
           <View style={styles.grid}>
             {shown.map((p) => (
-              <View key={p.id} style={styles.gridItem}>
-                <ProductCard product={p} width={undefined as any} />
+              <View key={p.id} style={[styles.gridItem, { width: gridItemWidth }]}>
+                <ProductCard product={p} width={gridItemWidth} />
               </View>
             ))}
             {shown.length === 0 && (
@@ -305,6 +309,6 @@ const styles = StyleSheet.create({
   productSection: { paddingTop: spacing.lg },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.onSurface, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: spacing.lg, gap: spacing.md },
-  gridItem: { width: "47.5%" },
+  gridItem: {},
   empty: { padding: spacing.xl, width: "100%", alignItems: "center" },
 });

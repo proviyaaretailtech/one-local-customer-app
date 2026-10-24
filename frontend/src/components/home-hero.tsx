@@ -22,6 +22,7 @@ import { departments, departmentName } from '../departments';
 import { useDeliveryLocation } from '../delivery-location';
 import { useCityScroll } from '../motion';
 import { useFormat, useTranslation } from '../i18n';
+import { useIsDesktop } from '../layout';
 
 export const HOME_HERO_HEIGHT = 468;
 /** Scroll offset (past the hero's search bar) where the compact header appears. */
@@ -51,6 +52,7 @@ function Hero() {
     const id = setInterval(() => setSlide(i => (i + 1) % campaignImages.length), CAMPAIGN_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
+  const desktop = useIsDesktop();
   const height = HOME_HERO_HEIGHT + insets.top;
   return <View testID="home-hero" style={[s.hero, { height }]}>
     <Image source={mediaUrl(campaignImages[slide])} accessibilityLabel={t(campaign.alt)} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: '28%', left: '60%' }} transition={900} cachePolicy="memory-disk" />
@@ -58,7 +60,7 @@ function Hero() {
     <LinearGradient pointerEvents="none" colors={['rgba(6,18,11,0.74)', 'rgba(6,18,11,0.42)', 'rgba(6,18,11,0.06)']} locations={[0, 0.5, 0.9]} start={{ x: 0, y: 0.1 }} end={{ x: 1, y: 0.75 }} style={StyleSheet.absoluteFill} />
     <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', colors.surface]} locations={[0, 0.6, 1]} style={[s.fade, { top: height - 150 }]} />
     <View style={[s.heroInner, { paddingTop: insets.top + 6 }]}>
-      <View style={s.topRow}>
+      {!desktop && <View style={s.topRow}>
         <Tap testID="header-brand-home" accessibilityRole="button" accessibilityLabel={t('shell.home')} style={s.brand}>
           <BrandLogo testID="company-logo" tone="dark" height={28} />
         </Tap>
@@ -67,7 +69,7 @@ function Hero() {
           <HeroIcon testID="header-cart-button" label={t('shell.cart')} onPress={() => router.navigate('/cart' as never)} badge={totalItems > 0 ? fmt.number(totalItems) : undefined}><ShoppingBag size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
           <HeroIcon testID="header-profile-btn" label={t('shell.profile')} onPress={() => router.navigate('/account' as never)}><User size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
         </View>
-      </View>
+      </View>}
       <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.location}>
         <MapPin size={15} color="#FFFFFF" fill="rgba(255,255,255,0.18)" strokeWidth={2} />
         <Text testID="selected-location" numberOfLines={1} style={s.address}>{location}</Text>

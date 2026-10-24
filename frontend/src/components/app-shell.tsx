@@ -21,8 +21,11 @@ import { OneGlyph } from './one-button';
 import { BrandLogo } from './brand-logo';
 import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
 import { HOME_COMPACT_AT } from './home-hero';
+import { DesktopNav } from './desktop-nav';
+import { useIsDesktop } from '../layout';
 
 const BARE = ['/sign-in'];
+const FULL_SCREEN = ['/location', '/address-map', '/address-form'];
 const IMMERSIVE = ['/product/', '/brand/'];
 const LOCATION_ASKED_KEY = 'onecity.location-asked.v1';
 
@@ -43,7 +46,7 @@ function useLocationFirst(hasSavedLocation: boolean | null, waitForLanguage: boo
 
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const path = usePathname(); const router = useRouter(); const insets = useSafeAreaInsets(); const { totalItems } = useCart();
+  const path = usePathname(); const desktop = useIsDesktop(); const router = useRouter(); const insets = useSafeAreaInsets(); const { totalItems } = useCart();
   const { t } = useTranslation(); const fmt = useFormat(); const waitForLanguage = useShowFirstRun();
   const scrolling = ['/', '/food', '/grocery', '/shops', '/care', '/pharmacy', '/beauty', '/book-it', '/categories'].includes(path);
   const reels = !scrolling; const palette = paletteFor(path);
@@ -81,6 +84,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
   if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
   return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
+    {desktop && !FULL_SCREEN.some(p => path.startsWith(p)) && <DesktopNav />}
+    <View style={styles.page}>
     {!reels && !isHome && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><LinearGradient testID="city-header-gradient" colors={[palette.top, palette.mid]}>
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
         <View style={styles.topRow}>{!isHome && <Tap testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Tap>}<Tap testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><BrandLogo testID="company-logo" tone="light" height={22} /></Tap>
@@ -106,12 +111,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
+    </View>
   </View></DeliveryLocationContext.Provider>;
 }
 const styles = StyleSheet.create({
   utility: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, paddingHorizontal: 14, height: 44 },
   scrollingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }, compact: { position: 'absolute', left: 16, right: 16, zIndex: 25, height: 52, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 26, paddingLeft: 6, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(5,6,5,0.16)' }, { offsetX: 0, offsetY: 1, blurRadius: 3, color: 'rgba(5,6,5,0.08)' }] }, scrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 24 }, compactGlyph: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#050605', alignItems: 'center', justifyContent: 'center' }, compactSearch: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }, compactPlaceholder: { flex: 1, color: 'rgba(5,6,5,0.55)', fontSize: 15, fontWeight: '500' }, compactIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(179,244,0,0.28)', alignItems: 'center', justifyContent: 'center' }, compactButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, compactText: { color: colors.forest, fontSize: 11, fontWeight: '600' },
-  container: { flex: 1, backgroundColor: colors.surface }, body: { flex: 1 }, background: { position: 'absolute', top: 0, left: 0, right: 0, height: 525 }, header: { paddingHorizontal: 20, paddingTop: 9 },
+  container: { flex: 1, backgroundColor: colors.surface }, page: { flex: 1 }, body: { flex: 1 }, background: { position: 'absolute', top: 0, left: 0, right: 0, height: 525 }, header: { paddingHorizontal: 20, paddingTop: 9 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, topActions: { flexDirection: 'row', gap: 4 },
   brand: { minHeight: 44, justifyContent: 'center' }, logo: { width: 76, height: 22 }, location: { minHeight: 28, alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: -5 }, address: { color: colors.onSurface, fontSize: 10, fontWeight: '500', flexShrink: 1 },
   iconButton: { width: 44, height: 44, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.whiteGlass },

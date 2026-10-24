@@ -24,6 +24,7 @@ import { useTranslation } from '../i18n';
 import { departmentName } from '../departments';
 import { haptic } from '../haptics';
 import { useMotionAllowed } from '../motion';
+import { useIsDesktop } from '../layout';
 
 const tabs = [
   { id: 'home', path: '/', icon: House },
@@ -44,7 +45,7 @@ export const dockSpace = (insetBottom: number) => dockBottom(insetBottom) + DOCK
 
 export function BottomNavigation() {
   const insets = useSafeAreaInsets(); const path = usePathname(); const router = useRouter(); const { t } = useTranslation();
-  const motion = useMotionAllowed();
+  const motion = useMotionAllowed(); const desktop = useIsDesktop();
   const labels: Record<string, string> = { home: t('nav.home'), categories: t('nav.categories'), discover: t('nav.discover'), food: departmentName(t, 'food'), 'book-it': departmentName(t, 'book-it') };
   const palette = usePageColors();
   const dark = path === '/reels';
@@ -75,7 +76,7 @@ export function BottomNavigation() {
   const onLayout = (e: LayoutChangeEvent) => { slot.value = e.nativeEvent.layout.width / tabs.length; };
 
   // Full-screen flows, and product pages (they carry their own sticky add-to-bag bar).
-  if (['/location', '/address-map', '/address-form', '/sign-in'].includes(path) || path.startsWith('/product/')) return null;
+  if (desktop || ['/location', '/address-map', '/address-form', '/sign-in'].includes(path) || path.startsWith('/product/')) return null;
   return <View pointerEvents="box-none" style={[styles.float, { bottom: dockBottom(insets.bottom) }]}>
     <GestureDetector gesture={pan}>
       <View testID="bottom-navigation" onLayout={onLayout} style={[styles.bar, dark && styles.dark]}>
