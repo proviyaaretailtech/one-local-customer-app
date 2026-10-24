@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-24 — One Local customer app: desktop web layout
+
+**The website version of the customer app now works properly on laptops and desktops.**
+
+- **Why:** on a laptop the app showed as a narrow phone strip inside a big black frame, which nobody could comfortably use.
+- **Structural decisions:** on browsers 1000px wide and up, a top menu bar replaces the phone's floating bottom bar. The alternative was to keep the phone layout and only widen it; that lost because people on a computer expect a menu across the top. Phones are unchanged.
+- **What works now:** a wide layout with Home, Categories, Discover, Food, Book It, search, bag and account across the top. Store pages show 5 product columns instead of 2 with big gaps. The earlier push of all customer-app work to GitHub (one-local-customer-app) is also done.
+- **Left undone:** cart, checkout, orders and sign-in were not checked at desktop width. The wallet icon is not in the top bar. Text sign-in by SMS still needs a real test on a phone. The store, cart and orders pages still show "coming soon" in the shipped test build, which was built with that switch on.
+- **Open questions for the founder:** should the website have its own look (for example a wider home page with sections side by side), or stay as the phone design stretched wider?
+
 ## 2026-10-03 — One Local server: security fixes from the independent review
 
 **The server no longer lets a rider finish a delivery from far away, no longer charges customers for orders no restaurant can take, and no longer trusts a header the customer can invent. Nothing is applied to production, and the database owner has a short list of changes to make (agent/recon/db-requests-server.md).**
