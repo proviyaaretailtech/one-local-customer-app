@@ -17,6 +17,7 @@ import { ORDER_TOTAL_S, stageAt, syncOrderActivity, updateOrderWidget } from '@/
 import { OneLottie } from '@/src/components/one-lottie';
 import { CancelOrderCard } from '@/src/components/cancel-order-card';
 import { RefundStatus } from '@/src/components/refund-status';
+import { OrderStageCard, StageToast, useStageToast } from '@/src/components/order-stage';
 import { orderStatusKey, useFormat, useTranslation } from '@/src/i18n';
 import { useLiveTracking } from '@/src/use-live-tracking';
 import { TrackingMap } from '@/src/components/tracking-map';
@@ -92,6 +93,10 @@ export default function OrderTrackingScreen() {
   const live: TrackingLive | null = tracking.data?.live ? tracking.data : null;
   const trackingPending = tracking.loading && !tracking.data;
   const neutral = !!live || trackingPending;
+  // The restaurant's side (0580): waiting for it, kitchen ticket, preparing, ready, or why it was cancelled. A change shows a toast.
+  const orderStage = tracking.data?.stage ?? null;
+  const stageToast = useStageToast(orderStage, order?.store_name ?? '');
+  const awaitingRestaurant = orderStage?.stage === 'created' || orderStage?.stage === 'waiting_partner';
 
   // Rider animation: 0..1 over the delivery duration
   const progress = useSharedValue(0);
@@ -168,7 +173,8 @@ export default function OrderTrackingScreen() {
   const cancelled = live?.phase === 'cancelled';
   const timelineSteps: { key: string; label: ParseKeys; icon: StepIcon }[] = !live ? TIMELINE
     : cancelled ? [{ key: 'cancelled', label: 'tracking.phase.cancelled', icon: LIVE_ICONS.cancelled }]
-    : LIVE_TIMELINE.map(p => ({ key: p, label: `tracking.phase.${p}` as ParseKeys, icon: LIVE_ICONS[p] })); // i18n-ignore (catalogue keys)
+    // until the restaurant has confirmed (and its kitchen ticket exists) the first row says so, never "preparing"
+    : LIVE_TIMELINE.map(p => ({ key: p, label: (p === 'preparing' && awaitingRestaurant ? 'tracking.phase.waiting_partner' : `tracking.phase.${p}`) as ParseKeys, icon: LIVE_ICONS[p] })); // i18n-ignore (catalogue keys)
   const currentStep = !live ? stagePct : cancelled ? 0 : timelineIndex(live.phase);
   const stepTone = cancelled ? colors.onError : colors.brandPrimary;
   const etaIcon: StepIcon = live?.phase === 'delivered' ? 'checkmark' : cancelled ? 'close' : 'bicycle-outline';
@@ -198,6 +204,7 @@ export default function OrderTrackingScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
         <Text testID="order-payment-method" style={styles.riderMeta}>{`${paymentLabel(order.payment_method || 'cod')} · ${neutral && (order.payment_status ?? 'not_charged') === 'not_charged' ? t('tracking.live.payAtDoor') : t(paymentNoteKey(order.payment_status))}`}</Text>
         {((order.payment_method ?? 'cod') !== 'cod' || order.payment_status === 'refunded') && <RefundStatus orderId={order.id} />}
+        <OrderStageCard stage={orderStage} store={order.store_name ?? ''} />
         {elapsedS < 12 && <View testID="order-placed-moment" style={styles.placed}>
           <OneLottie name="order-success" size={72} />
           <View style={{ flex: 1 }}><Text style={styles.placedTitle}>{t('tracking.placed')}</Text><Text style={styles.placedSub}>{t('tracking.placedSub', { amount: fmt.money(order.total) })}</Text></View>
@@ -348,6 +355,7 @@ export default function OrderTrackingScreen() {
           <Text style={styles.homeBtnText}>{t('tracking.continueShopping')}</Text>
         </TouchableOpacity>
       </ScrollView>
+      <StageToast message={stageToast} top={insets.top + 64} />
     </View>
   );
 }

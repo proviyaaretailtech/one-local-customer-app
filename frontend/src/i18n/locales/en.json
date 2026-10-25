@@ -1719,7 +1719,8 @@
       "on_the_way": "On the way to you",
       "at_door": "At your door",
       "delivered": "Delivered",
-      "cancelled": "Order cancelled"
+      "cancelled": "Order cancelled",
+      "waiting_partner": "Waiting for the restaurant to confirm"
     },
     "phaseNow": {
       "preparing": "The store is getting your order ready",
@@ -1737,7 +1738,31 @@
       "cycle": "cycle",
       "car": "car"
     },
-    "getHelp": "Get help with this order"
+    "getHelp": "Get help with this order",
+    "stage": {
+      "created": "Placing your order with {{store}}…",
+      "waiting_partner": "Sent to {{store}}. Waiting for them to confirm (up to 4 min).",
+      "answerIn": "They have {{time}} left to confirm",
+      "kitchen_ticket_created": "{{store}} accepted your order · Kitchen ticket #{{kot}} · ready in about {{prep}} min",
+      "kitchen_ticket_created_noPrep": "{{store}} accepted your order · Kitchen ticket #{{kot}}",
+      "preparing": "The kitchen has started your order",
+      "ready": "Your order is ready",
+      "out": "Your order is on the way",
+      "delivered": "Delivered. Enjoy your meal!",
+      "rejected_by_partner": "{{store}} couldn't take your order: {{reason}}.",
+      "rejected_by_partner_noReason": "{{store}} couldn't take your order.",
+      "auto_cancelled": "{{store}} didn't respond in time, so we cancelled your order.",
+      "auto_cancelled_ghost": "{{store}} went offline, so we cancelled your order.",
+      "customer_cancelled": "You cancelled this order.",
+      "ops_cancelled": "One Local cancelled this order.",
+      "cancelled": "This order was cancelled."
+    },
+    "stageRefund": {
+      "initiated": "Refund of {{amount}} started. It reaches your account in 5–7 working days.",
+      "processed": "Refund of {{amount}} sent to your original payment method.",
+      "delayed": "Your refund is delayed. Our support team is on it.",
+      "none": "Nothing was charged."
+    }
   },
   "notifications": {
     "placed": {
