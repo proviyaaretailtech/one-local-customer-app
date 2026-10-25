@@ -59,6 +59,8 @@ function shape(row: Row) {
 
 export async function listOrders(staff: Staff, tab: Tab) {
   await rpc('ol_expire_unanswered', { p_org: staff.organizationId });
+  // A device polling its inbox is someone at the restaurant: it counts as the POS heartbeat (0580). Never fails the listing.
+  try { await rpc('ol_partner_inbox_heartbeat', { p_org: staff.organizationId, p_user: staff.userId }); } catch { /* the orders still load */ }
   let query = db().from('ol_orders').select(ORDER_FIELDS).eq('organization_id', staff.organizationId).in('status', TAB_STATUSES[tab]);
   query = tab === 'past'
     ? query.gte('created_at', new Date(Date.now() - 3 * 86_400_000).toISOString()).order('created_at', { ascending: false }).limit(50)
@@ -120,8 +122,9 @@ export async function getOutlet(staff: Staff) {
   const { data, error } = await db().from('ol_merchant_channels').select('*').eq('organization_id', staff.organizationId).maybeSingle();
   if (error) fromDbError(error);
   return data
-    ? { accepting: data.accepting, back_at: data.back_at, default_prep_minutes: data.default_prep_minutes, accept_window_seconds: data.accept_window_seconds, missed_in_a_row: data.missed_in_a_row, address: data.address, set_up: true }
-    : { accepting: false, back_at: null, default_prep_minutes: 20, accept_window_seconds: 60, missed_in_a_row: 0, address: null, set_up: false };
+    ? { accepting: data.accepting, back_at: data.back_at, default_prep_minutes: data.default_prep_minutes, accept_window_seconds: data.accept_window_seconds, missed_in_a_row: data.missed_in_a_row, address: data.address, set_up: true,
+        platform_hold: data.platform_hold ?? false, platform_hold_reason: data.platform_hold_reason ?? null }
+    : { accepting: false, back_at: null, default_prep_minutes: 20, accept_window_seconds: 240, missed_in_a_row: 0, address: null, set_up: false, platform_hold: false, platform_hold_reason: null };
 }
 
 export async function setOutlet(staff: Staff, body: Row) {
