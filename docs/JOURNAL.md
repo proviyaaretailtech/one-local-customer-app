@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-25 — One Local customer app: merged the team's "new version" branch
+
+**The latest teammate work (welcome screen, SMS sign-in hook, profile gate, product details) is now combined with the desktop layout and live order tracking.**
+
+- **Why:** a teammate pushed new customer-app work to a separate branch (feat2) that was missing the last five local changes; both lines needed to live together.
+- **Structural decisions:** where the two clashed, the desktop layout rules were kept and the teammate's choices won on phone screens — the bottom menu now stays visible on product pages, and the home screen shows a "fastest delivery" chip next to the location.
+- **What works now:** one branch holds the welcome screen, product details panel, delivery-time chip and the desktop layout together.
+- **Left undone:** not tested in the browser or on a phone yet; not pushed. A pre-existing type error in a delivery OTP test script remains (unrelated to this merge).
+- **Open questions for the founder:** should feat2 be retired now that its work is merged?
+
 ## 2026-10-24 — One Local customer app: desktop web layout
 
 **The website version of the customer app now works properly on laptops and desktops.**
