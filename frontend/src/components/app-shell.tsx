@@ -22,7 +22,7 @@ import { BrandLogo } from './brand-logo';
 import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
 import { HOME_COMPACT_AT } from './home-hero';
 
-const BARE = ['/sign-in'];
+const BARE = ['/sign-in', '/welcome'];
 const IMMERSIVE = ['/product/', '/brand/'];
 const LOCATION_ASKED_KEY = 'onecity.location-asked.v1';
 

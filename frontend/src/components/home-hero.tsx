@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowRight, ChevronDown, MapPin, Mic, ScanLine, Search, ShoppingBag, User, Wallet } from 'lucide-react-native';
+import { ArrowRight, ChevronDown, MapPin, Mic, ScanLine, Search, ShoppingBag, User, Wallet, Zap } from 'lucide-react-native';
 import { colors } from '../theme';
 import { BrandLogo } from './brand-logo';
 import { mediaUrl } from '../api';
@@ -42,7 +42,7 @@ function HeroIcon({ testID, label, onPress, children, badge }: { testID: string;
   </Tap>;
 }
 
-function Hero() {
+function Hero({ catalog }: { catalog: Catalog }) {
   const router = useRouter(); const insets = useSafeAreaInsets(); const { width } = useWindowDimensions();
   const { t } = useTranslation(); const fmt = useFormat(); const { totalItems } = useCart();
   const { location, edit } = useDeliveryLocation();
@@ -51,6 +51,8 @@ function Hero() {
     const id = setInterval(() => setSlide(i => (i + 1) % campaignImages.length), CAMPAIGN_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
+  // The quickest delivery the catalogue promises today (real data, not a fixed claim); no chip when none is known.
+  const fastest = useMemo(() => Math.min(...catalog.products.map(p => p.delivery_min).filter(m => m > 0)), [catalog]);
   const height = HOME_HERO_HEIGHT + insets.top;
   return <View testID="home-hero" style={[s.hero, { height }]}>
     <Image source={mediaUrl(campaignImages[slide])} accessibilityLabel={t(campaign.alt)} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: '28%', left: '60%' }} transition={900} cachePolicy="memory-disk" />
@@ -68,11 +70,14 @@ function Hero() {
           <HeroIcon testID="header-profile-btn" label={t('shell.profile')} onPress={() => router.navigate('/account' as never)}><User size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
         </View>
       </View>
-      <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.location}>
-        <MapPin size={15} color="#FFFFFF" fill="rgba(255,255,255,0.18)" strokeWidth={2} />
-        <Text testID="selected-location" numberOfLines={1} style={s.address}>{location}</Text>
-        <ChevronDown size={14} color="#FFFFFF" strokeWidth={2.2} />
-      </Tap>
+      <View style={s.locationRow}>
+        <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.location}>
+          <MapPin size={15} color="#FFFFFF" fill="rgba(255,255,255,0.18)" strokeWidth={2} />
+          <Text testID="selected-location" numberOfLines={1} style={s.address}>{location}</Text>
+          <ChevronDown size={14} color="#FFFFFF" strokeWidth={2.2} />
+        </Tap>
+        {Number.isFinite(fastest) && <View testID="home-hero-eta" style={s.etaChip}><Zap size={13} color="#0B1F16" fill="#0B1F16" strokeWidth={2} /><Text style={s.etaText}>{t('home.hero.fastDelivery', { time: fmt.eta(fastest) })}</Text></View>}
+      </View>
       <Text testID="home-hero-eyebrow" style={s.eyebrow}>{t(campaign.eyebrow)}</Text>
       <Text testID="home-hero-title" accessibilityRole="header" style={[s.title, { maxWidth: Math.min(300, width * 0.78) }]}>{t(campaign.title)}</Text>
       <View style={s.search}>
@@ -153,7 +158,7 @@ function useHeroStatusBar() {
 export const HomeHero = memo(function HomeHero({ catalog }: { catalog: Catalog }) {
   useHeroStatusBar();
   return <View style={s.wrap}>
-    <Hero />
+    <Hero catalog={catalog} />
     <View style={s.below}>
       <DepartmentTiles />
       <OfferTiles catalog={catalog} />
@@ -174,7 +179,10 @@ const s = StyleSheet.create({
   glass: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' },
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0397A', borderWidth: 1.5, borderColor: '#FFFFFF' },
   badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', maxWidth: '92%', minHeight: 34, marginTop: 4 },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', maxWidth: '100%', flexShrink: 1, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  etaChip: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.electricLime },
+  etaText: { fontSize: 12.5, fontWeight: '800', color: '#0B1F16' },
   address: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', flexShrink: 1 },
   eyebrow: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginTop: 34 },
   title: { color: '#FFFFFF', fontSize: 40, lineHeight: 42, fontWeight: '800', letterSpacing: -1.4, marginTop: 10, textShadowColor: 'rgba(0,0,0,0.18)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
@@ -186,8 +194,8 @@ const s = StyleSheet.create({
   below: { marginTop: -44, paddingHorizontal: 16, gap: 18 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, minHeight: 96, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', paddingTop: 10, paddingHorizontal: 3, paddingBottom: 8, gap: 6, boxShadow: shadow },
-  tileIcon: { width: 46, height: 46 },
-  tileLabel: { color: '#1A1A1A', fontSize: 10.5, lineHeight: 13, minHeight: 26, fontWeight: '600', textAlign: 'center' },
+  tileIcon: { width: 48, height: 48 },
+  tileLabel: { color: '#1A1A1A', fontSize: 11, lineHeight: 13, minHeight: 26, fontWeight: '600', textAlign: 'center' },
   offers: { flexDirection: 'row', gap: 10 },
   offer: { flex: 1, height: 100, borderRadius: 18, overflow: 'hidden', flexDirection: 'row' },
   offerWide: { flex: 1.35 },

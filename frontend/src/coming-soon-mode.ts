@@ -3,9 +3,9 @@
 export const COMING_SOON_ALL = process.env.EXPO_PUBLIC_COMING_SOON !== 'off';
 
 // Top-level route segments that stay usable while the switch is on: the tab bar (browsing screens, read only),
-// sign-in, and static pages. Every other route (store, brand, product, cart checkout, orders, booking…) shows
+// sign-in (and the one-time "One last step" after it: name and delivery place), editing the profile, and static pages. Every other route (store, brand, product, cart checkout, orders, booking…) shows
 // the coming-soon page instead.
-export const OPEN_SEGMENTS = ['(tabs)', 'sign-in', 'help', 'about', 'privacy', 'privacy-notice', 'language'];
+export const OPEN_SEGMENTS = ['(tabs)', 'sign-in', 'welcome', 'profile-edit', 'location', 'help', 'about', 'privacy', 'privacy-notice', 'language'];
 // Tabs that are covered too, even though the tab bar is open: the bag (no ordering in this build).
 export const BLOCKED_TABS = ['cart'];
 

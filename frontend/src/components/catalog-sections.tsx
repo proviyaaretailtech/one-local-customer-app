@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { gridColumns, useAppDimensions } from '../layout';
 import { Image } from 'expo-image';
@@ -28,13 +29,20 @@ const gridStyles = StyleSheet.create({ grid: { flexDirection: 'row', flexWrap: '
 // Brands without a logo image get a monogram (one or two initials) instead of their full name
 // squeezed into the tile — long names like "Himalaya" otherwise break mid-word.
 const monogram = (name: string) => name.split(/[\s'’&-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+// Each logo-less brand gets its own soft tint (picked from its name, so it never changes between visits)
+// instead of every tile wearing the same maroon-on-white.
+const MONOGRAM_TINTS = [['#FCEAF2', '#8A2F5C'], ['#E6F4EA', '#1F6B3A'], ['#FFF0E4', '#9D441D'], ['#E6F0FF', '#244F9A'], ['#F0E6FF', '#5B3A9B'], ['#FFF7D6', '#7A5A00']] as const;
+const monogramTint = (name: string) => MONOGRAM_TINTS[[...name].reduce((n, ch) => n + ch.charCodeAt(0), 0) % MONOGRAM_TINTS.length];
 export function BrandRail({ brands, scope, onSelect, active }: { brands: Brand[]; scope: string; onSelect?: (id: string) => void; active?: string }) {
   const router = useRouter(); const { t } = useTranslation(); const { data } = useCatalog();
+  // A logo that fails to load (missing file, offline) falls back to the monogram instead of an empty tile.
+  const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
+  const hasLogo = (b: Brand) => !!b.logo && !broken.has(b.id);
   // Brands with nothing to order yet wear a "Soon" tag (their page shows the coming-soon receipt).
   const soon = (id: string) => !!data && !data.products.some(p => p.brand_id === id || p.store_id === id);
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandRail}>
     {brands.map(b => <Tap testID={`${scope}-brand-${b.id}`} key={b.id} onPress={() => onSelect ? onSelect(b.id) : router.push(`/brand/${b.id}` as any)} style={styles.brandItem}>
-      <View style={[styles.brandCircle, active === b.id && styles.selectedBrand]}>{b.logo ? <Image testID={`${scope}-brand-logo-${b.id}`} source={b.logo} contentFit="contain" style={styles.brandLogo} /> : <Text testID={`${scope}-brand-wordmark-${b.id}`} style={[styles.brandMonogram, { color: b.department === 'beauty' ? colors.beauty : colors.pharmacy }]} numberOfLines={1} accessibilityLabel={b.name}>{monogram(b.name)}</Text>}{soon(b.id) && <View testID={`${scope}-brand-soon-${b.id}`} style={styles.soon}><Text style={styles.soonText}>{t('popups.comingSoon.soon')}</Text></View>}</View><Text testID={`${scope}-brand-name-${b.id}`} style={styles.brandName} numberOfLines={2}>{b.name}</Text>
+      <View style={[styles.brandCircle, !hasLogo(b) && { backgroundColor: monogramTint(b.name)[0] }, active === b.id && styles.selectedBrand]}>{hasLogo(b) ? <Image testID={`${scope}-brand-logo-${b.id}`} source={b.logo} contentFit="contain" style={styles.brandLogo} onError={() => setBroken(prev => new Set(prev).add(b.id))} /> : <Text testID={`${scope}-brand-wordmark-${b.id}`} style={[styles.brandMonogram, { color: monogramTint(b.name)[1] }]} numberOfLines={1} accessibilityLabel={b.name}>{monogram(b.name)}</Text>}{soon(b.id) && <View testID={`${scope}-brand-soon-${b.id}`} style={styles.soon}><Text style={styles.soonText}>{t('popups.comingSoon.soon')}</Text></View>}</View><Text testID={`${scope}-brand-name-${b.id}`} style={styles.brandName} numberOfLines={2}>{b.name}</Text>
     </Tap>)}
   </ScrollView>;
 }

@@ -23,6 +23,7 @@ import { useFormat, useTranslation } from '@/src/i18n';
 import { paletteFor } from '@/src/departments';
 import { nativeDriver, useMotionAllowed } from '@/src/motion';
 import { ProductRail } from '@/src/components/catalog-sections';
+import { departmentName } from '@/src/departments';
 
 type Story = {
   product: Product; gallery: string[];
@@ -148,6 +149,23 @@ export default function ProductDetail() {
         </Pressable>}
       </View>
 
+      {/* Everything the catalogue knows about the item, nothing more. */}
+      <View testID="pd-details" style={s.details}>
+        <Text style={[s.sectionTitle, { marginHorizontal: 0 }]}>{t('product.details.title')}</Text>
+        {([
+          ['brand', t('product.details.brand'), story.brand?.name],
+          ['pack', t('product.details.packSize'), product.weight],
+          ['category', t('product.details.category'), story.category?.name],
+          ['store', t('product.details.soldBy'), story.store?.name],
+          ['type', t('product.details.type'), product.department ? departmentName(t, product.department) : ''],
+          ['delivery', t('product.details.delivery'), fmt.eta(product.delivery_min)],
+          ['rating', t('product.details.rating'), fmt.number(product.rating, { maxFractionDigits: 1, minFractionDigits: 1 }) + ' / 5'],
+          ['mrp', t('product.details.mrp'), product.mrp > product.price ? fmt.money(product.mrp) : ''],
+          ['save', t('product.details.youSave'), savings > 0 ? `${fmt.money(savings)} (${fmt.percent(Math.round(savings / product.mrp * 100))})` : ''],
+          ['tax', t('product.details.taxes'), product.department === 'food' ? t('product.gstAdded') : t('product.taxIncluded')],
+        ] as const).filter(([, , value]) => !!value).map(([key, label, value]) => <View key={key} style={s.detailRow}><Text style={s.detailLabel}>{label}</Text><Text testID={`pd-detail-${key}`} style={s.detailValue}>{value}</Text></View>)}
+      </View>
+
       {story.related.length > 0 && <View style={s.relatedWrap}><Text style={s.sectionTitle}>{t('product.moreLikeThis')}</Text><ProductRail products={story.related} scope="pd-related" /></View>}
 
       {/* Footer echoes the hero */}
@@ -235,6 +253,10 @@ const s = StyleSheet.create({
   storeLogo: logoTile(48), storeLogoImage: { width: logoSize(48), height: logoSize(48) },
   storeName: { fontSize: 14, fontWeight: '800', color: colors.onSurface }, storeMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
   relatedWrap: { marginTop: 8 },
+  details: { marginTop: 8, marginHorizontal: spacing.lg, padding: spacing.lg, borderRadius: 20, backgroundColor: colors.surfaceSecondary },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  detailLabel: { fontSize: 13, color: colors.muted, flexShrink: 0 },
+  detailValue: { flex: 1, textAlign: 'right', fontSize: 13, fontWeight: '700', color: colors.onSurface },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.onSurface, marginHorizontal: 20, marginBottom: 12, letterSpacing: -0.3 },
   footer: { marginTop: 28, height: 260, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 30, overflow: 'hidden' },
   footerShot: { width: 110, height: 110, marginBottom: 16, opacity: 0.95 },

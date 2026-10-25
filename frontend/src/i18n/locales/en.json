@@ -488,7 +488,20 @@
     "removeOneItem": "Remove one {{name}}",
     "addOneItem": "Add one {{name}}",
     "add": "ADD",
-    "moreFromBrand": "More from {{name}}"
+    "moreFromBrand": "More from {{name}}",
+    "details": {
+      "title": "Product details",
+      "brand": "Brand",
+      "packSize": "Pack size",
+      "category": "Category",
+      "soldBy": "Sold by",
+      "type": "Type",
+      "delivery": "Delivery",
+      "rating": "Rating",
+      "mrp": "MRP",
+      "youSave": "You save",
+      "taxes": "Taxes"
+    }
   },
   "store": {
     "loading": "Loading store...",
@@ -1082,7 +1095,11 @@
       "bookSubtitle": "Movies, music and a change of scene.",
       "assistantTitle": "Not sure where to start?",
       "assistantText": "Tell One your budget. Find your little favourites.",
-      "note": "Made for Latur. Curated for you. Demo brand listings, illustrative images and sample prices."
+      "note": "Made for Latur. Curated for you. Demo brand listings, illustrative images and sample prices.",
+      "storeCategories": {
+        "title": "Store categories",
+        "subtitle": "What each local store sells"
+      }
     },
     "promos": {
       "heading": "A LITTLE LOCAL. A LOT TO LOVE.",
@@ -1238,7 +1255,8 @@
       "eyebrow": "GOOD FOOD · BRIGHTER DAYS",
       "title": "Fresh choices\nfor a happier you.",
       "searchPlaceholder": "Search for food, groceries, shops…",
-      "photoLabel": "A fresh salad bowl"
+      "photoLabel": "A fresh salad bowl",
+      "fastDelivery": "Delivery in {{time}}"
     },
     "offers": {
       "groceryTitle": "Up to {{pct}} off",
@@ -1505,6 +1523,13 @@
       "added": "Added to Cart!",
       "continue": "Continue Shopping",
       "view": "View Cart"
+    },
+    "strip": {
+      "deliveryIn": "Delivery in {{time}}",
+      "saving": "You're saving {{amount}} on this order"
+    },
+    "more": {
+      "title": "Add more from these categories"
     }
   },
   "checkout": {
@@ -2266,5 +2291,16 @@
     "title": "This page took a wrong turn.",
     "body": "The link may be old or mistyped. Let’s get you back.",
     "home": "Go to home"
+  },
+  "welcome": {
+    "title": "One last step",
+    "subtitle": "Tell us who we are delivering to, and where.",
+    "mobileLabel": "Mobile number",
+    "locationLabel": "Delivery location",
+    "chooseLocation": "Choose your delivery location",
+    "locationNeeded": "Please choose where we should deliver.",
+    "finish": "Start shopping",
+    "saveError": "We could not save your details. Please try again.",
+    "differentNumber": "Use a different number"
   }
 }
