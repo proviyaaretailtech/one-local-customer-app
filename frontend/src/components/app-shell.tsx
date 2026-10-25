@@ -24,7 +24,7 @@ import { HOME_COMPACT_AT } from './home-hero';
 import { DesktopNav } from './desktop-nav';
 import { useIsDesktop } from '../layout';
 
-const BARE = ['/sign-in'];
+const BARE = ['/sign-in', '/welcome'];
 const FULL_SCREEN = ['/location', '/address-map', '/address-form'];
 const IMMERSIVE = ['/product/', '/brand/'];
 const LOCATION_ASKED_KEY = 'onecity.location-asked.v1';

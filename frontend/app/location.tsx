@@ -24,7 +24,7 @@ const mapHref = (p?: Point | null, extra = '') => `/address-map?${p ? `lat=${p.l
 const KIND_KEY = { city: 'location.kind.city', town: 'location.kind.town', locality: 'location.kind.locality', village: 'location.kind.village' } as const;
 
 export default function LocationPicker() {
-  const router = useRouter(); const insets = useSafeAreaInsets(); const { first } = useLocalSearchParams<{ first?: string }>();
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { first, back } = useLocalSearchParams<{ first?: string; back?: string }>();
   const { t } = useTranslation(); const fmt = useFormat(); const message = useErrorMessage();
   const { addresses, update } = useCustomer(); const delivery = useDeliveryLocation(); const { maps } = useFeatures();
   const session = useRef(randomId(16)).current;
@@ -53,11 +53,13 @@ export default function LocationPicker() {
   }, [query, session, here, delivery.point, maps, message]);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as never));
+  // Opened from the "One last step" screen (back=1): return to it, so what was typed there is kept.
+  const done = () => (back && router.canGoBack() ? router.back() : router.replace('/(tabs)' as never));
   const choosePlace = (p: Pick<IndiaPlace, 'name' | 'district' | 'state' | 'lat' | 'lng'>) => {
     const line = placeLine(p);
     delivery.setLocation(line ? `${p.name}, ${line}` : p.name, { lat: p.lat, lng: p.lng });
     void rememberPlace({ title: p.name, subtitle: line, lat: p.lat, lng: p.lng });
-    router.replace('/(tabs)' as never);
+    done();
   };
   const pickStreet = async (s: Suggestion) => {
     try {
@@ -73,7 +75,7 @@ export default function LocationPicker() {
       const p = await currentPoint(); setHere(p);
       const c = await coverageAt(p);
       if (c.place) choosePlace({ ...c.place, lat: p.lat, lng: p.lng });
-      else { delivery.setLocation(t('location.current'), p); router.replace('/(tabs)' as never); }
+      else { delivery.setLocation(t('location.current'), p); done(); }
     } catch (e) {
       setError(Platform.OS === 'web' && e instanceof LocationOffError ? t('location.webOff') : isLocationError(e) ? e.message : message(e));
       setSettings(e instanceof LocationOffError && !e.canAskAgain && Platform.OS !== 'web');
