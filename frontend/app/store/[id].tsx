@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ComingSoonBrand, useComingSoon } from '@/src/components/coming-soon-brand';
 import { MAX_APP_WIDTH, useAppDimensions } from '@/src/layout';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
+import { Text } from "@/src/ui/text";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useLocalSearchParams, useRouter } from "expo-router";

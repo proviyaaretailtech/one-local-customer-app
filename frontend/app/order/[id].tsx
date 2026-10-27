@@ -1,7 +1,8 @@
 import type { ParseKeys } from 'i18next';
 import { useEffect, useState, type ComponentProps } from "react";
 import { MAX_APP_WIDTH } from '@/src/layout';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from "react-native";
+import { Text } from "@/src/ui/text";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +17,8 @@ import { paymentLabel } from '@/src/components/payment-options';
 import { ORDER_TOTAL_S, stageAt, syncOrderActivity, updateOrderWidget } from '@/src/native/ios-extras';
 import { OneLottie } from '@/src/components/one-lottie';
 import { CancelOrderCard } from '@/src/components/cancel-order-card';
+import { OrderFeedback } from '@/src/components/order-feedback';
+import { ReceiptShare } from '@/src/components/receipt-share';
 import { RefundStatus } from '@/src/components/refund-status';
 import { OrderStageCard, StageToast, useStageToast } from '@/src/components/order-stage';
 import { orderStatusKey, useFormat, useTranslation } from '@/src/i18n';
@@ -344,6 +347,9 @@ export default function OrderTrackingScreen() {
             <Text style={styles.totalValue}>{fmt.money(order.total)}</Text>
           </View>
         </View>
+
+        <OrderFeedback order={order} />
+        <ReceiptShare order={order} />
 
         <CancelOrderCard order={order} onCancelled={() => setRetry(v => v + 1)} />
 

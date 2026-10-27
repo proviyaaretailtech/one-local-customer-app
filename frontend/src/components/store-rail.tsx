@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';

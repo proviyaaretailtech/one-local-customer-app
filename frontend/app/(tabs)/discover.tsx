@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { View, Text, Pressable, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { View, Pressable, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

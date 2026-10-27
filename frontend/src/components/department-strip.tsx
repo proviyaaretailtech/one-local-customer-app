@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Tap } from './tap';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { usePathname, useRouter } from 'expo-router';
 import { colors } from '../theme';

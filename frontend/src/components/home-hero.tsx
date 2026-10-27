@@ -6,7 +6,8 @@
 // without an app update (specs/home-cms).
 import { Tap } from './tap';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { setStatusBarStyle } from 'expo-status-bar';
@@ -24,9 +25,9 @@ import { useCityScroll } from '../motion';
 import { useFormat, useTranslation } from '../i18n';
 import { useIsDesktop } from '../layout';
 
-export const HOME_HERO_HEIGHT = 468;
+export const HOME_HERO_HEIGHT = 348;
 /** Scroll offset (past the hero's search bar) where the compact header appears. */
-export const HOME_COMPACT_AT = 360;
+export const HOME_COMPACT_AT = 244;
 
 const INK = '#0B1F16';
 const DEEP = '#0F3D2E';
@@ -182,13 +183,13 @@ const s = StyleSheet.create({
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0397A', borderWidth: 1.5, borderColor: '#FFFFFF' },
   badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
   location: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', maxWidth: '100%', flexShrink: 1, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  etaChip: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.electricLime },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  etaChip: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.electricLime },
   etaText: { fontSize: 12.5, fontWeight: '800', color: '#0B1F16' },
   address: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', flexShrink: 1 },
-  eyebrow: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginTop: 34 },
-  title: { color: '#FFFFFF', fontSize: 40, lineHeight: 42, fontWeight: '800', letterSpacing: -1.4, marginTop: 10, textShadowColor: 'rgba(0,0,0,0.18)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
-  search: { position: 'absolute', left: 16, right: 16, bottom: 62, height: 54, borderRadius: 27, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(6,18,11,0.22)' }] },
+  eyebrow: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginTop: 16 },
+  title: { color: '#FFFFFF', fontSize: 28, lineHeight: 38, fontWeight: '800', letterSpacing: -0.9, marginTop: 8, textShadowColor: 'rgba(0,0,0,0.18)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
+  search: { position: 'absolute', left: 16, right: 16, bottom: 56, height: 54, borderRadius: 27, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(6,18,11,0.22)' }] },
   searchText: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
   placeholder: { flex: 1, color: '#6B7A72', fontSize: 14, fontWeight: '500' },
   searchIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

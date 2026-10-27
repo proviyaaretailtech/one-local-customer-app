@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Tap } from './tap';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
 import { HOME_COMPACT_AT } from './home-hero';
 import { DesktopNav } from './desktop-nav';
 import { useIsDesktop } from '../layout';
+import { useFastestEta } from '../use-fastest-eta';
 
 const BARE = ['/sign-in', '/welcome'];
 const FULL_SCREEN = ['/location', '/address-map', '/address-form'];
@@ -47,7 +49,7 @@ function useLocationFirst(hasSavedLocation: boolean | null, waitForLanguage: boo
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname(); const desktop = useIsDesktop(); const router = useRouter(); const insets = useSafeAreaInsets(); const { totalItems } = useCart();
-  const { t } = useTranslation(); const fmt = useFormat(); const waitForLanguage = useShowFirstRun();
+  const { t } = useTranslation(); const fmt = useFormat(); const waitForLanguage = useShowFirstRun(); const fastest = useFastestEta();
   const scrolling = ['/', '/food', '/grocery', '/shops', '/care', '/pharmacy', '/beauty', '/book-it', '/categories'].includes(path);
   const reels = !scrolling; const palette = paletteFor(path);
   const utility = ['/discover', '/reels', '/account', '/enquiries'].includes(path);
@@ -91,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <View style={styles.topRow}>{!isHome && <Tap testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Tap>}<Tap testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><BrandLogo testID="company-logo" tone="light" height={22} /></Tap>
           <View style={styles.topActions}>{[{ id: 'wallet', label: t('shell.wallet'), icon: 'wallet-outline', route: '/wallet' }, { id: 'cart', label: t('shell.cart'), icon: 'bag-handle-outline', route: '/cart' }, { id: 'profile', label: t('shell.profile'), icon: 'person-outline', route: '/account' }].map(b => <Tap testID={b.id === 'profile' ? 'header-profile-btn' : `header-${b.id}-button`} accessibilityLabel={b.label} key={b.id} onPress={() => router.navigate(b.route as any)} style={styles.iconButton}><Icon name={b.icon as any} size={18} color={colors.onSurface} />{b.id === 'cart' && totalItems > 0 && <View style={styles.badge}><Text testID="header-cart-count" style={styles.badgeText}>{fmt.number(totalItems)}</Text></View>}</Tap>)}</View>
         </View>
-        <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={openLocation} style={styles.location}><Icon name="location-outline" size={13} color={colors.onSurface} /><Text testID="selected-location" style={styles.address} numberOfLines={1}>{location}</Text><Icon name="chevron-down" size={10} color={colors.onSurface} /></Tap>
+        <View style={styles.locationRow}><Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={openLocation} style={styles.location}><Icon name="location-outline" size={13} color={colors.onSurface} /><Text testID="selected-location" style={styles.address} numberOfLines={1}>{location}</Text><Icon name="chevron-down" size={10} color={colors.onSurface} /></Tap>{fastest !== null && <View testID="shell-eta" style={styles.etaChip}><Icon name="flash" size={12} color={colors.forestDeep} /><Text style={styles.etaChipText}>{t('home.hero.fastDelivery', { time: fmt.eta(fastest) })}</Text></View>}</View>
         <View style={styles.searchRow}><Tap testID="header-search-button" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as any)} style={styles.searchText}><Icon name="search-outline" size={18} color={colors.onSurface} /><Text style={styles.placeholder}>{t('shell.searchPlaceholder')}</Text></Tap><Tap testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as any)} style={styles.searchIcon}><Icon name="mic-outline" size={18} color={colors.onSurface} /></Tap><View style={styles.searchDivider} /><Tap testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as any)} style={styles.searchIcon}><Icon name="camera-outline" size={19} color={colors.onSurface} /></Tap></View>
       </View><DepartmentStrip /></View>
     </LinearGradient></Animated.View>}
@@ -115,6 +117,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   </View></DeliveryLocationContext.Provider>;
 }
 const styles = StyleSheet.create({
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  etaChip: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.electricLime },
+  etaChipText: { fontSize: 11.5, fontWeight: '800', color: colors.forestDeep },
   utility: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, paddingHorizontal: 14, height: 44 },
   scrollingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }, compact: { position: 'absolute', left: 16, right: 16, zIndex: 25, height: 52, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 26, paddingLeft: 6, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(5,6,5,0.16)' }, { offsetX: 0, offsetY: 1, blurRadius: 3, color: 'rgba(5,6,5,0.08)' }] }, scrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 24 }, compactGlyph: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#050605', alignItems: 'center', justifyContent: 'center' }, compactSearch: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }, compactPlaceholder: { flex: 1, color: 'rgba(5,6,5,0.55)', fontSize: 15, fontWeight: '500' }, compactIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(179,244,0,0.28)', alignItems: 'center', justifyContent: 'center' }, compactButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, compactText: { color: colors.forest, fontSize: 11, fontWeight: '600' },
   container: { flex: 1, backgroundColor: colors.surface }, page: { flex: 1 }, body: { flex: 1 }, background: { position: 'absolute', top: 0, left: 0, right: 0, height: 525 }, header: { paddingHorizontal: 20, paddingTop: 9 },

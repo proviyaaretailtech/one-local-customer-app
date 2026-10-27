@@ -4,7 +4,8 @@
 // footer echoes the hero image. Data: GET /api/products/:id/story.
 import { useEffect, useRef, useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -23,6 +24,7 @@ import { useFormat, useTranslation } from '@/src/i18n';
 import { paletteFor } from '@/src/departments';
 import { nativeDriver, useMotionAllowed } from '@/src/motion';
 import { ProductRail } from '@/src/components/catalog-sections';
+import { useStoreEtas } from '@/src/use-store-etas';
 import { departmentName } from '@/src/departments';
 
 type Story = {
@@ -44,6 +46,7 @@ export default function ProductDetail() {
   const compare = useCompare(); const motion = useMotionAllowed(); const { t } = useTranslation(); const fmt = useFormat();
   const [story, setStory] = useState<Story | null>(null); const [failed, setFailed] = useState(false);
   const [slide, setSlide] = useState(0); const [playing, setPlaying] = useState(false); const [watching, setWatching] = useState(false);
+  const etas = useStoreEtas();
   const [compareFull, setCompareFull] = useState(false); const [tick, setTick] = useState(0);
   const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
 
@@ -69,6 +72,7 @@ export default function ProductDetail() {
   if (!story) return <View testID="product-detail" style={s.center}><View style={s.skeletonHero} /><View style={s.skeletonLine} /><View style={[s.skeletonLine, { width: '40%' }]} /></View>;
 
   const { product, gallery, video } = story;
+  const eta = (product.store_id && etas[product.store_id]) || product.delivery_min; // the store's real time when known
   const palette = paletteFor(`/${product.department ?? 'grocery'}`);
   const qty = qtyOf(product.id); const savings = product.mrp - product.price;
   const unit = unitPrice(product.price, product.weight);
@@ -112,7 +116,7 @@ export default function ProductDetail() {
       <View style={s.sheet}>
         {!!savedError && <Text testID="pd-save-error" style={{ color: colors.onError }}>{savedError}</Text>}
         <View style={s.chipsRow}>
-          <View style={s.delivery}><Icon name="flash" size={12} color={colors.onSurface} /><Text style={s.deliveryText}>{fmt.eta(product.delivery_min)}</Text></View>
+          <View style={s.delivery}><Icon name="flash" size={12} color={colors.onSurface} /><Text style={s.deliveryText}>{fmt.eta(eta)}</Text></View>
           <View style={s.rating}><Icon name="star" size={11} color={colors.gold} /><Text style={s.ratingText}>{fmt.number(product.rating, { maxFractionDigits: 1, minFractionDigits: 1 })}</Text></View>
           {!!story.category && <Pressable testID="pd-category-link" onPress={() => router.push(`/category/${story.category!.id}` as any)} style={s.catLink}><Text style={s.catLinkText}>{t('product.moreInCategory', { name: story.category.name })}</Text><Icon name="chevron-forward" size={12} color={colors.forest} /></Pressable>}
         </View>
@@ -158,7 +162,7 @@ export default function ProductDetail() {
           ['category', t('product.details.category'), story.category?.name],
           ['store', t('product.details.soldBy'), story.store?.name],
           ['type', t('product.details.type'), product.department ? departmentName(t, product.department) : ''],
-          ['delivery', t('product.details.delivery'), fmt.eta(product.delivery_min)],
+          ['delivery', t('product.details.delivery'), fmt.eta(eta)],
           ['rating', t('product.details.rating'), fmt.number(product.rating, { maxFractionDigits: 1, minFractionDigits: 1 }) + ' / 5'],
           ['mrp', t('product.details.mrp'), product.mrp > product.price ? fmt.money(product.mrp) : ''],
           ['save', t('product.details.youSave'), savings > 0 ? `${fmt.money(savings)} (${fmt.percent(Math.round(savings / product.mrp * 100))})` : ''],

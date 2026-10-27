@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -7,7 +8,9 @@ import { colors } from '@/src/theme';
 import { api, Store } from '@/src/api';
 import { useCatalog } from '@/src/use-catalog';
 import { useFollowedStores } from '@/src/followed';
+import { useSavedProducts } from '@/src/customer';
 import { HomeHero } from '@/src/components/home-hero';
+import { OrderAgain } from '@/src/components/order-again';
 import { StoreRail } from '@/src/components/store-rail';
 import { CityScroll } from '@/src/motion';
 import { BrandRail, CategoryRail, EventRail, LoadState, ProductGrid as ProductRail, SectionTitle } from '@/src/components/catalog-sections';
@@ -27,7 +30,7 @@ export default function HomeScreen() {
 function LiveHome() {
   const { data, isLoading, isError, refetch } = useCatalog();
   const router = useRouter();
-  const { isFollowing } = useFollowedStores(); const { t } = useTranslation(); const fmt = useFormat();
+  const { isFollowing } = useFollowedStores(); const { t } = useTranslation(); const fmt = useFormat(); const { saved } = useSavedProducts();
   const [stores, setStores] = useState<Store[]>([]);
   useEffect(() => { api<Store[]>('/stores').then(list => setStores(list.filter(s => !isHiddenListing(s.name)))).catch(() => {}); }, []);
   if (isLoading || !data) return <LoadState error={isError} retry={refetch} />;
@@ -36,10 +39,13 @@ function LiveHome() {
   const followed = stores.filter(s => isFollowing(s.id));
   const go = (route: string) => () => router.navigate(route as any);
   const selected = (ids: string[]) => ids.flatMap(id => data.products.filter(p => p.id === id));
+  const favourites = selected(saved).slice(0, 6); // the customer's own saved items, first on the page
   return <CityScroll testID="home-screen" bleed showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
     <HomeHero catalog={data} />
     {followed.length > 0 && <><SectionTitle id="followed" title={t('home.followedTitle')} subtitle={t('home.followedSubtitle')} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stores}>{followed.map(s => <Pressable testID={`followed-store-${s.id}`} key={s.id} style={styles.store} onPress={go(`/store/${s.id}`)}><View style={styles.storeLogoTile}><Image source={s.logo} style={styles.storeImage} contentFit="contain" /></View><Text style={styles.storeName} numberOfLines={1}>{s.name}</Text><Icon name="heart" size={13} color={colors.forest} /></Pressable>)}</ScrollView></>}
     <View style={styles.sheet}>
+    <OrderAgain />
+    {favourites.length > 0 && <><SectionTitle id="home-favourites" title={t('home.favouritesTitle')} subtitle={t('home.favouritesSubtitle')} onPress={go('/wishlist')} /><ProductRail products={favourites} scope="favourites-home" /></>}
     <SectionTitle id="home-shop-by-store" title={t('home.storesTitle')} subtitle={t('home.storesSubtitle')} onPress={go('/categories')} />
     <StoreRail stores={data.themed_stores || []} scope="home" />
     <SectionTitle id="trending" title={t('home.trendingTitle')} subtitle={t('home.trendingSubtitle')} onPress={go('/search?collection=trending')} />

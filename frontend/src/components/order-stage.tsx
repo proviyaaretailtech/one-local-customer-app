@@ -3,7 +3,8 @@
 // "Accepted" is only ever shown once the kitchen ticket exists. The stage comes with the tracking answer and, for a signed-in customer,
 // the moment it changes over realtime (src/use-order-realtime.ts); a change also shows a short toast.
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import type { TFunction } from 'i18next';
 import { colors, radius, spacing } from '@/src/theme';
 import { useFormat, useTranslation } from '@/src/i18n';
