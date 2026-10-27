@@ -2,7 +2,8 @@
 // covered by a frosted-glass "we're getting ready" card over the screen behind it, and a blocked write (see
 // apiPost) shows a short, friendly toast. Copy is English only for this launch build (i18n-ignore below).
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';

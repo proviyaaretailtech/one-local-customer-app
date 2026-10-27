@@ -2,7 +2,8 @@
 // Rendered inside the app column in app/_layout.tsx, just under the intro splash, so the intro plays first and
 // dissolves into this. Picking a row switches the app at once (live), Continue remembers it.
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { BrandLogo } from '../components/brand-logo';

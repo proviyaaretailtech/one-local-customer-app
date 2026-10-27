@@ -3,7 +3,8 @@
 // panel on very wide screens — so every screen keeps its designed proportions.
 // Components size themselves with useAppDimensions() (the column), never the raw window width.
 import { createContext, useContext } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useTranslation } from 'react-i18next';
 import { colors } from './theme';
 import { BrandLogo } from './components/brand-logo';

@@ -1,7 +1,8 @@
 // Full-width photo header for brand/store-style pages: the image runs edge to edge (under the
 // status bar), a dark scrim keeps the white title readable, glass buttons float on top, and the
 // page content slides up over its bottom edge.
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';

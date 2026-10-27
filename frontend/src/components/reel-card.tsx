@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, AppState, Share, Modal, Platform } from 'react-native';
+import { View, Pressable, StyleSheet, AppState, Share, Modal, Platform } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';

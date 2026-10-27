@@ -9,7 +9,8 @@
 // Reduce Motion: no magnify or hop; scrub-to-open and the ticks remain.
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'expo-router';
-import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, interpolate, type SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
