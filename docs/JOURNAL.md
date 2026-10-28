@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: tighter look, city picker, autoplaying Discover
+
+**The customer app looks tighter and stops getting stuck: brand logos lose their boxes, Discover reels play on their own, and a refused location now offers a city list instead of an error.**
+
+- **Why:** the founder found the app loosely packed and unfinished-feeling: boxed logos, a blunt "location access is off" message, still reel tiles, and an intro animation that could freeze half-faded over the home screen.
+- **Structural decisions:** brand and store logos share one style rule, so the "no outline, no shadow, logo nearly fills its space" change applies across every screen at once instead of screen by screen. The UI UX Pro Max design skill was installed in the workspace; its suggested orange palette and restaurant fonts were rejected because they would replace the lime and forest-green brand, and only its accessibility and spacing rules (text at least 12 px, touch targets at least 44 px) were applied.
+- **What works now:** if location is refused, a "Pick your city" sheet offers Latur and popular cities. The intro animation always clears itself. Home's department buttons carry their own colour gradients. On Discover, the reel tiles at the top play muted on a loop (at most four at once) and stop when the customer leaves the tab. Phone number + one-time code sign-in was tested end to end on the local stack with a test number.
+- **Left undone:** real SMS to non-test numbers needs the POS SMS server (port 8090) running, which it was not. "Coming soon" badges for every unfinished feature, the category → sub-category → store browse flow and back-button checks were not started. Some brand names in the food spotlight row now cut off with "…" at the larger text size. Not tested on a phone.
+- **Open questions for the founder:** which unfinished features should show "Coming soon" first?
+
 ## 2026-10-25 — One Local customer app: merged the team's "new version" branch
 
 **The latest teammate work (welcome screen, SMS sign-in hook, profile gate, product details) is now combined with the desktop layout and live order tracking.**

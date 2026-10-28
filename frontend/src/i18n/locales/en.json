@@ -731,7 +731,12 @@
       "canAsk": "Location access is off. Allow it to use your current location, or search for your town above.",
       "settings": "Location access is turned off for OneLocal. Turn it on in Settings, or search for your town above."
     },
-    "cannotFind": "Couldn’t find where you are right now. Check that location is switched on, or search for your town above."
+    "cannotFind": "Couldn’t find where you are right now. Check that location is switched on, or search for your town above.",
+    "sheet": {
+      "title": "Pick your city",
+      "sub": "Location is off, no problem. Choose a city to start browsing.",
+      "search": "Search another town"
+    }
   },
   "address": {
     "kind": {

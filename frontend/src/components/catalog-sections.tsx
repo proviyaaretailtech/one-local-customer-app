@@ -12,7 +12,7 @@ import { OneLottie } from './one-lottie';
 import { CornerGlow } from './corner-glow';
 import { useFormat, useTranslation } from '../i18n';
 import { useCatalog } from '../use-catalog';
-import { logoShadow, logoSize, logoTile } from '../logo-tile';
+import { logoSize, logoTile } from '../logo-tile';
 
 export function SectionTitle({ title, subtitle, onPress, id }: { title: string; subtitle?: string; onPress?: () => void; id: string }) {
   const { t } = useTranslation();
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   // Every brand sits in the same white tile with the same shadow; the logo is fitted inside a fixed padded box,
   // so square, round and wide logos (and monograms) all read at one size, Swiggy-style.
   brandCircle: logoTile(72), brandLogo: { width: logoSize(72), height: logoSize(72) }, soon: { position: 'absolute', bottom: 3, alignSelf: 'center', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, backgroundColor: '#0B1F16' }, soonText: { color: '#9DFF00', fontSize: 8, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' }, brandMonogram: { fontSize: 26, fontWeight: '800', letterSpacing: -1, textAlign: 'center' }, selectedBrand: { borderColor: colors.forest, borderWidth: 2 }, brandName: { fontSize: 10, lineHeight: 13, minHeight: 26, color: colors.onSurface, fontWeight: '600', textAlign: 'center' },
-  category: { width: 94, gap: 8 }, categoryImage: { width: 94, height: 94, borderRadius: 20, backgroundColor: colors.cream, boxShadow: logoShadow }, categoryName: { color: colors.onSurface, fontSize: 11, lineHeight: 14, minHeight: 28, fontWeight: '600', textAlign: 'center' },
+  category: { width: 94, gap: 8 }, categoryImage: { width: 94, height: 94, borderRadius: 20 }, categoryName: { color: colors.onSurface, fontSize: 13, lineHeight: 16, minHeight: 32, fontWeight: '700', textAlign: 'center' },
   event: { width: 230, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, overflow: 'hidden' }, eventImage: { height: 142, width: '100%' }, eventTag: { position: 'absolute', top: 12, left: 12, borderRadius: 5, backgroundColor: colors.surface, paddingHorizontal: 7, paddingVertical: 4 }, eventTagText: { color: colors.book, fontSize: 9, fontWeight: '800', letterSpacing: 1 }, eventContent: { padding: 14 }, eventTitle: { fontSize: 17, fontWeight: '700', color: colors.onSurface }, eventBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }, eventPrice: { color: colors.book, fontWeight: '700', fontSize: 12 },
   loading: { flex: 1, padding: 30, alignItems: 'center', justifyContent: 'center', gap: 20 }, retry: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 24, backgroundColor: colors.limeSoft, borderRadius: 12 },
 });

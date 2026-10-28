@@ -3,7 +3,8 @@
 // places. Street-level address search (Google) joins in once the Maps key is set. On first launch
 // this screen asks "Where are you?" and can be skipped (Latur).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +33,7 @@ export default function LocationPicker() {
   const [searching, setSearching] = useState(false); const [error, setError] = useState(''); const [locating, setLocating] = useState(false);
   const [here, setHere] = useState<Point | null>(null); const [recent, setRecent] = useState<Recent[]>([]); const [menu, setMenu] = useState('');
   const [settings, setSettings] = useState(false); // location refused for good: offer the way to Settings
+  const [sheet, setSheet] = useState(false); // location refused: offer cities instead of a dead end
   const { data: popular = [] } = useQuery({ queryKey: ['popular-cities'], queryFn: popularCities, staleTime: Infinity });
 
   useEffect(() => { knownPoint().then(setHere); recentPlaces().then(setRecent); }, []);
@@ -77,7 +79,8 @@ export default function LocationPicker() {
       if (c.place) choosePlace({ ...c.place, lat: p.lat, lng: p.lng });
       else { delivery.setLocation(t('location.current'), p); done(); }
     } catch (e) {
-      setError(Platform.OS === 'web' && e instanceof LocationOffError ? t('location.webOff') : isLocationError(e) ? e.message : message(e));
+      if (e instanceof LocationOffError) setSheet(true);
+      else setError(isLocationError(e) ? e.message : message(e));
       setSettings(e instanceof LocationOffError && !e.canAskAgain && Platform.OS !== 'web');
     }
     finally { setLocating(false); }
@@ -185,6 +188,7 @@ export default function LocationPicker() {
             {!!popular.length && <Text style={styles.section}>{t('location.section.popular')}</Text>}
             <View style={styles.tiles}>
               {popular.map(p => <Pressable key={p.id} testID={`popular-${p.name.toLowerCase()}`} onPress={() => choosePlace(p)} style={styles.tile}>
+                <LinearGradient colors={[colors.limeSoft, colors.surface]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
                 <Text style={styles.tileMark}>{p.name.slice(0, 1)}</Text>
                 <Text style={styles.tileName} numberOfLines={1}>{p.name}</Text>
                 <Text style={styles.tileState} numberOfLines={1}>{p.state}</Text>
@@ -199,6 +203,28 @@ export default function LocationPicker() {
           </>
         )}
       </ScrollView>
+      <Modal visible={sheet} transparent animationType="slide" onRequestClose={() => setSheet(false)}>
+        <Pressable testID="city-sheet-backdrop" onPress={() => setSheet(false)} style={styles.backdrop} />
+        <View testID="city-sheet" style={[styles.sheet, { paddingBottom: insets.bottom + 18 }]}>
+          <View style={styles.grabber} />
+          <Text style={styles.sheetTitle}>{t('location.sheet.title')}</Text>
+          <Text style={styles.sheetSub}>{t('location.sheet.sub')}</Text>
+          <Pressable testID="sheet-city-latur" onPress={() => { setSheet(false); choosePlace({ name: 'Latur', district: 'Latur', state: 'Maharashtra', ...CITY_CENTER }); }} style={styles.live}>
+            <View style={styles.liveMark}><Icon name="bicycle" size={18} color={colors.forest} /></View>
+            <View style={styles.flex}><Text style={styles.rowTitle}>Latur</Text><Text style={styles.rowSub}>{t('location.liveBlurb')}</Text></View>
+            <Icon name="chevron-forward" size={18} color={colors.forest} />
+          </Pressable>
+          <View style={styles.sheetGrid}>
+            {popular.slice(0, 6).map(p => <Pressable key={p.id} testID={`sheet-city-${p.name.toLowerCase()}`} onPress={() => { setSheet(false); choosePlace(p); }} style={styles.sheetCity}>
+              <Text style={styles.sheetCityName} numberOfLines={1}>{p.name}</Text>
+            </Pressable>)}
+          </View>
+          <Pressable testID="sheet-search" onPress={() => setSheet(false)} style={styles.sheetSearch}>
+            <Icon name="search-outline" size={16} color={colors.forest} /><Text style={styles.settingsText}>{t('location.sheet.search')}</Text>
+          </Pressable>
+          {settings && <Pressable onPress={() => Linking.openSettings().catch(() => {})} style={styles.sheetSearch}><Icon name="settings-outline" size={16} color={colors.forest} /><Text style={styles.settingsText}>{t('location.openSettings')}</Text></Pressable>}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -244,9 +270,18 @@ const styles = StyleSheet.create({
   live: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: colors.limeSoft, borderWidth: 1, borderColor: colors.lime },
   liveMark: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: '30%', flexGrow: 1, minHeight: 84, borderRadius: 18, padding: 12, justifyContent: 'flex-end', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  tileMark: { position: 'absolute', top: 6, right: 10, fontSize: 34, fontWeight: '800', color: colors.cityMid },
+  tile: { width: '30%', flexGrow: 1, minHeight: 68, borderRadius: 14, padding: 10, justifyContent: 'flex-end', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  tileMark: { position: 'absolute', top: 2, right: 8, fontSize: 26, fontWeight: '900', color: colors.cityMid, letterSpacing: -1 },
   tileName: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
   tileState: { fontSize: 11, color: colors.muted },
   browse: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  backdrop: { flex: 1, backgroundColor: colors.overlay },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 8, gap: 12 },
+  grabber: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, marginBottom: 4 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4, color: colors.onSurface },
+  sheetSub: { marginTop: -6, fontSize: 13, lineHeight: 18, color: colors.muted },
+  sheetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sheetCity: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, justifyContent: 'center', backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border },
+  sheetCityName: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
+  sheetSearch: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 });
