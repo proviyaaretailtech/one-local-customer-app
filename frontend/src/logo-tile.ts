@@ -1,13 +1,13 @@
-// One look for every brand/store logo in the app: no outline and no shadow, just the logo itself, fitted
-// ("contain") into a fixed square that it nearly fills, so round, square and wide logos all read at one size.
-// The rounded clip stays, so logos drawn on a white square still look finished on tinted backgrounds.
+// One look for every brand/store logo in the app: no outline, the logo nearly filling a rounded square, and a
+// soft two-layer shadow underneath so it sits above the page like a button. Round, square and wide logos all
+// read at one size because each is fitted ("contain") into the same square.
 // Two sizes: small (lists, cart, product) and large (rails, page headers).
 import type { ViewStyle } from 'react-native';
 
-export const LOGO_TILE_BG = 'transparent';
-export const logoShadow: ViewStyle['boxShadow'] = [{ offsetX: 0, offsetY: 6, blurRadius: 14, color: 'rgba(11,31,22,0.10)' }];
+export const LOGO_TILE_BG = '#FFFFFF';
+export const logoShadow: ViewStyle['boxShadow'] = [{ offsetX: 0, offsetY: 8, blurRadius: 18, color: 'rgba(11,31,22,0.14)' }, { offsetX: 0, offsetY: 2, blurRadius: 4, color: 'rgba(11,31,22,0.08)' }];
 
-const base: ViewStyle = { backgroundColor: LOGO_TILE_BG, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' };
+const base: ViewStyle = { backgroundColor: LOGO_TILE_BG, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: logoShadow };
 
 /** A logo tile `size` points square: radius scales with size (14 at 48, 20 at 72). The image inside is `logoSize(size)`. */
 export function logoTile(size: number): ViewStyle {

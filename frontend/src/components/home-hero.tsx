@@ -100,10 +100,10 @@ function DepartmentTiles() {
   const router = useRouter(); const { t } = useTranslation();
   return <View testID="department-strip" style={s.tiles}>{departments.map(d => {
     const name = departmentName(t, d.id);
-    // Each tile wears its department's own gradient, and the icon fills a rounded well instead of floating in white.
+    // Each tile wears its department's own gradient; the cut-out icon sits straight on it.
     return <Tap key={d.id} testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={name.replace('\n', ' ')} onPress={() => router.navigate(d.route as never)} style={[s.tile]}>
       <LinearGradient colors={[d.top, d.fade]} locations={[0, 0.85]} style={StyleSheet.absoluteFill} />
-      <View style={s.tileWell}><Image testID={`department-icon-${d.id}`} source={mediaUrl(`icon-${d.id}-v2`)} style={s.tileIcon} contentFit="cover" cachePolicy="memory-disk" /></View>
+      <Image testID={`department-icon-${d.id}`} source={mediaUrl(`icon-${d.id}-v2`)} style={s.tileIcon} contentFit="contain" cachePolicy="memory-disk" />
       <Text testID={`department-label-${d.id}`} numberOfLines={2} style={s.tileLabel}>{name}</Text>
     </Tap>;
   })}</View>;
@@ -200,8 +200,7 @@ const s = StyleSheet.create({
   below: { marginTop: -44, paddingHorizontal: 16, gap: 18 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, minHeight: 92, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', paddingTop: 7, paddingHorizontal: 2, paddingBottom: 6, gap: 5, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)', boxShadow: shadow },
-  tileWell: { width: 50, height: 50, borderRadius: 14, overflow: 'hidden' },
-  tileIcon: { width: '100%', height: '100%' },
+  tileIcon: { width: 54, height: 54 },
   tileLabel: { color: INK, fontSize: 11, lineHeight: 13, minHeight: 26, fontWeight: '700', letterSpacing: -0.1, textAlign: 'center' },
   offers: { flexDirection: 'row', gap: 10 },
   offer: { flex: 1, height: 100, borderRadius: 18, overflow: 'hidden', flexDirection: 'row' },

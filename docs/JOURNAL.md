@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: cut-out icons, no tap outlines, 60 fps reels
+
+**Department icons now sit straight on the page with no green squares, logos have a soft raised shadow, tap outlines are gone everywhere, and the sample reels play at 60 frames a second.**
+
+- **Why:** the founder found the green icon squares, the outline that flashed on every tap and the choppy reels cheap-looking, and wanted the app to feel more immersive, with buttons that feel like buttons.
+- **Structural decisions:** the green background was cut out of the five department icon images themselves, so every screen that shows them improves at once. Tap outlines were removed in one place for the whole web app; press feedback is now the slight "sink" plus the shadow. The design skill warns that removing focus outlines hurts people who navigate the website with a keyboard; the founder chose to remove them anyway. Following the skill, Discover's autoplay now stays still for people who switch on "Reduce motion".
+- **What works now:** cut-out icons in the department header and on Home, logos with depth instead of borders, no outline after tapping anything, and smoother reels (re-encoded from 25 to 60 frames a second with motion smoothing and higher quality).
+- **Left undone:** the new icon and reel files exist only in this computer's local media folder (it is not stored in git); they must be uploaded to the live media store before any release. The originals are kept next to them with a ".orig" ending. "All apps" was applied to the customer app only; the Master Admin website and the Flutter apps were not changed.
+- **Open questions for the founder:** should the same no-outline rule go into the Master Admin website?
+
 ## 2026-10-28 — One Local customer app: browsing opened in the coming-soon build
 
 **In the coming-soon build, customers can now browse categories, stores, brands, collections, products and search. Ordering stays switched off.**

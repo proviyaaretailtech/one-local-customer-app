@@ -16,6 +16,7 @@ import { useFormat, useTranslation } from '@/src/i18n';
 import { departmentName } from '@/src/departments';
 import { useFeatures } from '@/src/features';
 import { SoonBadge } from '@/src/components/soon-badge';
+import { useMotionAllowed } from '@/src/motion';
 
 // Instagram-Explore style: reel tiles on screen play muted on a loop; at most MAX_PLAYING at once so
 // a long grid never decodes a dozen videos. Leaving the tab pauses them.
@@ -45,12 +46,12 @@ function TileVideo({ source }: { source: string }) {
 }
 
 export default function Discover() {
-  const focused = useIsFocused(); const features = useFeatures(); const [visible, setVisible] = useState<string[]>([]);
+  const focused = useIsFocused(); const features = useFeatures(); const motion = useMotionAllowed(); const [visible, setVisible] = useState<string[]>([]); // Reduce Motion: tiles stay still photos
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken<Reel>[] }) => {
     setVisible(viewableItems.filter(v => v.isViewable && !!v.item?.video).map(v => v.item.id).slice(0, MAX_PLAYING));
   }).current;
   const viewability = useRef({ itemVisiblePercentThreshold: 60 }).current;
-  const playing = useCallback((id: string) => focused && visible.includes(id), [focused, visible]);
+  const playing = useCallback((id: string) => motion && focused && visible.includes(id), [motion, focused, visible]);
   const { data, isError, refetch } = useDiscovery(); const [filter, setFilter] = useState('All');
   const insets = useSafeAreaInsets(); const { width } = useAppDimensions(); const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat();
   // The filter ids are codes (they drive the filtering and the test ids); only the shown words are translated.
