@@ -13,6 +13,7 @@ import { CornerGlow } from './corner-glow';
 import { useFormat, useTranslation } from '../i18n';
 import { useCatalog } from '../use-catalog';
 import { logoSize, logoTile } from '../logo-tile';
+import { COMING_SOON_ALL } from '../coming-soon-mode';
 
 export function SectionTitle({ title, subtitle, onPress, id }: { title: string; subtitle?: string; onPress?: () => void; id: string }) {
   const { t } = useTranslation();
@@ -39,7 +40,8 @@ export function BrandRail({ brands, scope, onSelect, active }: { brands: Brand[]
   const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
   const hasLogo = (b: Brand) => !!b.logo && !broken.has(b.id);
   // Brands with nothing to order yet wear a "Soon" tag (their page shows the coming-soon receipt).
-  const soon = (id: string) => !!data && !data.products.some(p => p.brand_id === id || p.store_id === id);
+  // While the coming-soon switch is on nothing can be ordered, so every brand is marked SOON; otherwise only brands with nothing listed yet.
+  const soon = (id: string) => COMING_SOON_ALL || (!!data && !data.products.some(p => p.brand_id === id || p.store_id === id));
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandRail}>
     {brands.map(b => <Tap testID={`${scope}-brand-${b.id}`} key={b.id} onPress={() => onSelect ? onSelect(b.id) : router.push(`/brand/${b.id}` as any)} style={styles.brandItem}>
       <View style={[styles.brandCircle, !hasLogo(b) && { backgroundColor: monogramTint(b.name)[0] }, active === b.id && styles.selectedBrand]}>{hasLogo(b) ? <Image testID={`${scope}-brand-logo-${b.id}`} source={b.logo} contentFit="contain" style={styles.brandLogo} onError={() => setBroken(prev => new Set(prev).add(b.id))} /> : <Text testID={`${scope}-brand-wordmark-${b.id}`} style={[styles.brandMonogram, { color: monogramTint(b.name)[1] }]} numberOfLines={1} accessibilityLabel={b.name}>{monogram(b.name)}</Text>}{soon(b.id) && <View testID={`${scope}-brand-soon-${b.id}`} style={styles.soon}><Text style={styles.soonText}>{t('popups.comingSoon.soon')}</Text></View>}</View><Text testID={`${scope}-brand-name-${b.id}`} style={styles.brandName} numberOfLines={2}>{b.name}</Text>

@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: Discover autoplay fixed, every brand marked "Soon"
+
+**Discover's playing reels now fill their tiles properly, and in the coming-soon build every brand logo shows "SOON".**
+
+- **Why:** the founder said the autoplay looked bad and asked why some brands had no "coming soon" mark.
+- **Structural decisions:** the autoplay problem was not the frame rate (the reels already played at 60 frames a second with almost no dropped frames). On the website a video ignored the tile's size and drew at its own full size (540 by 960), so each small tile showed only a cropped corner of the clip; it is now stretched to fill the tile. For brands, while the coming-soon switch is on nothing can be ordered, so every brand logo is marked SOON; once the switch is off, only brands with nothing listed yet keep the mark.
+- **What works now:** reel tiles show the whole clip scaled to the tile. Every brand logo in brand rows and the food spotlight shows SOON in the coming-soon build.
+- **Left undone:** playback could not be watched live in the browser pane because the pane was hidden during testing; sizing was measured instead. Not tested on a phone.
+- **Open questions for the founder:** none.
+
 ## 2026-10-28 — One Local customer app: new department icons from Higgsfield
 
 **The five department icons (food, groceries, shops, pharmacy & beauty, book it) are new artwork generated in Higgsfield, with real transparent backgrounds.**
