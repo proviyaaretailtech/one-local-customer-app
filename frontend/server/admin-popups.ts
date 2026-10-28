@@ -68,7 +68,8 @@ const parseDraft = (body: unknown) => {
   const r = Draft.safeParse(body);
   if (!r.success) {
     const first = r.error.issues[0];
-    throw bad(`${first.path.join('.') || 'pop-up'}: ${first.message}`);
+    // Our own rules read as sentences ("A letter needs a photo or a video"); field checks from zod get the field's name in front.
+    throw bad(/^[A-Z]/.test(first.message) ? first.message : `${first.path.join('.') || 'pop-up'}: ${first.message}`);
   }
   // the first-sign-in welcome is for new sign-ups unless the admin narrowed it further
   const p = r.data;
