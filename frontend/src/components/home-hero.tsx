@@ -23,6 +23,8 @@ import { useDeliveryLocation } from '../delivery-location';
 import { useCityScroll } from '../motion';
 import { useFormat, useTranslation } from '../i18n';
 import { useIsDesktop } from '../layout';
+import { useFeatures } from '../features';
+import { SoonBadge } from './soon-badge';
 
 export const HOME_HERO_HEIGHT = 468;
 /** Scroll offset (past the hero's search bar) where the compact header appears. */
@@ -37,16 +39,16 @@ const CAMPAIGN_INTERVAL_MS = 5000;
 // Daily essentials: grocery categories, in this order, when the catalogue has them.
 const ESSENTIALS = ['c1', 'c2', 'c3', 'c5', 'c24'];
 
-function HeroIcon({ testID, label, onPress, children, badge }: { testID: string; label: string; onPress: () => void; children: React.ReactNode; badge?: string }) {
+function HeroIcon({ testID, label, onPress, children, badge, soon }: { testID: string; label: string; onPress: () => void; children: React.ReactNode; badge?: string; soon?: boolean }) {
   return <Tap testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={[s.glass]}>
-    {children}{!!badge && <View style={s.badge}><Text testID="header-cart-count" style={s.badgeText}>{badge}</Text></View>}
+    {children}{!!badge && <View style={s.badge}><Text testID="header-cart-count" style={s.badgeText}>{badge}</Text></View>}{soon && <SoonBadge testID={`${testID}-soon`} />}
   </Tap>;
 }
 
 function Hero({ catalog }: { catalog: Catalog }) {
   const router = useRouter(); const insets = useSafeAreaInsets(); const { width } = useWindowDimensions();
   const { t } = useTranslation(); const fmt = useFormat(); const { totalItems } = useCart();
-  const { location, edit } = useDeliveryLocation();
+  const { location, edit } = useDeliveryLocation(); const features = useFeatures();
   const [slide, setSlide] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setSlide(i => (i + 1) % campaignImages.length), CAMPAIGN_INTERVAL_MS);
@@ -67,7 +69,7 @@ function Hero({ catalog }: { catalog: Catalog }) {
           <BrandLogo testID="company-logo" tone="dark" height={28} />
         </Tap>
         <View style={s.actions}>
-          <HeroIcon testID="header-wallet-button" label={t('shell.wallet')} onPress={() => router.navigate('/wallet' as never)}><Wallet size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
+          <HeroIcon testID="header-wallet-button" label={t('shell.wallet')} onPress={() => router.navigate('/wallet' as never)} soon={!features.wallet}><Wallet size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
           <HeroIcon testID="header-cart-button" label={t('shell.cart')} onPress={() => router.navigate('/cart' as never)} badge={totalItems > 0 ? fmt.number(totalItems) : undefined}><ShoppingBag size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
           <HeroIcon testID="header-profile-btn" label={t('shell.profile')} onPress={() => router.navigate('/account' as never)}><User size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
         </View>
@@ -86,9 +88,9 @@ function Hero({ catalog }: { catalog: Catalog }) {
         <Tap testID="header-search-button" accessibilityRole="search" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as never)} style={s.searchText}>
           <Search size={20} color={INK} strokeWidth={2} /><Text numberOfLines={1} style={s.placeholder}>{t('home.hero.searchPlaceholder')}</Text>
         </Tap>
-        <Tap testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as never)} style={s.searchIcon}><Mic size={19} color={INK} strokeWidth={1.9} /></Tap>
+        <Tap testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as never)} style={s.searchIcon}><Mic size={19} color={INK} strokeWidth={1.9} />{!features.ai_search && <SoonBadge testID="header-voice-search-soon" />}</Tap>
         <View style={s.divider} />
-        <Tap testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as never)} style={s.searchIcon}><ScanLine size={19} color={INK} strokeWidth={1.9} /></Tap>
+        <Tap testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as never)} style={s.searchIcon}><ScanLine size={19} color={INK} strokeWidth={1.9} />{!features.ai_search && <SoonBadge testID="header-camera-search-soon" />}</Tap>
       </View>
     </View>
   </View>;

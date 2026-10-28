@@ -1,5 +1,25 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: "Soon" badges and header fixes
+
+**Buttons for features that are not live yet now carry a small "SOON" badge, so customers know before they tap.**
+
+- **Why:** the founder wanted unfinished features to read as "coming soon" instead of feeling broken or incomplete.
+- **Structural decisions:** one shared badge, switched on and off by the same live-feature list the server already sends (wallet, photo and voice search, the AI assistant). When a feature goes live, its badge disappears with no app change. Tapping still opens the existing branded "coming soon" page.
+- **What works now:** SOON shows on the wallet button, the voice and photo search buttons (home and every department page) and Discover's "Ask AI". On department pages the back arrow and logo now sit together on the left. Discover's filter pills are no longer cut in half, and a reel tile keeps its product photo until its video is actually playing.
+- **Left undone:** the sample reel videos look like plain colour blocks in the small tiles because of how they were filmed and framed; real store reels should look right. The intro animation was changed by someone else during this session (it now shows a rider picture and runs longer); it was left as it is and is not part of this commit.
+- **Open questions for the founder:** keep autoplay with the current sample reels, or show photos until real store reels exist?
+
+## 2026-10-28 — One Local customer app: video intro replaces the animated logo splash
+
+**The first screen of the customer app is now a 6-second brand video (the OneLocal rider on a green scooter) instead of the animated logo.**
+
+- **Why:** the founder supplied a brand video and wanted it as the first thing customers see.
+- **Structural decisions:** the video is not bundled inside the app; it is served from the database's file storage (public `onecity-catalog` bucket, folder `app/intro/`). That keeps the app download small (only a 28 KB still frame ships inside it) and lets the video be swapped without an app release. Two sizes are stored — 720p (0.9 MB) for small or low-density phones and 1080p (2.3 MB) for everything else — and the app picks one by screen size. Phones show the video edge to edge; tablets, landscape screens and desktop browsers show the whole frame over a blurred backdrop, because a portrait clip stretched to fill a wide screen would crop the rider out. The video is muted, can be skipped with a tap, and is skipped entirely when the device asks for reduced motion.
+- **What works now:** on the local stack, opening the app plays the video once per launch and then fades into the home screen. Checked in the web preview at phone (375×812), tablet (768×1024) and landscape (1024×768) sizes.
+- **Left undone:** the video was uploaded to the local database only. The live (hosted) database does not have it yet, so in a live build the intro shows the still frame for under a second and moves on. Not yet checked on a real iPhone or Android device. The original 480p WhatsApp file and its 1080p copy are still loose in the project folder and are not committed.
+- **Open questions for the founder:** approve uploading the two video files to the live database's storage? Should the intro play its sound, or stay muted?
+
 ## 2026-10-28 — One Local customer app: tighter look, city picker, autoplaying Discover
 
 **The customer app looks tighter and stops getting stuck: brand logos lose their boxes, Discover reels play on their own, and a refused location now offers a city list instead of an error.**
