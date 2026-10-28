@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ComingSoonBrand, useComingSoon } from '@/src/components/coming-soon-brand';
 import { MAX_APP_WIDTH, useAppDimensions } from '@/src/layout';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from "react-native";
@@ -82,7 +82,7 @@ export default function StoreProfileScreen() {
   // Each answer is tagged with the load it belongs to (store id + retry count), so a retry or another store shows the loader
   // until its own answer arrives, without clearing state inside the effect.
   const [loaded, setLoaded] = useState<{ key: string; store: Store } | null>(null);
-  const [slide, setSlide] = useState(0);
+  const [slide, setSlide] = useState(0); const slideRef = useRef(0); // the carousel dot; only changes when the page does, not on every scroll event
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
@@ -153,7 +153,7 @@ export default function StoreProfileScreen() {
         <View style={[styles.mediaSection, { paddingHorizontal: 0, paddingTop: insets.top + 56 }]}>
           <ScrollView testID="store-media-carousel" horizontal pagingEnabled={false} snapToInterval={slideW + spacing.md} decelerationRate="fast" showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
-            onScroll={e => setSlide(Math.round(e.nativeEvent.contentOffset.x / (slideW + spacing.md)))} scrollEventThrottle={64}>
+            onScroll={e => { const next = Math.round(e.nativeEvent.contentOffset.x / (slideW + spacing.md)); if (next !== slideRef.current) { slideRef.current = next; setSlide(next); } }} scrollEventThrottle={64}>
             {store.media.map((m, i) => <MediaTile key={i} media={m} size={slideW} />)}
           </ScrollView>
           {store.media.length > 1 && <View style={styles.carouselDots}>{store.media.map((_, i) => <View key={i} style={[styles.carouselDot, i === slide && styles.carouselDotOn]} />)}</View>}

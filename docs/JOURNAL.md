@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: one page gradient, react-doctor clean-up
+
+**Department pages now have one smooth background colour from the top into white, and a code-health scan (react-doctor) was run with its real problems fixed.**
+
+- **Why:** the founder saw the page colour "cut into two" between the header and the hero, and asked for react-doctor to find bad code.
+- **Structural decisions:** the header and each department hero used to paint their own gradient. Now the scrolling page paints one gradient and the header and hero are see-through over it, so the colours can never meet at a seam. react-doctor was run fully on this computer: no score upload, no share link, no dependency upload.
+- **What works now:** one continuous gradient on Food, Groceries, Shops, Pharmacy & Beauty, Book It and Categories. react-doctor found 13 "errors": 4 were real (values written to memory while a screen is being drawn, which React can throw away) and are fixed; the store photo carousel no longer re-draws the page on every scroll movement; 7 were false alarms (the cleanup exists further down); 1, in the Razorpay payment window, was left alone on purpose because ignoring a late answer could lose a real payment.
+- **Left undone:** 519 warnings remain. Most security warnings point at generated build output (.expo/server), not our code. The ones in our own code worth a separate look: payment pages that put data into HTML without escaping (server/cashfree-checkout.ts, server/payments.ts) and 10 server calls that read a reply without checking it succeeded (push, Cashfree, maps, nearby, Razorpay).
+- **Open questions for the founder:** none.
+
 ## 2026-10-28 — One Local customer app: Discover autoplay fixed, every brand marked "Soon"
 
 **Discover's playing reels now fill their tiles properly, and in the coming-soon build every brand logo shows "SOON".**

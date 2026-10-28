@@ -4,7 +4,7 @@
 // Pay needs, in this order: where to deliver (the address row at the top), a signed-in customer
 // (sign-in opens and then brings them back here to carry on paying), and how to pay. Browsing and
 // filling the cart never need an account.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useIsFocused, useRouter } from "expo-router";
@@ -313,7 +313,9 @@ export default function CartScreen() {
 
   // Back from sign-in: carry on paying with what they picked — only on this visit to the screen, and
   // only if they did sign in. The latest handleCheckout is used, so it sees the bill as it is now.
-  const pay = useRef(handleCheckout); pay.current = handleCheckout;
+  const pay = useRef(handleCheckout);
+  // Kept current after each commit, not during render: React may render and throw a render away, and a ref written there would leak it.
+  useLayoutEffect(() => { pay.current = handleCheckout; });
   const resume = useRef<PaymentChoice | null>(null);
   useEffect(() => {
     if (!focused) { resume.current = null; return; }

@@ -3,14 +3,15 @@
 // who owns the order may listen (a database policy); nobody can send on it. The message is only a nudge: the screen reads the order again
 // through the API (src/use-live-tracking.ts), so no order data comes from the database to the app directly. A guest (not signed in)
 // has no topic and keeps polling, as does anyone whose socket drops.
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { accessToken, supabase } from './lib/supabase';
 import { parseStage, type OrderStage } from './utils/tracking';
 
 export function useOrderRealtime(orderId: string | undefined, onStage: (stage: OrderStage) => void, enabled = true) {
   const latest = useRef(onStage);
-  latest.current = onStage;
+  // Kept current after each commit, not during render: React may render and throw a render away, and a ref written there would leak it.
+  useLayoutEffect(() => { latest.current = onStage; });
   useEffect(() => {
     const client = supabase;
     if (!enabled || !client || !orderId) return;

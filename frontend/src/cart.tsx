@@ -76,7 +76,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<{ lines: Line[]; origin?: Origin; from?: string; to?: string } | null>(null);
   const [storeNames, setStoreNames] = useState<Map<string, string>>(new Map());
   const catalog = useRef(new Map<string, CartProduct>()); // fills in store and department when a caller leaves them out
-  const current = useRef(carts); current.current = carts;
+  const current = useRef(carts);
+  // Kept current after each commit, not during render: React may render and throw a render away, and a ref written there would leak it.
+  useLayoutEffect(() => { current.current = carts; });
 
   useEffect(() => {
     // Coming-soon build: the bag always starts empty and is never saved, so no old "2 items" bar shows up.

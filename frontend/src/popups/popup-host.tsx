@@ -6,7 +6,7 @@
 //    cannot be fetched the pop-up waits for the next opportunity;
 //  - one fade / slide on the UI thread (none with reduce motion); close always visible; back and tap outside close.
 // If the API fails (or on web without a backend) nothing is shown.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useShowFirstRun } from '@/src/i18n/first-run';
 import { InteractionManager, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
@@ -50,7 +50,8 @@ export function PopupHost() {
     enabled: !blocked, staleTime: 60_000, retry: false,
   });
   const dataRef = useRef<Popup[] | undefined>(data);
-  dataRef.current = data;
+  // Kept current after each commit, not during render: React may render and throw a render away, and a ref written there would leak it.
+  useLayoutEffect(() => { dataRef.current = data; });
 
   const [modal, setModal] = useState<Popup | null>(null);
   const [strip, setStrip] = useState<Popup | null>(null);
