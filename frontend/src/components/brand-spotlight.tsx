@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useScreenPalette } from '../use-screen-path';
 import { View, Text, Pressable, Animated, StyleSheet, AccessibilityInfo, Platform } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
@@ -39,9 +38,10 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
     detail: t(`home.spotlight.${textKey[shown]}.detail`, { price }), cta: t(`home.spotlight.${textKey[shown]}.cta`), badge: t(`home.spotlight.${textKey[shown]}.badge`),
   };
   const story = { ...baseStory, ...copy, color: currentPalette.color };
-  const float = useRef(new Animated.Value(0)).current; const router = useRouter(); const palette = currentPalette;
+  const float = useRef(new Animated.Value(0)).current; const router = useRouter();
   useEffect(() => { let animation: Animated.CompositeAnimation | undefined; let disposed = false; AccessibilityInfo.isReduceMotionEnabled().then(reduce => { if (!reduce && !disposed) { animation = Animated.loop(Animated.sequence([Animated.timing(float, { toValue: -7, duration: 2100, useNativeDriver: Platform.OS !== 'web' }), Animated.timing(float, { toValue: 0, duration: 2100, useNativeDriver: Platform.OS !== 'web' })])); animation.start(); } }); return () => { disposed = true; animation?.stop(); }; }, [float]);
-  return <LinearGradient testID={`spotlight-${variant}`} colors={[palette.mid, palette.fade, colors.surface]} locations={[0, 0.83, 1]} style={styles.wrap}>
+  // No background of its own: the page's shared gradient (app-shell) shows through, so there is no seam under the header.
+  return <View testID={`spotlight-${variant}`} style={styles.wrap}>
     <View style={styles.hero}><View style={styles.glow} /><View style={styles.orbit} />
       <View style={styles.copy}><Text style={[styles.eyebrow, { color: story.color }]}>{story.eyebrow}</Text><Text testID={`spotlight-title-${variant}`} style={[styles.title, { lineHeight: lineHeight(25, 30) }]}>{story.title}</Text><Text style={styles.description}>{story.copy}</Text><Pressable testID={`spotlight-shop-${variant}`} accessibilityLabel={story.cta} onPress={() => router.push(story.route as any)} style={({ pressed }) => [styles.cta, { backgroundColor: story.color }, pressed && styles.pressed]}><Text style={styles.ctaText}>{story.cta}</Text><Icon name="arrow-forward" size={14} color={colors.surface} /></Pressable></View>
       <Animated.View style={[styles.art, { transform: [{ translateY: float }, { rotate: '-8deg' }] }]}><Image testID={`spotlight-image-${variant}`} source={mediaUrl(story.asset === 'amul-cutout' ? 'amul-float' : story.asset)} style={styles.image} contentFit={story.asset === 'amul-cutout' ? 'contain' : 'cover'} /></Animated.View>
@@ -49,7 +49,7 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
       <Pressable testID={`spotlight-brand-${variant}`} accessibilityLabel={t('home.spotlight.explore', { tag: story.tag })} onPress={() => router.push(story.route as any)} style={styles.floatingLabel}><View style={[styles.dot, { backgroundColor: story.color }]} /><View><Text style={styles.brandTag}>{story.tag}</Text><Text style={styles.detail}>{story.detail}</Text></View><Icon name="arrow-up-right-box-outline" size={14} color={story.color} /></Pressable>
     </View>
     {switchable ? <View style={styles.storyTabs}>{[{ id: 'home', text: t('home.spotlight.switchHome') }, { id: 'shops', text: t('home.spotlight.switchShops') }, { id: 'care', text: t('home.spotlight.switchCare') }].map(s => <Pressable testID={`spotlight-switch-${s.id}`} key={s.id} onPress={() => setSelected(s.id as SpotlightVariant)} style={[styles.storyTab, selected === s.id && styles.storySelected]}><View style={[styles.tinyDot, selected === s.id && { backgroundColor: colors.forest }]} /><Text style={styles.storyText}>{s.text}</Text></Pressable>)}</View> : <Text testID={`spotlight-notice-${variant}`} style={styles.sample}>{t('home.spotlight.sample')}</Text>}
-  </LinearGradient>;
+  </View>;
 }
 const styles = StyleSheet.create({
   // i18n-ignore: Latin design value; the Text overrides it with useLineHeight() in other languages
