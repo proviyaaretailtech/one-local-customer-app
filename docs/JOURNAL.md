@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: browsing opened in the coming-soon build
+
+**In the coming-soon build, customers can now browse categories, stores, brands, collections, products and search. Ordering stays switched off.**
+
+- **Why:** the app felt unfinished because tapping any category, store or product led straight to the "Something wonderful is on its way" page, so only the tab screens were usable.
+- **Structural decisions:** the founder chose to open browsing rather than keep the coming-soon build fully locked. The browse screens are read only. Cart, checkout, orders, payments, wallet and booking still show the coming-soon page, and every write to the server is still blocked. Tapping "Add" shows "Coming soon! We'll let you know when it's live." The alternative, keeping everything locked and fixing the browse flow only in the internal live preview, lost because customers and reviewers would never see the catalogue.
+- **What works now:** Categories, then a category with its side list of sub-categories, then a product, then its store, all open. The back button returns one step at a time (store, product, collection, categories). Opening a store or brand link directly and pressing back lands on Home.
+- **Left undone:** app-store reviewers will now see real catalogue pages in the coming-soon build. Not tested on a phone.
+- **Open questions for the founder:** is it acceptable for store reviewers to see the sample catalogue (demo brands and prices) in the review build?
+
 ## 2026-10-28 — One Local customer app: "Soon" badges and header fixes
 
 **Buttons for features that are not live yet now carry a small "SOON" badge, so customers know before they tap.**
