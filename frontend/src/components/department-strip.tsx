@@ -16,7 +16,7 @@ function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean
     const animation = Animated.sequence([Animated.delay(delay), Animated.timing(tilt, { toValue: -6, duration: 240, useNativeDriver: nativeDriver }), Animated.spring(tilt, { toValue: 0, friction: 3, useNativeDriver: nativeDriver })]);
     animation.start(); return () => animation.stop();
   }, [delay, motion, selected, tilt]);
-  return <Animated.View style={[styles.circle, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }, { scale: selected ? 1.12 : 1 }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v2`)} style={styles.icon} contentFit="contain" /></Animated.View>;
+  return <Animated.View style={[styles.circle, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }, { scale: selected ? 1.12 : 1 }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v3`)} style={styles.icon} contentFit="contain" /></Animated.View>;
 }
 export function DepartmentStrip() {
   const path = usePathname(); const router = useRouter(); const { t } = useTranslation();

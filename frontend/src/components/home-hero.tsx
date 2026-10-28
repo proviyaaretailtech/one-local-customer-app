@@ -103,7 +103,7 @@ function DepartmentTiles() {
     // Each tile wears its department's own gradient; the cut-out icon sits straight on it.
     return <Tap key={d.id} testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={name.replace('\n', ' ')} onPress={() => router.navigate(d.route as never)} style={[s.tile]}>
       <LinearGradient colors={[d.top, d.fade]} locations={[0, 0.85]} style={StyleSheet.absoluteFill} />
-      <Image testID={`department-icon-${d.id}`} source={mediaUrl(`icon-${d.id}-v2`)} style={s.tileIcon} contentFit="contain" cachePolicy="memory-disk" />
+      <Image testID={`department-icon-${d.id}`} source={mediaUrl(`icon-${d.id}-v3`)} style={s.tileIcon} contentFit="contain" cachePolicy="memory-disk" />
       <Text testID={`department-label-${d.id}`} numberOfLines={2} style={s.tileLabel}>{name}</Text>
     </Tap>;
   })}</View>;
