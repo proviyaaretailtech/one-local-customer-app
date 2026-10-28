@@ -2315,7 +2315,9 @@
       "menuSoon": "{{name}} is joining OneLocal. Its menu will be here soon.",
       "explore": "See what’s open now",
       "soon": "Soon"
-    }
+    },
+    "soundOn": "Turn the sound on",
+    "soundOff": "Turn the sound off"
   },
   "notFound": {
     "title": "This page took a wrong turn.",

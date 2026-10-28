@@ -10,7 +10,7 @@ import { HttpError, limit, readBody } from './http';
 
 // Screens a pop-up may never cover, whatever the CMS says (spec §2.5 rule 2): sign-in, cart / checkout, payment, payment
 // result and live order tracking. The app enforces the same list on its side.
-export const BLOCKED_SCREENS = new Set(['sign-in', 'cart', 'checkout', 'payment', 'payments', 'payment-result', 'order']);
+export const BLOCKED_SCREENS = new Set(['sign-in', 'welcome', 'cart', 'checkout', 'payment', 'payments', 'payment-result', 'order']);
 
 const Lang = z.enum(['en', 'hi', 'mr']);
 const Content = z.object({

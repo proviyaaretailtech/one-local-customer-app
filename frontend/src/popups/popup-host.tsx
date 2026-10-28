@@ -25,6 +25,8 @@ import { useDeliveryLocation } from '../delivery-location';
 import { allowedByFrequency, isBlockedPath, markShown, screenOf, session } from './rules';
 import type { Popup } from './types';
 import { COMING_SOON_ALL } from '../coming-soon-mode';
+import { useAuth } from '../auth';
+import { LetterPopup } from './letter-popup';
 
 const SETTLE_MS = 1000;
 const INTERACTIONS_CAP_MS = 1500;
@@ -34,8 +36,8 @@ export function PopupHost() {
   const pathname = usePathname() ?? '/';
   // No pop-up over the first-run language chooser either.
   const firstRun = useShowFirstRun();
-  // Coming-soon build: no promo pop-ups (their "See offers" buttons lead nowhere yet).
-  const blocked = COMING_SOON_ALL || isBlockedPath(pathname) || firstRun;
+  // Coming-soon build: only letters (welcome and announcements); other promo pop-ups' "See offers" buttons lead nowhere yet.
+  const blocked = isBlockedPath(pathname) || firstRun;
   const screen = screenOf(pathname);
   // The town the pop-ups were fetched for, printed on coming-soon receipts. PopupHost sits outside the shell, so this is
   // the saved town's default until the shell's location is lifted higher.
@@ -44,9 +46,11 @@ export function PopupHost() {
   const lang = (i18n.resolvedLanguage ?? i18n.language ?? 'en').slice(0, 2);
   const hasCart = useCart().items.length > 0;
   const motion = useMotionAllowed();
+  // Signed in or not changes the answer (the first-sign-in welcome goes only to a new account), so it is part of the key.
+  const userId = useAuth().session?.user?.id ?? '';
   const { data } = useQuery({
-    queryKey: ['popups', screen, lang, hasCart],
-    queryFn: () => fetchPopups(screen, lang, hasCart),
+    queryKey: ['popups', screen, lang, hasCart, userId],
+    queryFn: async () => (await fetchPopups(screen, lang, hasCart)).filter(p => !COMING_SOON_ALL || p.format === 'letter'),
     enabled: !blocked, staleTime: 60_000, retry: false,
   });
   const dataRef = useRef<Popup[] | undefined>(data);
@@ -80,6 +84,7 @@ export function PopupHost() {
         if ((p.format === 'strip') !== wantStrip || !p.screens.includes(screen)) continue;
         if (p.trigger === 'app_open' && session.firstViewOf.get(screen) !== v.index) continue;
         if (p.trigger === 'scroll_depth') continue;   // needs the screen's scroll position; not wired yet
+        // first_sign_in: the server sends it only to a signed-in new account; it shows on the first screen it fits (once ever).
         if (await allowedByFrequency(p)) return p;
       }
       return null;
@@ -94,7 +99,7 @@ export function PopupHost() {
         timers.push(setTimeout(async () => {
           while (!cancelled && introShowing()) await new Promise(r => setTimeout(r, 300));   // wait for the intro to finish
           if (cancelled || !stillAllowed()) return;
-          const url = imageUrl(contentFor(p, lang).image);
+          const url = p.format === 'letter' ? imageUrl(p.media?.type === 'photo' ? p.media.key : p.media?.poster_key) : imageUrl(contentFor(p, lang).image);
           if (url) {
             const ok = await Image.prefetch(url).catch(() => false);
             if (!ok) return;   // not on the phone: try again at the next opportunity
@@ -134,6 +139,7 @@ export function PopupHost() {
     {strip && <PopupStrip popup={strip} lang={lang} motion={motion} onClose={() => close(strip, setStrip)} onOpen={() => open(strip, setStrip)} />}
     {modal && modal.format === 'coming_soon' && !!contentFor(modal, lang).items?.length
       ? <ComingSoonReceipts title={contentFor(modal, lang).title} items={contentFor(modal, lang).items!} city={city} motion={motion} onClose={() => close(modal, setModal)} />
+      : modal && modal.format === 'letter' ? <LetterPopup popup={modal} lang={lang} motion={motion} onClose={() => close(modal, setModal)} onOpen={() => open(modal, setModal)} />
       : modal && modal.format !== 'coming_soon' && <PopupModal popup={modal} lang={lang} motion={motion} onClose={() => close(modal, setModal)} onOpen={() => open(modal, setModal)} />}
   </>;
 }
