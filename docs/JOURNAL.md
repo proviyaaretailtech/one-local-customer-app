@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-28 — One Local customer app: new department icons from Higgsfield
+
+**The five department icons (food, groceries, shops, pharmacy & beauty, book it) are new artwork generated in Higgsfield, with real transparent backgrounds.**
+
+- **Why:** the founder wanted better creatives than the old green-square icons, made with Higgsfield.
+- **Structural decisions:** generated with Higgsfield's GPT Image 2.5 model at high quality, transparent background, square 1024 px; 7.5 of 120 credits used. Published under new image names (icon-…-v4) so cached copies of older icons are never shown.
+- **What works now:** Home and the department header show the new icons: a burger, a grocery basket, shopping bags with sneakers, pharmacy and beauty products, and cinema tickets with popcorn. The full-size PNG files were handed to the founder to keep.
+- **Left undone:** like the earlier media changes, the icons exist only in this computer's local media folder and must be uploaded to the live media store before release.
+- **Open questions for the founder:** none.
+
 ## 2026-10-28 — One Local customer app: cut-out icons, no tap outlines, 60 fps reels
 
 **Department icons now sit straight on the page with no green squares, logos have a soft raised shadow, tap outlines are gone everywhere, and the sample reels play at 60 frames a second.**
