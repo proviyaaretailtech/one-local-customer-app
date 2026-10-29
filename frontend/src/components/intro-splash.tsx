@@ -1,5 +1,7 @@
 // First-launch intro: a short brand video (~6 s, muted, portrait 9:16) plays full screen, then
 // dissolves into the app. Tap anywhere to skip.
+// Only once per install (founder, 2026-10-29): when it ends or is skipped a flag is saved, and every later launch
+// shows just the native splash (app icon on ink) and goes straight into the app.
 // The video is served from Supabase Storage (public bucket onecity-catalog, path app/intro/), in two
 // renditions: 720p for small or low-density screens, 1080p for the rest.
 // Phones fill the screen (cover). Tablets, landscape and desktop web would crop too much of a portrait
@@ -8,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, PixelRatio, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -20,12 +23,18 @@ const INK = '#050605';
 const POSTER = require('../../assets/videos/intro-poster.jpg');
 const STORAGE = `${String(Constants.expoConfig?.extra?.supabaseUrl || '').replace(/\/$/, '')}/storage/v1/object/public/onecity-catalog/app/intro`;
 const VIDEO_ASPECT = 9 / 16;
+const SEEN_KEY = 'onelocal.intro.seen';
 
 // Keep the native splash (same ink colour) up until the video can start, so there is no flash.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export function IntroSplash() {
-  const [visible, setVisible] = useState(!launch.__onecityIntroPlayed);
+  // null while the saved flag is read; the native splash stays up meanwhile.
+  const [visible, setVisible] = useState<boolean | null>(() => {
+    if (launch.__onecityIntroPlayed) return false;
+    launch.__onecityIntroShowing = true; // no pop-up during the read either
+    return null;
+  });
   const { t } = useTranslation(); // safe here: I18nProvider holds the first render until the saved language is loaded
   const motion = useMotionAllowed();
   const { width, height } = useWindowDimensions();
@@ -41,17 +50,31 @@ export function IntroSplash() {
   const view = useRef<VideoView>(null);
   const exit = useSharedValue(0);
   const finishing = useRef(false);
+  // The poster has reached the screen. Android can take seconds to mount the app under the intro on a first
+  // launch; playing before that would run the start of the video behind the native splash.
+  const [drawn, setDrawn] = useState(false);
   const player = useVideoPlayer(visible && motion ? source : null, p => { p.loop = false; p.muted = true; });
+
+  useEffect(() => {
+    if (visible !== null) return;
+    let live = true;
+    AsyncStorage.getItem(SEEN_KEY)
+      .then(seen => { if (live) setVisible(!seen); })
+      .catch(() => { if (live) setVisible(true); });
+    return () => { live = false; };
+  }, [visible]);
 
   const done = () => { launch.__onecityIntroShowing = false; setVisible(false); };
   const finish = () => {
     if (finishing.current) return;
     finishing.current = true;
+    AsyncStorage.setItem(SEEN_KEY, '1').catch(() => {});
     exit.value = withTiming(1, { duration: 420, easing: Easing.bezier(0.4, 0, 0.2, 1) }, f => { if (f) runOnJS(done)(); });
   };
 
   useEffect(() => {
-    if (!visible) { void SplashScreen.hideAsync().catch(() => {}); return; }
+    if (visible === null) return;
+    if (!visible) { launch.__onecityIntroShowing = false; void SplashScreen.hideAsync().catch(() => {}); return; }
     launch.__onecityIntroPlayed = true;
     // Read by the pop-up host so no pop-up opens over the intro.
     launch.__onecityIntroShowing = true;
@@ -61,25 +84,33 @@ export function IntroSplash() {
       const id = setTimeout(finish, 700);
       return () => clearTimeout(id);
     }
+    if (!drawn) {
+      // Poster not up yet: keep the native splash, but never longer than the safety net below.
+      const unblock = setTimeout(() => setDrawn(true), 4000);
+      return () => clearTimeout(unblock);
+    }
+    reveal(); // the poster is the video's first frame, so the splash can go now
+    let fallback: ReturnType<typeof setTimeout> | undefined;
     const play = () => {
-      reveal();
+      if (fallback) return;
+      // Safety net: if the video stalls or never ends, remove the intro on a plain timer.
+      fallback = setTimeout(finish, 9000);
       // Web: play() through the element so a blocked autoplay is not reported as an error.
       const element = Platform.OS === 'web' ? (view.current as unknown as { nativeRef?: { current?: HTMLVideoElement } })?.nativeRef?.current : undefined;
       if (element) void element.play().catch(() => {}); else player.play();
     };
     if (player.status === 'readyToPlay') play();
+    if (player.status === 'error') finish();
     const ready = player.addListener('statusChange', ({ status }) => {
       if (status === 'readyToPlay') play();
       if (status === 'error') { reveal(); finish(); }
     });
     const ended = player.addListener('playToEnd', finish);
-    // On a slow network show the poster rather than holding the native splash.
-    const unblock = setTimeout(reveal, 1500);
-    // Safety net: if the video stalls or never ends, remove the intro on a plain timer.
-    const fallback = setTimeout(finish, 9000);
-    return () => { ready.remove(); ended.remove(); clearTimeout(unblock); clearTimeout(fallback); };
+    // On a slow network the poster stays up while the video loads, but not forever.
+    const slow = setTimeout(() => { if (!fallback) finish(); }, 6000);
+    return () => { ready.remove(); ended.remove(); clearTimeout(slow); if (fallback) clearTimeout(fallback); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, motion, player, source]);
+  }, [visible, motion, player, source, drawn]);
 
   const screen = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
 
@@ -88,7 +119,7 @@ export function IntroSplash() {
     <StatusBar style="light" />
     {wide && <Image source={POSTER} style={s.fill} resizeMode="cover" blurRadius={28} />}
     {wide && <View style={[StyleSheet.absoluteFill, s.dim]} />}
-    <Image source={POSTER} style={s.fill} resizeMode={wide ? 'contain' : 'cover'} />
+    <Image source={POSTER} style={s.fill} resizeMode={wide ? 'contain' : 'cover'} onLoad={() => setDrawn(true)} onError={() => setDrawn(true)} />
     {motion && source && <View style={s.clip} pointerEvents="none"><VideoView ref={view} player={player} style={s.fill} contentFit={wide ? 'contain' : 'cover'} nativeControls={false} allowsPictureInPicture={false} /></View>}
     <Pressable style={StyleSheet.absoluteFill} onPress={finish} accessibilityRole="button" />
   </Animated.View>;

@@ -36,8 +36,9 @@ export default {
     ['expo-notifications', { color: '#B3F400' }],
     '@bacons/apple-targets',
     'expo-dev-client',
-    // Native launch screen: the OneLocal wordmark on the intro's ink colour, so launch → intro has no white flash.
-    ['expo-splash-screen', { image: './assets/images/brand/onelocal-logo-on-dark.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#050605', dark: { image: './assets/images/brand/onelocal-logo-on-dark.png', backgroundColor: '#050605' } }],
+    // Native launch screen: the app icon (green ring) on the intro's ink colour, so launch → intro has no white flash.
+    // Founder, 2026-10-29: no "OneLocal" wordmark splash; this simple splash is every launch after the first.
+    ['expo-splash-screen', { image: './assets/images/adaptive-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#050605', dark: { image: './assets/images/adaptive-icon.png', backgroundColor: '#050605' } }],
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
   ],

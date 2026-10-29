@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Launch check for an Android build: installs the APK on the running emulator (or an attached phone), clears its
-# data, opens it like a new customer, walks language → Latur → Discover → Home, and fails if the app crashed,
+# data, opens it like a new customer, walks language → Latur → Discover → Home, cold-restarts it (no intro the
+# second time, straight to the app), and fails if the app crashed,
 # showed the "Something went wrong" screen, or could not reach a screen. Run it on every APK before anyone else installs it — a web
 # check does not catch Android-only failures (module load order, native modules, the press wrapper in src/native/).
 #
-#   scripts/android-smoke.sh path/to/app.apk [seconds=20] [screenshot.png]
+#   scripts/android-smoke.sh path/to/app.apk [seconds=30] [screenshot.png]
 #
 # Start an emulator first: "$ANDROID_HOME/emulator/emulator" -avd Pixel_7
 # On an emulator a build signed with another key is uninstalled first (its test data goes); on a real phone
 # the script stops instead, so nobody's data is wiped.
 set -euo pipefail
-apk="${1:?usage: android-smoke.sh app.apk [seconds] [screenshot.png]}"; wait_s="${2:-20}"; shot="${3:-}"
+apk="${1:?usage: android-smoke.sh app.apk [seconds] [screenshot.png]}"; wait_s="${2:-30}"; shot="${3:-}"
 pkg=com.proviyaa.onelatur
 adb="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
 
@@ -32,7 +33,7 @@ version=$("$adb" shell dumpsys package "$pkg" | grep -m1 -o 'versionCode=[0-9]*'
 sleep "$wait_s"
 
 # Tap the first on-screen element whose text or description is exactly $1 (uiautomator, so no fixed coordinates).
-tap_text() {
+tap_text_once() {
   "$adb" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || return 1
   local xy; xy=$("$adb" exec-out cat /sdcard/ui.xml | python3 -c '
 import re, sys
@@ -41,11 +42,11 @@ for node in re.findall(r"<node [^>]*>", xml):
     if re.search(r"(text|content-desc)=\"%s\"" % re.escape(want), node):
         x1, y1, x2, y2 = map(int, re.search(r"bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"", node).groups())
         print((x1 + x2) // 2, (y1 + y2) // 2); break' "$1")
-  [[ -n "$xy" ]] || { echo "  (could not find \"$1\" on screen)"; return 1; }
+  [[ -n "$xy" ]] || return 1
   "$adb" shell input tap $xy; sleep "${2:-5}"
 }
 # Tap the first element whose testID (Android resource-id) starts with $1.
-tap_id() {
+tap_id_once() {
   "$adb" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || return 1
   local xy; xy=$("$adb" exec-out cat /sdcard/ui.xml | python3 -c '
 import re, sys
@@ -54,13 +55,18 @@ for node in re.findall(r"<node [^>]*>", xml):
     if re.search(r"resource-id=\"%s" % re.escape(want), node):
         x1, y1, x2, y2 = map(int, re.search(r"bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"", node).groups())
         print((x1 + x2) // 2, (y1 + y2) // 2); break' "$1")
-  [[ -n "$xy" ]] || { echo "  (could not find id \"$1*\" on screen)"; return 1; }
+  [[ -n "$xy" ]] || return 1
   "$adb" shell input tap $xy; sleep "${2:-5}"
 }
+# Screens load at their own pace (slower on a first launch): look up to 4 times, 3 s apart.
+tap_text() { for _ in 1 2 3 4; do tap_text_once "$@" && return 0; sleep 3; done; echo "  (could not find \"$1\" on screen)"; return 1; }
+tap_id() { for _ in 1 2 3 4; do tap_id_once "$@" && return 0; sleep 3; done; echo "  (could not find id \"$1*\" on screen)"; return 1; }
 # The path a new customer takes, ending by leaving Discover (its videos are released on the way out).
 walk="ok"
 tap_text "Continue" 5 || walk="incomplete"
 tap_text "Latur" 8 || walk="incomplete"
+# A promotional pop-up may open over Home (only when a campaign is live); close it if it is there.
+tap_id_once "popup-close" 3 || true
 tap_id "tab-reels" 8 || walk="incomplete"   # Discover (the round button; its label is not tappable)
 # Scroll Discover down and back up: playing tiles scroll out of view and their video players are released.
 # Open a playing reel tile (Discover loses focus, every tile video is released), then come back.
@@ -70,6 +76,15 @@ for dir in up up down down; do
   if [[ $dir == up ]]; then "$adb" shell input swipe 540 1900 540 900 300; else "$adb" shell input swipe 540 900 540 1900 300; fi; sleep 3
 done
 tap_id "tab-home" 5 || walk="incomplete"
+tap_id_once "popup-close" 3 || true
+
+# Second launch: the intro video plays once per install, so a cold restart must go straight from the native splash
+# to the app (no intro, no language chooser).
+"$adb" shell am force-stop "$pkg"; "$adb" shell am start -n "$pkg/.MainActivity" >/dev/null; sleep 6
+"$adb" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
+second=$("$adb" exec-out cat /sdcard/ui.xml 2>/dev/null || true)
+if [[ "$second" == *'resource-id="intro-splash"'* ]]; then walk="intro replayed on second launch"
+elif [[ "$second" != *'resource-id="tab-home'* ]]; then walk="second launch did not reach the app"; fi
 
 crash=$("$adb" logcat -d -b crash 2>/dev/null | grep -A3 "Process: $pkg" | head -4 || true)
 # "Something went wrong" keeps the process alive, so the error boundary's log line counts as a failure too.
@@ -85,7 +100,7 @@ if [[ -n "$crash" || -n "$boundary" || -z "$pid" ]]; then
   [[ -n "$js" ]] && echo "$js"
   exit 1
 fi
-[[ "$walk" == "ok" ]] || { echo "FAIL: $pkg ($version) stayed up but the walk could not reach every screen"; exit 1; }
-echo "PASS: $pkg ($version) first launch, language, Latur, Discover and back to Home with no crash or error screen"
+[[ "$walk" == "ok" ]] || { echo "FAIL: $pkg ($version) stayed up but the walk failed: $walk"; exit 1; }
+echo "PASS: $pkg ($version) first launch, language, Latur, Discover, Home, and a second launch with no intro, with no crash or error screen"
 [[ -n "$js" ]] && { echo "JS errors logged (app kept running):"; echo "$js"; }
 exit 0

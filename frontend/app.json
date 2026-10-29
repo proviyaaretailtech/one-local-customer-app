@@ -44,8 +44,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/brand/onelocal-logo-on-dark.png",
-          "imageWidth": 220,
+          "image": "./assets/images/adaptive-icon.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#050605"
         }
