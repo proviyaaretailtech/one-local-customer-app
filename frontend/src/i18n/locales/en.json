@@ -45,6 +45,10 @@
     "error": {
       "timeout": "{{language}} is taking too long to load. The app is still in {{current}}.",
       "load": "{{language}} could not be loaded. The app is still in {{current}}."
+    },
+    "appearance": {
+      "toLight": "Switch to light look",
+      "toDark": "Switch to dark look"
     }
   },
   "format": {

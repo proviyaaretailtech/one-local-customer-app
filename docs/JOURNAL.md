@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — One Local customer app: founder's logo colours, light/dark first screen, onboarding no longer stops, hosted preview
+
+**The logo now uses the founder's green (black "One", green "Local"; on dark screens a green sign-style badge with black "One" and white "Local"), the first screen has a light/dark switch, picking a searched city during onboarding carries on instead of stopping, and the "as live" preview now really uses the hosted database.**
+
+- **Why:** the founder supplied the logo and shop-sign references, asked for a light/dark toggle on the first screen, found that choosing "Mumbai" while onboarding ended on the coming-soon page, and asked to point the app at the hosted database.
+- **Structural decisions:** the logo files were recoloured from the existing letter shapes (originals stay in git history), green #72D400 sampled from the founder's 3D logo. In onboarding and in the coming-soon build a searched street or landmark sets the delivery place directly instead of opening the pin-on-map screen (which saves an address and is closed in that build); "Add delivery address" is hidden there for the same reason. The light/dark switch is remembered on the phone and changes the first screen only; the rest of the app has no dark theme yet. For the hosted preview, the existing "Expo Web as Live" launch now hands the hosted Supabase address and key to the app explicitly and clears its build cache, because Expo otherwise let the local settings win.
+- **What works now:** checked at phone size: the language screen in dark and light, choosing Mumbai lands on Home ("Explore Mumbai"), sign-in reads "Mumbai, at your door" with the new badge logo. The hosted preview (localhost:8084) loads today's screens, sends its sign-in to the hosted Supabase project and its API calls to the live One Local server. The founder's own number was removed from the local test numbers (takes effect when local Supabase restarts).
+- **Left undone:** no database changes were applied to the hosted project (it is about 15 migrations behind, with a clash at 0600), so pop-ups, the Master pop-up page and other newer features do not work against hosted yet. The live One Local server runs older server code than this checkout. Full app dark mode is not built.
+- **Open questions for the founder:** go ahead with the planned hosted migration (backup, resolve 0600, apply, review gate)?
+
 ## 2026-10-29 — One Local customer app: 2026 campaign card, sign-in capsule, three redesign decks
 
 **The marketing pop-up now looks like a 2026 app card instead of a 2010 "royal letter", sign in and create account are one small always-visible capsule, and three full redesign directions were produced as decks for the founder to choose from.**

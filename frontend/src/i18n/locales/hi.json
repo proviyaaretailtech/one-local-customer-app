@@ -45,6 +45,10 @@
     "error": {
       "timeout": "{{language}} लोड होने में बहुत समय लग रहा है। ऐप अभी {{current}} में ही है।",
       "load": "{{language}} लोड नहीं हो सकी। ऐप अभी {{current}} में ही है।"
+    },
+    "appearance": {
+      "toLight": "हल्का रूप चुनें",
+      "toDark": "गहरा रूप चुनें"
     }
   },
   "format": {

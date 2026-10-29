@@ -13,6 +13,7 @@ import { randomId } from '@/src/api';
 import { Address, useCustomer } from '@/src/customer';
 import { Point, useDeliveryLocation } from '@/src/delivery-location';
 import { useFeatures } from '@/src/features';
+import { COMING_SOON_ALL } from '@/src/coming-soon-mode';
 import {
   addressText, CITY_CENTER, coverageAt, currentPoint, distanceKm, IndiaPlace, isLocationError, knownPoint, LocationOffError, placeDetails, placeLine, popularCities,
   Recent, recentPlaces, rememberPlace, searchIndia, searchPlaces, Suggestion,
@@ -67,6 +68,9 @@ export default function LocationPicker() {
     try {
       const place = await placeDetails(s.place_id, session);
       await rememberPlace({ title: s.title, subtitle: s.subtitle, lat: place.lat, lng: place.lng });
+      // First run and the coming-soon build: take the place as it is and carry on (the pin-on-map screen saves an
+      // address, which is not open there, so it used to stop onboarding on the coming-soon page).
+      if (first || COMING_SOON_ALL) { delivery.setLocation(s.subtitle ? `${s.title}, ${s.subtitle}` : s.title, { lat: place.lat, lng: place.lng }); done(); return; }
       router.push(mapHref(place));
     } catch (e) { setError(message(e)); }
   };
@@ -140,10 +144,10 @@ export default function LocationPicker() {
                 {locating ? <ActivityIndicator color={colors.forest} /> : <Icon name="locate" size={20} color={colors.forest} />}
                 <Text style={styles.actionText}>{t('location.useCurrent')}</Text>
               </Pressable>
-              <Pressable testID="add-new-address" onPress={() => router.push(mapHref(here ?? delivery.point ?? CITY_CENTER))} style={styles.action}>
+              {!COMING_SOON_ALL && <Pressable testID="add-new-address" onPress={() => router.push(mapHref(here ?? delivery.point ?? CITY_CENTER))} style={styles.action}>
                 <Icon name="add-circle-outline" size={20} color={colors.forest} />
                 <Text style={styles.actionText}>{t('location.addAddress')}</Text>
-              </Pressable>
+              </Pressable>}
             </View>
 
             {!!addresses.length && <Text style={styles.section}>{t('location.section.saved')}</Text>}
