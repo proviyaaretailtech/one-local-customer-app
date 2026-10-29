@@ -29,6 +29,7 @@ import { useAuth } from '../auth';
 import { LetterPopup } from './letter-popup';
 
 const SETTLE_MS = 1000;
+const SEEN_AFTER_MS = 1200;
 const INTERACTIONS_CAP_MS = 1500;
 const introShowing = () => !!(globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing;
 
@@ -59,6 +60,10 @@ export function PopupHost() {
 
   const [modal, setModal] = useState<Popup | null>(null);
   const [strip, setStrip] = useState<Popup | null>(null);
+  // What is on screen right now, read by the delayed "seen" check (state from the render it was scheduled in would be stale).
+  const onScreen = useRef<{ modal?: string; strip?: string }>({});
+  useLayoutEffect(() => { onScreen.current = { modal: modal?.id, strip: strip?.id }; });
+  const stillOnScreen = (id: string) => onScreen.current.modal === id || onScreen.current.strip === id;
   // One record per screen view: which view of the session it is, and whether this view already had its pop-up / strip.
   const view = useRef({ path: '', index: -1, modalDone: false, stripDone: false });
   const router = useRouter();
@@ -105,9 +110,13 @@ export function PopupHost() {
             if (!ok) return;   // not on the phone: try again at the next opportunity
           }
           if (cancelled || !stillAllowed()) return;
-          await markShown(p);
-          sendPopupEvent(p.id, 'impression');
           show(p);
+          // Counted as seen only once it has really been on screen for a moment: on a first launch the app moves on to
+          // choosing a location right after the language step, and a pop-up closed by that move must not use up its turn.
+          timers.push(setTimeout(() => {
+            if (cancelled || !stillOnScreen(p.id)) return;
+            void markShown(p); sendPopupEvent(p.id, 'impression');
+          }, SEEN_AFTER_MS));
         }, wait));
       });
       tasks.push(InteractionManager.runAfterInteractions(run));

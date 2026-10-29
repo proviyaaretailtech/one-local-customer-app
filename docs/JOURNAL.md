@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — Verified: phone code boxes, and a campaign made in Master Admin reaching the customer app
+
+**Two end-to-end checks passed, and one real bug they found is fixed: a new customer never saw a campaign because it was counted as "seen" during onboarding.**
+
+- **Why:** the founder asked to verify the 6-box phone code entry and that Master Admin can put a marketing creative into the customer app.
+- **What was checked:** (1) Phone sign-in on the local stack: code sent to the remaining test number, typed digit by digit into the six boxes, Verify signed in and returned Home. (2) A Purushottam Super Market campaign banner (1080 x 1350, store logo on a supermarket photo; saved to the founder's Downloads) was uploaded through Master Admin's Pop-ups page in a browser, saved and sent for approval, approved by a second admin, and then appeared to a brand-new customer on Home right after onboarding; its button opened Groceries.
+- **Bug fixed:** on a first launch the app moves from the language step to choosing a location; a campaign could fire on Home in that split second, be closed by the move, and still be counted as seen for the day. Now a pop-up counts as seen only after it has been on screen for a moment, and no pop-up opens on the location screen.
+- **Left undone:** the second admin's approval was made through the same approval call the Approve button uses (only one Master test login has a known password). Everything here was on the local database; the live server still needs the deploy.
+- **Open questions for the founder:** none.
+
 ## 2026-10-29 — Hosted database caught up: pop-ups and four Master changes are live in the database
 
 **The founder ran the prepared catch-up on the hosted database: marketing pop-ups (0640) and Master's partner review, support inbox, role sets and test logins (0630-0633) now exist there, and five changes that were already there are now recorded.**

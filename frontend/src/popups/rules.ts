@@ -3,8 +3,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Popup } from './types';
 
-// Never over sign-in, the welcome step, cart / checkout, payment, payment result or live order tracking.
-const BLOCKED = [/^\/sign-in(\/|$)/, /^\/welcome(\/|$)/, /^\/cart(\/|$)/, /^\/checkout(\/|$)/, /^\/payments?(\/|$)/, /^\/payment-result(\/|$)/, /^\/order\//];
+// Never over sign-in, the welcome step, choosing a location, cart / checkout, payment, payment result or live order tracking.
+const BLOCKED = [/^\/sign-in(\/|$)/, /^\/welcome(\/|$)/, /^\/location(\/|$)/, /^\/cart(\/|$)/, /^\/checkout(\/|$)/, /^\/payments?(\/|$)/, /^\/payment-result(\/|$)/, /^\/order\//];
 export const isBlockedPath = (pathname: string) => BLOCKED.some(r => r.test(pathname));
 
 // The screen name the server knows: the first path segment, '/' is home. '/store/abc' -> 'store'.
