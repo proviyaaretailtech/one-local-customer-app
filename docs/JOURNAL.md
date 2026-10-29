@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — Android builds that pass a full new-customer walk; the new launch screen is in
+
+**The second pair of builds still broke in Discover and lacked the new launch screen; both are fixed, and the launch check now walks the whole first-time path.**
+
+- **Why:** the founder opened the previous test APK, tapped into Discover and got "Something went wrong"; the new rider-video launch screen was also missing.
+- **Causes:** (1) Discover's moving tiles, the campaign card video and the reel player paused their video when they closed, but Android had already released the video by then, which throws. (2) The new launch screen existed only as unsaved changes in the working folder, so the cloud build (which takes committed code only) never saw it; its two videos were also never put in hosted storage.
+- **Structural decisions:** the pause on close is now guarded in all three places. The launch screen and its poster are committed on both branches. `frontend/scripts/android-smoke.sh` now clears the app (emulator only), opens it as a new customer, goes through language, Latur, Discover, opens a reel, scrolls and returns Home, and fails on a crash, on the "Something went wrong" screen, or if a step cannot be reached. It failed the previous build with the founder's exact error before it was trusted.
+- **What works now:** test APK (version code 13) and Play bundle (version code 14) in Downloads as `OneLocal-2026-10-29-test.apk` and `OneLocal-2026-10-29-play-v14.aab`, same signing key. On the emulator: rider launch screen (poster), language, location, Home, Discover, a reel, Categories, Food, Book It, cart and profile, with no crash or error screen. The earlier broken files were moved out of Downloads.
+- **Left undone:** the launch video files are not in hosted storage (the upload was stopped by the permission check); until the founder uploads `intro-720.mp4` and `intro-1080.mp4` to Storage → onecity-catalog → app/intro, the launch screen shows its still poster and moves on. The bundle is not uploaded to Play.
+- **Open questions for the founder:** none new.
+
 ## 2026-10-29 — Android builds crashed on start; fixed, and every build is now opened on Android before hand-over
 
 **The first Android builds of the day closed immediately on every phone; the cause is fixed, new builds open and run, and a launch check now guards every build.**
