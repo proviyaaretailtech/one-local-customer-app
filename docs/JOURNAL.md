@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — Campaign button with words only now shows; real sign-in codes on the local stack
+
+**A campaign button typed without a destination (e.g. "Coming Soon") now appears, and the founder's phone gets real SMS codes when testing locally.**
+
+- **Why:** the founder typed "Coming Soon" as the button text in Master Admin and saw no button; the app and the Master preview only drew a button when "Button opens" was filled in. Separately, sign-in codes to the founder's number did not arrive when testing on this computer.
+- **What works now:** any pop-up button with words shows, in Master's preview and in the app; with no destination, tapping it just closes the card. Sign-in on the local stack sends a real SMS (through the same apitxt sender the live app uses) to any Indian mobile number except the one remaining test number. The live app was already sending real codes; nothing changed there.
+- **Structural decisions:** the local text-message sender is the POS server run on this computer (port 8090), started from the app's run list as "SMS sender (local sign-in codes)". It uses the local stack's own hook secret, so the POS server's settings file was not changed.
+- **Cause of the missing codes:** removing the founder's number from the test list only takes effect after the local database stack restarts, and the local sender was not running. Both are done; all local data was kept.
+- **Left undone:** each local test code now costs one SMS (about 25 paise). The live server deploy is still waiting.
+- **Open questions for the founder:** none.
+
 ## 2026-10-29 — Verified: phone code boxes, and a campaign made in Master Admin reaching the customer app
 
 **Two end-to-end checks passed, and one real bug they found is fixed: a new customer never saw a campaign because it was counted as "seen" during onboarding.**

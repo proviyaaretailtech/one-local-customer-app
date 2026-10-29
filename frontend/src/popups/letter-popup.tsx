@@ -60,7 +60,8 @@ export function LetterPopup({ popup, lang, motion, onClose, onOpen }: Props) {
         <View style={s.words}>
           {!!c.title && <Text testID="popup-letter-title" style={s.title} numberOfLines={3}>{c.title}</Text>}
           {!!c.body && <Text style={s.text} numberOfLines={3}>{c.body}</Text>}
-          {!!c.cta_route && <Pressable testID="popup-cta" accessibilityRole="button" onPress={onOpen} style={({ pressed }) => [s.cta, pressed && s.pressed]}>
+          {/* A button shows when it has words or a destination; with no destination it just closes the card (e.g. "Coming soon"). */}
+          {!!(c.cta_label || c.cta_route) && <Pressable testID="popup-cta" accessibilityRole="button" onPress={onOpen} style={({ pressed }) => [s.cta, pressed && s.pressed]}>
             <Text style={s.ctaText}>{c.cta_label || t('popups.open')}</Text>
           </Pressable>}
         </View>

@@ -187,7 +187,7 @@ function PopupModal({ popup, lang, motion, onClose, onOpen }: Props) {
   const insets = useSafeAreaInsets();
   const c = contentFor(popup, lang);
   const image = imageUrl(c.image);
-  const hasCta = !!c.cta_route;
+  const hasCta = !!(c.cta_label || c.cta_route); // words alone still show a button; it closes the pop-up
   const sheet = popup.format === 'popup_sheet';
   const full = popup.format === 'interstitial';
   const entrance = useEntrance(motion, sheet ? 48 : full ? 0 : 16);
