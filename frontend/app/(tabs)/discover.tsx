@@ -42,7 +42,8 @@ function TileVideo({ source }: { source: string }) {
     };
     start();
     const ready = player.addListener('statusChange', e => { if (e.status === 'readyToPlay') start(); });
-    return () => { ready.remove(); player.pause(); };
+    // Android releases the player before this cleanup runs on unmount; pausing a released player throws.
+    return () => { ready.remove(); try { player.pause(); } catch { /* already released */ } };
   }, [player]);
   return <VideoView ref={view} player={player} nativeControls={false} contentFit="cover" style={[StyleSheet.absoluteFill, styles.tileVideo, { opacity: shown ? 1 : 0 }]} pointerEvents="none" />;
 }
