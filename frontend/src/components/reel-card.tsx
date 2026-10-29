@@ -27,7 +27,7 @@ function ReelVideo({ source, muted, paused, id }: { source: string; muted: boole
     void element?.play().catch((error: Error) => { if (error.name !== 'AbortError') setFailed(true); });
   }, [player]);
   useEffect(() => { player.muted = muted; }, [player, muted]);
-  useEffect(() => { if (paused) player.pause(); else play(); return () => { player.pause(); }; }, [player, paused, play]);
+  useEffect(() => { if (paused) player.pause(); else play(); return () => { try { player.pause(); } catch { /* already released (Android, on unmount) */ } }; }, [player, paused, play]);
   useEffect(() => {
     const listener = player.addListener('statusChange', e => setFailed(e.status === 'error'));
     const app = AppState.addEventListener('change', state => { if (state !== 'active' || paused) player.pause(); else play(); });
