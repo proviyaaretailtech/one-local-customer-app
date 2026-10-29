@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-30 — One Local customer app: popular-city tiles show landmark photos
+
+**The nine popular-city tiles on the location screen now show a photo of each city's landmark instead of a big pale letter.**
+
+- **Why:** the founder asked for Nano Banana images on these tiles; the letters looked unfinished.
+- **What changed:** nine photo-real, golden-hour landmark images (Gateway of India, India Gate, Vidhana Soudha, Charminar, Kapaleeshwarar Temple, Howrah Bridge, Shaniwar Wada, Sabarmati riverfront, Hawa Mahal) were generated with Google's Nano Banana 2.1 through Higgsfield, shrunk to 480-pixel JPEGs (about 430 KB in total) and shipped inside the app. Each tile shows its photo with a dark fade at the bottom so the city name stays readable.
+- **Structural decisions:** the photos are bundled in the app, not loaded from storage, so the tiles appear instantly and work offline. A city added to the popular list later without a photo keeps the old letter tile.
+- **What works now (checked on the web build at phone size):** all nine tiles show their landmark; tapping one still picks that city.
+- **Left undone:** not yet seen on Android (the emulator was unhealthy in the previous session).
+- **Open questions for the founder:** none.
+
 ## 2026-10-29 — One Local customer app: "Use current location" now asks before it moves you
 
 **Tapping "Use current location" opens a map of where the phone thinks you are; nothing changes until the customer confirms it.**

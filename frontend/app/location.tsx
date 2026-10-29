@@ -3,7 +3,7 @@
 // places. Street-level address search (Google) joins in once the Maps key is set. On first launch
 // this screen asks "Where are you?" and can be skipped (Latur).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, TextInput } from '@/src/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,6 +25,12 @@ import { colors } from '@/src/theme';
 
 const kindIcon = (a: Address) => (a.kind === 'work' || a.label === 'Work' ? 'briefcase-outline' : a.kind === 'other' || a.label === 'Other' ? 'location-outline' : 'home-outline');
 const mapHref = (p?: Point | null, extra = '') => `/address-map?${p ? `lat=${p.lat}&lng=${p.lng}` : ''}${extra}` as never;
+// Landmark photos for the popular-city tiles (generated with Nano Banana, 480px JPEGs). A city without one keeps its initial.
+const CITY_PHOTO: Record<string, number> = {
+  mumbai: require('../assets/cities/mumbai.jpg'), delhi: require('../assets/cities/delhi.jpg'), bengaluru: require('../assets/cities/bengaluru.jpg'),
+  hyderabad: require('../assets/cities/hyderabad.jpg'), chennai: require('../assets/cities/chennai.jpg'), kolkata: require('../assets/cities/kolkata.jpg'),
+  pune: require('../assets/cities/pune.jpg'), ahmedabad: require('../assets/cities/ahmedabad.jpg'), jaipur: require('../assets/cities/jaipur.jpg'),
+};
 const KIND_KEY = { city: 'location.kind.city', town: 'location.kind.town', locality: 'location.kind.locality', village: 'location.kind.village' } as const;
 
 export default function LocationPicker() {
@@ -196,12 +202,20 @@ export default function LocationPicker() {
 
             {!!popular.length && <Text style={styles.section}>{t('location.section.popular')}</Text>}
             <View style={styles.tiles}>
-              {popular.map(p => <Pressable key={p.id} testID={`popular-${p.name.toLowerCase()}`} onPress={() => choosePlace(p)} style={styles.tile}>
-                <LinearGradient colors={[colors.limeSoft, colors.surface]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
-                <Text style={styles.tileMark}>{p.name.slice(0, 1)}</Text>
-                <Text style={styles.tileName} numberOfLines={1}>{p.name}</Text>
-                <Text style={styles.tileState} numberOfLines={1}>{p.state}</Text>
-              </Pressable>)}
+              {popular.map(p => {
+                const photo = CITY_PHOTO[p.name.toLowerCase()];
+                return <Pressable key={p.id} testID={`popular-${p.name.toLowerCase()}`} onPress={() => choosePlace(p)} style={[styles.tile, !!photo && styles.photoTile]}>
+                  {photo ? <>
+                    <Image source={photo} resizeMode="cover" style={styles.tilePhoto} accessibilityIgnoresInvertColors />
+                    <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} start={{ x: 0, y: 0.25 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+                  </> : <>
+                    <LinearGradient colors={[colors.limeSoft, colors.surface]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+                    <Text style={styles.tileMark}>{p.name.slice(0, 1)}</Text>
+                  </>}
+                  <Text style={[styles.tileName, !!photo && styles.photoName]} numberOfLines={1}>{p.name}</Text>
+                  <Text style={[styles.tileState, !!photo && styles.photoState]} numberOfLines={1}>{p.state}</Text>
+                </Pressable>;
+              })}
             </View>
 
             <Pressable testID="browse-india" onPress={() => router.push('/india' as never)} style={styles.browse}>
@@ -287,6 +301,10 @@ const styles = StyleSheet.create({
   tileMark: { position: 'absolute', top: 2, right: 8, fontSize: 26, fontWeight: '900', color: colors.cityMid, letterSpacing: -1 },
   tileName: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
   tileState: { fontSize: 11, color: colors.muted },
+  photoTile: { minHeight: 96, borderWidth: 0 },
+  tilePhoto: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }, // sized to the tile (web otherwise keeps the photo's own 480px)
+  photoName: { color: '#FFFFFF' }, // on the photo's dark scrim in both themes
+  photoState: { color: 'rgba(255,255,255,0.82)' },
   browse: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   backdrop: { flex: 1, backgroundColor: colors.overlay },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 8, gap: 12 },
