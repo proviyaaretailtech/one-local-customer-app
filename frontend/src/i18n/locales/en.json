@@ -141,7 +141,7 @@
       "checkout": "Sign in to place\nyour order.",
       "signin": "Your whole city,\none sign-in away.",
       "signup": "Make OneLocal\nfeel like yours.",
-      "town": "{{town}},\nat your door"
+      "town": "{{town}}, at your door"
     },
     "heroSub": {
       "checkout": "Your bag is saved. Sign in once and we’ll take you straight back to pay.",

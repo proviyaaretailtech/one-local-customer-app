@@ -99,7 +99,9 @@ function CampaignVideo({ source, poster, play }: { source: string; poster: strin
 }
 
 const s = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8,16,11,0.5)' },
+  // Dark enough (and blurred on the web) that bright things behind the card, like the lime SOON pills, fall away.
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8,16,11,0.74)',
+    ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as object) : {}) },
   bottom: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'flex-end' },
   card: { borderRadius: RADIUS, overflow: 'hidden', backgroundColor: '#1C241F',
     boxShadow: [{ offsetX: 0, offsetY: 24, blurRadius: 48, color: 'rgba(5,20,10,0.35)' }] },
