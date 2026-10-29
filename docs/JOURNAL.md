@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — Android builds crashed on start; fixed, and every build is now opened on Android before hand-over
+
+**The first Android builds of the day closed immediately on every phone; the cause is fixed, new builds open and run, and a launch check now guards every build.**
+
+- **Why:** the founder installed the new test APK and it closed right after the logo, every time. The builds had been checked only on the web and on the server, never opened on Android.
+- **Cause:** on Android the app's own code reaches React Native through a small wrapper that adds the button feel (haptics, press motion). A change on 28 October made that wrapper load the page colours, which load the theme, which itself was loading through the wrapper: a loop, so the theme's colours were read before they existed. The web build loads files differently and never hit it.
+- **Structural decisions:** the theme file now loads React Native directly, like the wrapper's other building blocks; the rule is written next to the setting. A new script, `frontend/scripts/android-smoke.sh`, installs a build on the Android emulator, opens it and fails if it crashes; it caught the broken build and passed the fixed one. An over-the-air fix for the already-installed APK was tried and stopped by the permission check as a production deploy; a reinstall is needed instead.
+- **What works now:** new test APK (version code 12) and Play bundle (version code 13), same signing key as before, in Downloads as `OneLocal-2026-10-29-fixed.apk` and `OneLocal-2026-10-29-v13.aab`. On the emulator the APK opened the language screen, the location screen, Home (with the delivery-time chip from the live server) and Discover with no errors. The two broken files were moved out of Downloads.
+- **Left undone:** the bundle is not uploaded to Play; the splash screen shows only "Local" because "One" is black on a black background (waiting for the founder's choice of splash logo).
+- **Open questions for the founder:** should the splash use the green-One logo so the full name shows on the dark launch screen?
+
 ## 2026-10-29 — All repositories pushed; customer server live; Android APK and Play bundle built
 
 **Today's work is on GitHub in every repository, the customer server is live with everything it had plus today's work, and new Android builds are ready.**
