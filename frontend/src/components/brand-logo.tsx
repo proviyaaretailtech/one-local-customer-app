@@ -1,6 +1,6 @@
 // The OneLocal wordmark (founder's logo, 10 Oct 2026), bundled with the app so it shows instantly and offline.
 // tone 'light' = on white/light screens (black "One", green "Local", the founder's green #72D400, 2026-10-29);
-// 'dark' = on dark screens and photos: green "One", white "Local", no background.
+// 'dark' = on photos and coloured headers: black "One", white "Local", no background (founder, 2026-10-29).
 import { Image } from 'expo-image';
 import type { StyleProp, ImageStyle } from 'react-native';
 
