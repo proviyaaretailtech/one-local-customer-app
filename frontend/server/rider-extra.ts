@@ -106,7 +106,7 @@ const KIND: Record<string, string> = {
   permit: 'kyc_document', fitness: 'kyc_document', kyc_selfie: 'kyc_selfie', selfie: 'kyc_selfie', vehicle_rc: 'vehicle_rc', rc: 'vehicle_rc', profile_photo: 'profile_photo',
 };
 const CONTENT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
-const BUCKET = 'rider-uploads';
+export const BUCKET = 'rider-uploads';
 
 const uploadBody = z.object({ kind: z.string().min(1).max(40), content_type: z.string().min(1).max(60), job_id: z.string().optional() });
 

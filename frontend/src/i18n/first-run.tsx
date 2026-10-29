@@ -70,7 +70,6 @@ const s = StyleSheet.create({
   noteLight: { color: 'rgba(11,31,22,0.6)' },
   content: { paddingHorizontal: 22, flexGrow: 1 },
   brand: { flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
-  brandWord: { color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.6, marginBottom: 1 },
   hero: { marginTop: 30, marginBottom: 22, gap: 6 },
   title: { color: '#fff', fontSize: 28, lineHeight: 40, fontWeight: '800' },
   note: { color: 'rgba(255,255,255,0.62)', fontSize: 12, lineHeight: 19, marginTop: 16 },

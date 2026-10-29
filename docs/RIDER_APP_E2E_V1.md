@@ -286,6 +286,9 @@ All routes live on the One Local server. Base: `https://<one-local-domain>/api`.
 | POST | `/rider/store-link` | `{ invite_code }` → `{ organization, store, manager_name, daily_pay_text }` |
 | POST | `/rider/kyc/digilocker/start` | → `{ redirect_url }` (DigiLocker consent) |
 | POST | `/rider/kyc/documents` | `{ kind: "aadhaar"\|"pan"\|"dl"\|"rc"\|"selfie", asset_id, number? }` → document with status |
+| GET | `/rider/kyc/digilocker/status?verification_id=` | → document (Aadhaar: verified, pending or rejected). See `docs/RIDER_KYC.md` |
+| GET | `/rider/kyc/digilocker/return?v=` | public; DigiLocker's callback, 302 back into the app |
+| POST | `/rider/kyc/pan` · `/driving-licence` · `/vehicle-rc` · `/selfie` | `{ number }` · `{ number, dob?, asset_id? }` · `{ number? }` · `{ asset_id }` → document |
 | PUT | `/rider/vehicle` | `{ class: "2w"\|"3w"\|"4w", ownership: "own"\|"rent", registration_no, rc_asset_id }` |
 | PUT | `/rider/preferences` | `{ categories: ["quick_drop","on_order","pick_drop"], acceptance: "auto"\|"manual", multi_store: bool, store_ids[] }` |
 | PUT | `/rider/payout` | `{ method: "bank", holder, account_no, ifsc }` or `{ method: "upi", vpa }` → `{ verified_name, status }` (penny-drop / VPA lookup) |

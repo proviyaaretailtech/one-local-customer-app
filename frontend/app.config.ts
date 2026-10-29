@@ -18,7 +18,10 @@ const easProjectId = process.env.EAS_PROJECT_ID || '08ae9031-c338-4b72-82a9-4b65
 export default {
   ...config.expo,
   name: 'OneLocal',
-  runtimeVersion: { policy: 'fingerprint' },
+  // The app version (app.json "version") is the runtime version: identical on every machine, so a build made from a
+  // folder whose node_modules is a link, or that also holds a generated android/ project, matches on EAS. Raise the
+  // version whenever native code changes, before sending an over-the-air update to that build.
+  runtimeVersion: { policy: 'appVersion' },
   updates: easProjectId
     ? { enabled: true, url: `https://u.expo.dev/${easProjectId}`, checkAutomatically: 'ON_LOAD', fallbackToCacheTimeout: 0 }
     : { enabled: false },
@@ -36,8 +39,8 @@ export default {
     ['expo-notifications', { color: '#B3F400' }],
     '@bacons/apple-targets',
     'expo-dev-client',
-    // Native launch screen: the OneLocal wordmark on the intro's ink colour, so launch → intro has no white flash.
-    ['expo-splash-screen', { image: './assets/images/brand/onelocal-logo-on-dark.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#050605', dark: { image: './assets/images/brand/onelocal-logo-on-dark.png', backgroundColor: '#050605' } }],
+    // The launch screen (expo-splash-screen) is configured in app.json: Android 12+ shows it inside a 192 dp circle, so its
+    // imageWidth stays at 160 dp to keep the whole wide logo visible (220 cut it to "OneLoca").
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
   ],

@@ -10,6 +10,7 @@ import { supabase, SUPABASE_KEY, SUPABASE_URL } from './lib/supabase';
 import { useCustomer } from './customer';
 import { afterSignIn } from './privacy';
 import { PRIVACY } from '@/constants/privacy';
+import { unregisterPush } from './push';
 import { t } from '@/src/i18n';
 
 type AuthState = {
@@ -19,6 +20,8 @@ type AuthState = {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string, mobile: string, whatsapp: boolean) => Promise<{ needsConfirmation: boolean }>;
   saveMobile: (mobile: string, whatsapp: boolean) => Promise<void>;
+  verifyEmailCode: (email: string, code: string) => Promise<void>;
+  resendEmailCode: (email: string) => Promise<void>;
   sendPhoneCode: (mobile: string) => Promise<void>;
   verifyPhoneCode: (mobile: string, code: string) => Promise<void>;
   signOut: (everywhere?: boolean) => Promise<void>;
@@ -161,6 +164,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(friendly(error.message));
     if (customerReady) await update({ profile: { ...profile, phone: digits } }).catch(() => {});
   };
+  // A new email account is confirmed inside the app: the OneLocal email carries a 6-digit code ({{ .Token }} in the Supabase
+  // "Confirm signup" template) that the customer types here, which also signs them in.
+  const verifyEmailCode = async (email: string, code: string) => {
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
+    const token = code.replace(/\D/g, '');
+    if (token.length < 6) throw new Error(t('auth.error.codeShort'));
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: 'signup' });
+    if (error) throw new Error(friendly(error.message));
+  };
+  const resendEmailCode = async (email: string) => {
+    if (!supabase) throw new Error(t('auth.error.notConfigured'));
+    const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+    if (error) throw new Error(friendly(error.message));
+  };
 
   // Mobile number sign-in: Supabase texts a one-time code (creating the account the first time),
   // then the code signs the customer in. Needs Supabase's Phone provider and an SMS provider.
@@ -180,11 +197,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // This phone only by default (Supabase's own default signs out every device); "everywhere"
   // ends every session of the account, e.g. after losing a phone.
   const signOut = async (everywhere = false) => {
+    await unregisterPush(); // while the session still exists, so the server knows whose phone it is
     const { error } = (await supabase?.auth.signOut({ scope: everywhere ? 'global' : 'local' })) ?? { error: null };
     if (error) throw new Error(t('auth.error.signOut'));
   };
 
-  return <AuthContext.Provider value={{ ready, session, googleAvailable, appleAvailable, phoneAvailable, signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, saveMobile, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ready, session, googleAvailable, appleAvailable, phoneAvailable, signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, saveMobile, verifyEmailCode, resendEmailCode, sendPhoneCode, verifyPhoneCode, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

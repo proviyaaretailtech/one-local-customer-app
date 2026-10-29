@@ -8,7 +8,9 @@ import { signedInUserId } from './auth';
 import { db, fromDbError } from './db';
 import { nearestPlace } from './geo';
 import { HttpError } from './http';
+import { kycEngine, readyEngine } from './kyc/config';
 import { confirmAsset, notFound, parse } from './rider-extra';
+import { digilockerResult, startDigilockerSession, verifyWithEngine } from './rider-kyc';
 import { payoutMethodDto } from './rider-money';
 
 type Row = Record<string, any>;
@@ -35,12 +37,15 @@ export async function ownRider(request: Request, opts: { editing?: boolean } = {
   if (!row) throw new HttpError(403, 'You have not registered as a rider yet.', undefined, 'not_enrolled');
   if (row.status === 'suspended') throw new HttpError(403, 'Your rider account is suspended. Please contact support.', undefined, 'suspended');
   // The application can be changed only until it is sent in, or when it was sent back.
-  if (opts.editing && !EDITABLE.includes(row.status)) {
-    throw new HttpError(409, row.status === 'approved' ? 'Your application is already approved.' : 'Your application is being checked, so it cannot be changed now.', undefined, 'locked');
-  }
+  if (opts.editing) assertEditable(row.status);
   return { id: row.id, userId, status: row.status, type: row.type, row };
 }
 const EDITABLE = ['draft', 'rejected', 'documents_expired'];
+function assertEditable(status: string) {
+  if (!EDITABLE.includes(status)) {
+    throw new HttpError(409, status === 'approved' ? 'Your application is already approved.' : 'Your application is being checked, so it cannot be changed now.', undefined, 'locked');
+  }
+}
 
 const fromDb = (e: any) => { if (e?.code === '23505') return true; fromDbError(e); };
 
@@ -320,13 +325,31 @@ export const docDto = (d: Row) => ({
   source: d.source ?? null, expires_on: d.expires_at ?? null, rejection_reason: d.rejection_reason ?? null, reviewed_at: d.reviewed_at ?? null,
 });
 
-// POST /rider/kyc/documents. Every document starts "pending": no verification provider is connected, so a person at
-// One Local reviews it. DigiLocker needs that provider and answers 501.
+type DocBody = z.infer<typeof docBody>;
+
+// POST /rider/kyc/documents.
+//  * Cashfree Secure ID is off (no keys): every document starts "pending" and a person at One Local reviews it. DigiLocker answers 501.
+//  * Cashfree Secure ID is on (server/kyc): Aadhaar through DigiLocker, and a PAN, licence or RC number or a selfie, are verified by the engine
+//    (verified / pending / rejected with a reason). Uploads still work, and are what is kept when Cashfree is down.
 export async function addDocument(a: Applicant, raw: unknown) {
   const b = parse(docBody, raw);
   const kind = DOC_TO_DB[b.kind];
   if (!kind) throw new HttpError(422, 'That kind of document is not needed.', undefined, 'validation');
-  if (b.source === 'digilocker') throw new HttpError(501, 'DigiLocker verification is not available yet. Please upload the document instead.', undefined, 'provider_not_configured');
+  if (b.source === 'digilocker') {
+    readyEngine('DigiLocker verification is not available yet. Please upload the document instead.'); // 501 when off, 503 when set up wrongly
+    if (b.kind !== 'aadhaar') throw new HttpError(422, 'DigiLocker gives your Aadhaar. Enter the number for this document instead.', undefined, 'validation');
+    return docDto(await digilockerResult(a, b.verification_id));
+  }
+  if (kycEngine().state === 'ready') {
+    const upload = b.asset_id ? () => uploadDocument(a, b, kind) : undefined;
+    if ((b.kind === 'pan' || b.kind === 'dl' || b.kind === 'rc') && b.number) return docDto(await verifyWithEngine(a, { kind: b.kind, number: b.number, dob: b.dob, assetId: b.asset_id }, upload));
+    if (b.kind === 'selfie' && b.asset_id) return docDto(await verifyWithEngine(a, { kind: 'selfie', assetId: b.asset_id }, upload));
+  }
+  return docDto(await uploadDocument(a, b, kind));
+}
+
+// The document as the rider sent it in, for a person to check.
+async function uploadDocument(a: Applicant, b: DocBody, kind: string) {
   if (!b.asset_id) throw new HttpError(400, 'asset_id: upload the document first', undefined, 'validation');
   const asset = await confirmAsset(a, b.asset_id, [DOC_ASSET[kind]]);
   let masked: string | null = null;
@@ -344,12 +367,51 @@ export async function addDocument(a: Applicant, raw: unknown) {
   const { data, error } = await db().from('rider_documents').insert({ rider_id: a.id, kind, asset_id: asset, number_masked: masked, source: 'upload', status: 'pending' }).select('*').single();
   if (error) fromDbError(error);
   await update(a.id, { onboarding_step: 'kyc' });
-  return docDto(data);
+  return data as Row;
 }
 
-// POST /rider/kyc/digilocker/start. Needs a KYC provider account; none is configured.
-export function startDigilocker(): never {
-  throw new HttpError(501, 'DigiLocker verification is not available yet. Please upload your documents instead.', undefined, 'provider_not_configured');
+// POST /rider/kyc/digilocker/start. Opens a Cashfree DigiLocker session: the rider signs in there, DigiLocker sends them back to the app.
+// No keys: 501 provider_not_configured, as before.
+export async function startDigilocker(a: Applicant, request: Request) {
+  readyEngine('DigiLocker verification is not available yet. Please upload your documents instead.');
+  assertEditable(a.status);
+  return startDigilockerSession(a, request);
+}
+
+// GET /rider/kyc/digilocker/status?verification_id=. Asks Cashfree how the rider's DigiLocker session went.
+export async function digilockerStatus(a: Applicant, verificationId: string | null) {
+  readyEngine('DigiLocker verification is not available yet. Please upload your documents instead.');
+  assertEditable(a.status);
+  return docDto(await digilockerResult(a, verificationId));
+}
+
+// POST /rider/kyc/{pan,driving-licence,vehicle-rc,selfie}: one check each, the same answer as POST /rider/kyc/documents.
+const panBody = z.object({ number: z.string().trim().min(5).max(20) });
+const dlBody = z.object({ number: z.string().trim().min(5).max(30), dob: z.string().regex(/^\d{4}-\d\d-\d\d$/).nullish(), asset_id: z.string().nullish() });
+const rcBody = z.object({ number: z.string().trim().max(20).nullish() });
+const selfieBody = z.object({ asset_id: z.string().min(1).max(60) });
+
+export async function verifyKyc(a: Applicant, check: 'pan' | 'dl' | 'rc' | 'selfie', raw: unknown) {
+  readyEngine('Verification is not available yet. Please upload your documents instead.');
+  assertEditable(a.status);
+  switch (check) {
+    case 'pan': { const b = parse(panBody, raw); return docDto(await verifyWithEngine(a, { kind: 'pan', number: b.number })); }
+    case 'dl': {
+      const b = parse(dlBody, raw);
+      const upload = b.asset_id ? () => uploadDocument(a, { kind: 'dl', source: 'upload', asset_id: b.asset_id, number: b.number, dob: b.dob }, DOC_TO_DB.dl) : undefined;
+      return docDto(await verifyWithEngine(a, { kind: 'dl', number: b.number, dob: b.dob, assetId: b.asset_id }, upload));
+    }
+    case 'rc': {
+      const b = parse(rcBody, raw);
+      const number = b.number || a.row.vehicle_registration_no;
+      if (!number) throw new HttpError(400, 'number: enter the vehicle registration number', undefined, 'validation');
+      return docDto(await verifyWithEngine(a, { kind: 'rc', number }));
+    }
+    case 'selfie': {
+      const b = parse(selfieBody, raw);
+      return docDto(await verifyWithEngine(a, { kind: 'selfie', assetId: b.asset_id }, () => uploadDocument(a, { kind: 'selfie', source: 'upload', asset_id: b.asset_id }, DOC_TO_DB.selfie)));
+    }
+  }
 }
 
 // ---------- submit and status ----------

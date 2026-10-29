@@ -32,7 +32,7 @@ const LINE = '#E7EBE4';
 const SOFT = '#6B746D';
 
 export default function SignIn() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, googleAvailable, appleAvailable, phoneAvailable, sendPhoneCode, verifyPhoneCode } = useAuth();
+  const { signInWithEmail, signUpWithEmail, verifyEmailCode, resendEmailCode, signInWithGoogle, signInWithApple, googleAvailable, appleAvailable, phoneAvailable, sendPhoneCode, verifyPhoneCode } = useAuth();
   const router = useRouter(); const insets = useSafeAreaInsets(); const motion = useMotionAllowed();
   // The town the customer picked, in the headline ("Latur, at your door"); the photo takes about 38% of the screen.
   const town = useDeliveryLocation().location.split(',')[0] || 'Latur'; const photoH = Math.round(useWindowDimensions().height * 0.38);
@@ -51,6 +51,8 @@ export default function SignIn() {
   // Create account (email) also collects a mobile number and an optional WhatsApp offers choice (unticked by default).
   const [signupMobile, setSignupMobile] = useState(''); const [whatsapp, setWhatsapp] = useState(false);
   const [mobile, setMobile] = useState(''); const [sentTo, setSentTo] = useState(''); const [code, setCode] = useState('');
+  // The email a new account's 6-digit confirmation code went to (empty until sign-up asks for it).
+  const [emailCodeFor, setEmailCodeFor] = useState('');
   const [wait, setWait] = useState(0);
   useEffect(() => { if (wait <= 0) return; const timer = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(timer); }, [wait]);
 
@@ -118,10 +120,28 @@ export default function SignIn() {
       if (mode === 'signin') await signInWithEmail(email, password);
       else {
         const { needsConfirmation } = await signUpWithEmail(name, email, password, signupMobile, whatsapp);
-        if (needsConfirmation) { setNotice(t('auth.notice.confirmEmail')); setMode('signin'); return; }
+        if (needsConfirmation) { const to = email.trim().toLowerCase(); setEmailCodeFor(to); setCode(''); setWait(30); setNotice(t('auth.notice.emailCodeSent', { email: to })); return; }
       }
       signedIn();
-    } catch (e) { failed(e); } finally { setBusy(''); }
+    } catch (e) {
+      // An account that was never confirmed gets a fresh code and the code box, instead of a dead end.
+      if (mode === 'signin' && e instanceof Error && e.message === t('auth.error.emailNotConfirmed')) {
+        const to = email.trim().toLowerCase();
+        try { await resendEmailCode(to); setEmailCodeFor(to); setCode(''); setWait(30); setNotice(t('auth.notice.emailCodeSent', { email: to })); return; } catch { /* fall through to the plain error */ }
+      }
+      failed(e);
+    } finally { setBusy(''); }
+  };
+
+  const verifyEmail = async () => {
+    setError('');
+    if (code.length < 6) return setError(t('auth.error.codeShort'));
+    setBusy('email');
+    try { await verifyEmailCode(emailCodeFor, code); signedIn(); } catch (e) { failed(e); } finally { setBusy(''); }
+  };
+  const resendEmail = async () => {
+    setError(''); setBusy('email');
+    try { await resendEmailCode(emailCodeFor); setWait(30); setNotice(t('auth.notice.emailCodeSent', { email: emailCodeFor })); } catch (e) { failed(e); } finally { setBusy(''); }
   };
 
   const google = async () => {
@@ -179,6 +199,9 @@ export default function SignIn() {
                 keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" maxLength={14} onSubmitEditing={sendCode} returnKeyType="go" />
             : <><Text style={s.codeLabel}>{t('auth.enterCode')}</Text>
                 <CodeBoxes value={code} onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))} onDone={verifyCode} label={t('auth.placeholder.code')} /></>}
+        </View> : emailCodeFor ? <View testID="sign-in-email-confirm" style={s.stack}>
+          <Field icon="keypad-outline" testID="sign-in-email-code" placeholder={t('auth.placeholder.code')} value={code} onChangeText={v => setCode(v.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="one-time-code" maxLength={6} onSubmitEditing={verifyEmail} returnKeyType="go" />
         </View> : <View testID="sign-in-mode" style={s.stack}>
           {mode === 'signup' && <Field icon="person-outline" testID="sign-in-name" placeholder={t('auth.placeholder.name')} value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />}
           <Field icon="mail-outline" testID="sign-in-email" placeholder={t('auth.placeholder.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textContentType="emailAddress" autoComplete="email" />
@@ -212,16 +235,21 @@ export default function SignIn() {
           ? <Pressable testID="sign-in-submit" accessibilityRole="button" disabled={!!busy} onPress={sentTo ? verifyCode : sendCode} style={[s.primary, busy === 'phone' && s.primaryBusy]}>
               {busy === 'phone' ? <ActivityIndicator color={INK} /> : <Text style={s.primaryText}>{sentTo ? t('auth.verify') : t('auth.sendCode')}</Text>}
             </Pressable>
-          : <Pressable testID="sign-in-submit" accessibilityRole="button" disabled={!!busy} onPress={submit} style={[s.primary, busy === 'email' && s.primaryBusy]}>
-              {busy === 'email' ? <ActivityIndicator color={INK} /> : <Text style={s.primaryText}>{mode === 'signin' ? t('auth.signIn') : t('auth.createMyAccount')}</Text>}
+          : <Pressable testID="sign-in-submit" accessibilityRole="button" disabled={!!busy} onPress={emailCodeFor ? verifyEmail : submit} style={[s.primary, busy === 'email' && s.primaryBusy]}>
+              {busy === 'email' ? <ActivityIndicator color={INK} /> : <Text style={s.primaryText}>{emailCodeFor ? t('auth.verify') : mode === 'signin' ? t('auth.signIn') : t('auth.createMyAccount')}</Text>}
             </Pressable>}
+
+        {!byPhone && !!emailCodeFor && <View style={s.codeLinks}>
+          <Pressable testID="sign-in-change-email" accessibilityRole="button" onPress={() => { setEmailCodeFor(''); setCode(''); setNotice(''); setError(''); }} style={s.link}><Text style={s.linkText}>{t('auth.changeEmail')}</Text></Pressable>
+          <Pressable testID="sign-in-email-resend" accessibilityRole="button" disabled={wait > 0 || !!busy} onPress={resendEmail} style={s.link}><Text style={[s.linkText, wait > 0 && { color: SOFT }]}>{wait > 0 ? t('auth.resendIn', { seconds: fmt.number(wait) }) : t('auth.resend')}</Text></Pressable>
+        </View>}
 
         {byPhone && !!sentTo && <View style={s.codeLinks}>
           <Pressable testID="sign-in-change-number" accessibilityRole="button" onPress={() => { setSentTo(''); setCode(''); setNotice(''); setError(''); }} style={s.link}><Text style={s.linkText}>{t('auth.changeNumber')}</Text></Pressable>
           <Pressable testID="sign-in-resend" accessibilityRole="button" disabled={wait > 0 || !!busy} onPress={sendCode} style={s.link}><Text style={[s.linkText, wait > 0 && { color: SOFT }]}>{wait > 0 ? t('auth.resendIn', { seconds: fmt.number(wait) }) : t('auth.resend')}</Text></Pressable>
         </View>}
         {/* Mobile number or email is a quiet second choice under the form, not a second row of tabs. */}
-        {phoneAvailable && <Pressable testID={method === 'phone' ? 'sign-in-method-email' : 'sign-in-method-phone'} accessibilityRole="button"
+        {phoneAvailable && !emailCodeFor && <Pressable testID={method === 'phone' ? 'sign-in-method-email' : 'sign-in-method-phone'} accessibilityRole="button"
           onPress={() => { setMethod(method === 'phone' ? 'email' : 'phone'); setError(''); setNotice(''); }} style={s.switch}>
           <Text style={s.switchText}>{method === 'phone' ? t('auth.method.useEmail') : t('auth.method.usePhone')}</Text>
         </Pressable>}

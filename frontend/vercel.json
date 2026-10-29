@@ -1,12 +1,8 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "installCommand": "npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts",
-  "buildCommand": "node rider-server/build-routes.mjs",
-  "outputDirectory": "rider-server/public",
-  "functions": { "api/rider-gateway.ts": { "maxDuration": 30 } },
-  "rewrites": [
-    { "source": "/api/rider/:path*", "destination": "/api/rider-gateway?__s=rider&__p=:path*" },
-    { "source": "/api/geo/:path*", "destination": "/api/rider-gateway?__s=geo&__p=:path*" }
-  ]
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist/client",
+  "functions": {
+    "api/index.js": { "includeFiles": "dist/server/**" }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.js" }]
 }

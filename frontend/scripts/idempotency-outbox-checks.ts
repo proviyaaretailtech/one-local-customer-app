@@ -99,7 +99,7 @@ async function main() {
       && Object.keys(hb.master ?? {}).sort().join() === 'customer,partner' && masterStates.includes(hb.master.customer) && masterStates.includes(hb.master.partner), hb);
   } finally {
     for (const s of [scopeA, scopeB, `http:id:${tag}`]) await d.from('idempotency_keys').delete().eq('scope', s);
-    if (orders.length) await d.from('ol_orders').delete().in('id', orders);
+    if (orders.length) await d.rpc('ol_dev_purge_orders', { p_ids: orders, p_reason: 'idempotency-outbox-checks cleanup' });
   }
   console.log(`\n${passed} checks passed${process.exitCode ? ', SOME FAILED' : ''}`);
 }
