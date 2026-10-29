@@ -1,5 +1,17 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — One Local customer app: "Use current location" now asks before it moves you
+
+**Tapping "Use current location" opens a map of where the phone thinks you are; nothing changes until the customer confirms it.**
+
+- **Why:** the founder's test phone (an emulator that reports a spot in California) tapped "Use current location" and was dropped straight onto a dead-end "One Local is made for India" Home screen. The app trusted whatever position the phone gave, without showing it or asking.
+- **What changed:** the location screen now opens a full map on the detected spot, with a pin the customer can move. Under the map it names the place and says what One Local offers there: "We deliver here", or "no delivery yet, nearest delivery city is Latur, N km away", or "this spot is outside India". The location is applied only when the customer taps "Confirm location". Outside India the confirm button is replaced by "Go to Latur" and "Search my town", so a wrong reading can never be confirmed.
+- **Home, outside India:** customers who already have a wrong spot saved now read why ("The location you chose is outside India") and get a one-tap "Go to Latur" next to "Choose a place".
+- **Structural decisions:** the confirmation is a new screen piece (`frontend/src/components/confirm-location.tsx`) opened over the location screen, rather than reusing the "add delivery address" map. That map leads into saving a full address with house number, which is too much for choosing which town to browse. The place check uses our own coverage service (free, works without Google); the street name from Google is added when Maps is switched on.
+- **What works now (checked on the web build against the local database):** a California position shows the map, the outside-India note and no confirm button; a Latur position shows "We deliver here", and confirming takes the customer to Home in Latur; a saved California spot on Home shows the new explanation, and "Go to Latur" fixes it. Text is in English and Hindi.
+- **Left undone:** not yet checked on Android. The emulator lost its network after a restart (the computer was under heavy load and the local database had also stopped and was restarted), so the app could not reach the server there. Before the next Android build goes to anyone, walk this flow on the emulator and run `frontend/scripts/android-smoke.sh`.
+- **Open questions for the founder:** the "Delivery in 10 min" badge on Home is a fixed text; you asked for a live clock showing the real time to reach the customer. That is planned separately.
+
 ## 2026-10-29 — Android builds that pass a full new-customer walk; the new launch screen is in
 
 **The second pair of builds still broke in Discover and lacked the new launch screen; both are fixed, and the launch check now walks the whole first-time path.**

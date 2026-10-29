@@ -35,7 +35,7 @@ const LAUNCH_KEY = (id: string) => `onecity.launch-asked.${id}`;
 // `empty`: a delivery city whose catalogue has no stores yet (e.g. right after the demo catalogue
 // is cleared and before the Master adds real ones) — show what's around instead of empty shelves.
 export function ExploreTown({ initial = 'food', empty = false }: { initial?: NearbyKind; empty?: boolean }) {
-  const { coverage, point, edit } = useDeliveryLocation(); const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat(); const lineHeight = useLineHeight();
+  const { coverage, point, edit, setLocation } = useDeliveryLocation(); const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat(); const lineHeight = useLineHeight();
   const at = point ?? CITY_CENTER; const place = coverage?.place;
   const [kind, setKind] = useState<NearbyKind>(initial);
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['nearby', at.lat, at.lng], queryFn: () => nearbyAt(at), staleTime: 10 * 60_000, retry: 1, enabled: empty || coverage?.level === 'discover' });
@@ -47,11 +47,13 @@ export function ExploreTown({ initial = 'food', empty = false }: { initial?: Nea
     try { await requestLaunch(place.id); setLaunch('done'); void AsyncStorage.setItem(LAUNCH_KEY(place.id), '1'); } catch { setLaunch('error'); }
   };
 
+  // A point outside India (often a phone or emulator reporting the wrong place): say so, and give a one-tap way back.
   if (coverage?.level === 'soon') return <View testID="explore-outside-india" style={s.center}>
     <Icon name="globe-outline" size={34} color={colors.forest} />
     <Text style={s.title}>{t('explore.outsideTitle')}</Text>
-    <Text style={s.body}>{t('explore.outsideBody')}</Text>
+    <Text style={s.body}>{t('explore.outsideCurrent')} {t('explore.outsideBody')}</Text>
     <Pressable testID="explore-change-location" onPress={edit} style={s.primary}><Text style={s.primaryText}>{t('explore.choosePlace')}</Text></Pressable>
+    <Pressable testID="explore-go-latur" onPress={() => setLocation('Latur, Maharashtra', CITY_CENTER)} style={s.secondary}><Text style={s.secondaryText}>{t('explore.goLatur')}</Text></Pressable>
   </View>;
 
   const k = KINDS.find(x => x.id === kind)!; const list = data?.groups[kind] ?? [];

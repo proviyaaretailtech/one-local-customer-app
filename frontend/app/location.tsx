@@ -15,8 +15,9 @@ import { Address, useCustomer } from '@/src/customer';
 import { Point, useDeliveryLocation } from '@/src/delivery-location';
 import { useFeatures } from '@/src/features';
 import { COMING_SOON_ALL } from '@/src/coming-soon-mode';
+import { ConfirmLocation } from '@/src/components/confirm-location';
 import {
-  addressText, CITY_CENTER, coverageAt, currentPoint, distanceKm, IndiaPlace, isLocationError, knownPoint, LocationOffError, placeDetails, placeLine, popularCities,
+  addressText, CITY_CENTER, Coverage, currentPoint, distanceKm, IndiaPlace, isLocationError, knownPoint, LocationOffError, placeDetails, placeLine, popularCities,
   Recent, recentPlaces, rememberPlace, searchIndia, searchPlaces, Suggestion,
 } from '@/src/places';
 import { useErrorMessage, useFormat, useTranslation } from '@/src/i18n';
@@ -36,6 +37,7 @@ export default function LocationPicker() {
   const [here, setHere] = useState<Point | null>(null); const [recent, setRecent] = useState<Recent[]>([]); const [menu, setMenu] = useState('');
   const [settings, setSettings] = useState(false); // location refused for good: offer the way to Settings
   const [sheet, setSheet] = useState(false); // location refused: offer cities instead of a dead end
+  const [confirming, setConfirming] = useState<Point | null>(null); // the phone's fix, waiting for the person to confirm it on the map
   const { data: popular = [] } = useQuery({ queryKey: ['popular-cities'], queryFn: popularCities, staleTime: Infinity });
 
   useEffect(() => { knownPoint().then(setHere); recentPlaces().then(setRecent); }, []);
@@ -75,20 +77,22 @@ export default function LocationPicker() {
       router.push(mapHref(place));
     } catch (e) { setError(message(e)); }
   };
-  // Current location names the town it falls in (no Google needed), and browsing starts there.
+  // Current location opens the map on the phone's fix; nothing is applied until the person confirms it there.
   const useCurrent = async () => {
     setLocating(true); setError(''); setSettings(false);
     try {
-      const p = await currentPoint(); setHere(p);
-      const c = await coverageAt(p);
-      if (c.place) choosePlace({ ...c.place, lat: p.lat, lng: p.lng });
-      else { delivery.setLocation(t('location.current'), p); done(); }
+      const p = await currentPoint(); setHere(p); setConfirming(p);
     } catch (e) {
       if (e instanceof LocationOffError) setSheet(true);
       else setError(isLocationError(e) ? e.message : message(e));
       setSettings(e instanceof LocationOffError && !e.canAskAgain && Platform.OS !== 'web');
     }
     finally { setLocating(false); }
+  };
+  const confirmCurrent = (label: string | null, c: Coverage, p: Point) => {
+    setConfirming(null);
+    if (c.place) choosePlace({ ...c.place, lat: p.lat, lng: p.lng });
+    else { delivery.setLocation(label ?? t('location.current'), p); done(); }
   };
   const choose = (a: Address) => {
     delivery.setLocation(addressText(a), a.lat != null && a.lng != null ? { lat: a.lat, lng: a.lng } : null);
@@ -208,6 +212,10 @@ export default function LocationPicker() {
           </>
         )}
       </ScrollView>
+      <Modal visible={!!confirming} animationType="slide" onRequestClose={() => setConfirming(null)}>
+        {confirming && <ConfirmLocation start={confirming} onConfirm={confirmCurrent} onCancel={() => setConfirming(null)}
+          onLatur={() => { setConfirming(null); choosePlace({ name: 'Latur', district: 'Latur', state: 'Maharashtra', ...CITY_CENTER }); }} />}
+      </Modal>
       <Modal visible={sheet} transparent animationType="slide" onRequestClose={() => setSheet(false)}>
         <Pressable testID="city-sheet-backdrop" onPress={() => setSheet(false)} style={styles.backdrop} />
         <View testID="city-sheet" style={[styles.sheet, { paddingBottom: insets.bottom + 18 }]}>

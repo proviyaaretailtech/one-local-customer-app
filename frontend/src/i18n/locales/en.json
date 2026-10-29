@@ -746,6 +746,19 @@
       "title": "Pick your city",
       "sub": "Location is off, no problem. Choose a city to start browsing.",
       "search": "Search another town"
+    },
+    "confirm": {
+      "title": "Is this where you are?",
+      "hint": "Move the map to put the pin exactly where you are",
+      "finding": "Finding this place…",
+      "pinned": "Pinned location",
+      "live": "We deliver here",
+      "discover": "No delivery here yet. You can still find local shops nearby. Nearest delivery city: {{city}}, {{distance}} away.",
+      "outside": "This spot is outside India. One Local works only in India. If your phone shows the wrong place, move the pin or pick your town.",
+      "cta": "Confirm location",
+      "goLatur": "Go to Latur",
+      "search": "Search my town",
+      "error": "Couldn’t check this place. Try again."
     }
   },
   "address": {
@@ -1387,7 +1400,9 @@
     "closedNow": "Closed now",
     "callLabel": "Call {{name}}, {{phone}}",
     "directions": "Directions",
-    "directionsLabel": "Directions to {{name}}"
+    "directionsLabel": "Directions to {{name}}",
+    "outsideCurrent": "The location you chose is outside India. One Local works only in India.",
+    "goLatur": "Go to Latur"
   },
   "discover": {
     "title": "Discover",
