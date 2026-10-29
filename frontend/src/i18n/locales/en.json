@@ -140,11 +140,14 @@
     "heroTitle": {
       "checkout": "Sign in to place\nyour order.",
       "signin": "Your whole city,\none sign-in away.",
-      "signup": "Make OneLocal\nfeel like yours."
+      "signup": "Make OneLocal\nfeel like yours.",
+      "town": "{{town}},\nat your door"
     },
     "heroSub": {
       "checkout": "Your bag is saved. Sign in once and we’ll take you straight back to pay.",
-      "default": "Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive."
+      "default": "Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive.",
+      "signin": "Welcome back. Local stores, fresh picks, real people.",
+      "signup": "Local stores. Fresh picks. Real people. Delivered to you."
     },
     "consent": {
       "notice": "We use your name, number, email and address only to run your account and deliver your orders.",
@@ -232,7 +235,8 @@
     },
     "mobile": {
       "why": "We use your number for order updates. We never share it with stores."
-    }
+    },
+    "enterCode": "Enter the 6-digit code"
   },
   "account": {
     "language": "Language",

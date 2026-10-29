@@ -4,7 +4,11 @@
 // always there. Placing an order does: the cart's Pay button opens this screen with next=checkout,
 // and signing in returns to the cart, which carries on paying.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { mediaUrl } from '@/src/api';
+import { useDeliveryLocation } from '@/src/delivery-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +33,8 @@ const SOFT = '#6B746D';
 export default function SignIn() {
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, googleAvailable, appleAvailable, phoneAvailable, sendPhoneCode, verifyPhoneCode } = useAuth();
   const router = useRouter(); const insets = useSafeAreaInsets(); const motion = useMotionAllowed();
+  // The town the customer picked, in the headline ("Latur, at your door"); the photo takes about 38% of the screen.
+  const town = useDeliveryLocation().location.split(',')[0] || 'Latur'; const photoH = Math.round(useWindowDimensions().height * 0.38);
   // Sections rise in one after another on arrival; nothing moves under Reduce Motion.
   const rise = (i: number) => motion ? FadeInDown.delay(60 + i * 55).duration(420).springify().damping(20) : undefined;
   const { t } = useTranslation(); const fmt = useFormat(); const deva = useLanguage().active.script === 'devanagari';
@@ -139,24 +145,30 @@ export default function SignIn() {
   </>;
 
   return <KeyboardAvoidingView testID="sign-in-screen" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.screen}>
-    <StatusBar style="dark" />
-    <View pointerEvents="none" style={s.blob} />
-    <ScrollView keyboardShouldPersistTaps="handled" horizontal={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[s.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }]}>
-      <View style={s.top}>
-        <BrandLogo tone="light" height={26} />
-        <Pressable testID="sign-in-skip" accessibilityRole="button" onPress={leave} hitSlop={8} style={s.skip}><Text style={s.skipText}>{welcome ? t('auth.skipForNow') : t('common.close')}</Text></Pressable>
+    <StatusBar style="light" />
+    <ScrollView keyboardShouldPersistTaps="handled" horizontal={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+      {/* A real local moment at the top (story-first look): the town's market, then the form on a white sheet over it. */}
+      <View style={[s.photo, { height: photoH }]}>
+        <Image testID="sign-in-photo" source={mediaUrl('signin-market-v1')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" transition={200} />
+        <LinearGradient pointerEvents="none" colors={['rgba(6,18,11,0.45)', 'rgba(6,18,11,0)']} locations={[0, 0.4]} style={StyleSheet.absoluteFill} />
+        <View style={[s.top, { paddingTop: insets.top + 8 }]}>
+          <BrandLogo tone="dark" height={24} />
+          <Pressable testID="sign-in-skip" accessibilityRole="button" onPress={leave} hitSlop={8} style={s.skip}><Text style={s.skipText}>{welcome ? t('auth.skipForNow') : t('common.close')}</Text></Pressable>
+        </View>
       </View>
+      <View style={[s.sheet, { paddingBottom: insets.bottom + 24 }]}>
+      <View style={s.grabber} />
 
       {/* One small capsule, always there (except at checkout, where signing in is the only point): sign in or create an account.
           With a mobile number both are the same code, so it only changes the words; with email it changes the form. */}
-      {!checkout && <Animated.View entering={rise(0)} style={s.capsuleRow}>
+      {!checkout && <Animated.View entering={rise(0)} style={[s.capsuleRow, s.capsuleCentre]}>
         <ModeCapsule mode={mode} onChange={switchMode} labels={{ signin: t('auth.signIn'), signup: t('auth.createAccount') }} motion={motion} />
       </Animated.View>}
 
       <Animated.View key={checkout ? 'checkout' : mode} entering={motion ? FadeIn.duration(220) : undefined} style={s.hero}>
         {checkout
           ? <><Text testID="sign-in-checkout-title" style={[s.title, deva && s.noTrack]}>{t('auth.heroTitle.checkout')}</Text><Text style={s.sub}>{t('auth.heroSub.checkout')}</Text></>
-          : <><Text style={[s.title, deva && s.noTrack]}>{mode === 'signin' ? t('auth.heroTitle.signin') : t('auth.heroTitle.signup')}</Text><Text style={s.sub}>{t('auth.heroSub.default')}</Text></>}
+          : <><Text style={[s.title, deva && s.noTrack]}>{t('auth.heroTitle.town', { town })}</Text><Text style={s.sub}>{mode === 'signin' ? t('auth.heroSub.signin') : t('auth.heroSub.signup')}</Text></>}
       </Animated.View>
 
       <Animated.View entering={rise(2)} style={s.card}>
@@ -164,8 +176,8 @@ export default function SignIn() {
           {!sentTo
             ? <Field icon="call-outline" prefix="+91" testID="sign-in-mobile" placeholder={t('auth.placeholder.mobile')} value={mobile} onChangeText={v => setMobile(v.replace(/[^\d ]/g, ''))}
                 keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" maxLength={14} onSubmitEditing={sendCode} returnKeyType="go" />
-            : <Field icon="keypad-outline" testID="sign-in-code" placeholder={t('auth.placeholder.code')} value={code} onChangeText={v => setCode(v.replace(/\D/g, '').slice(0, 6))}
-                keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="sms-otp" maxLength={6} onSubmitEditing={verifyCode} returnKeyType="go" />}
+            : <><Text style={s.codeLabel}>{t('auth.enterCode')}</Text>
+                <CodeBoxes value={code} onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))} onDone={verifyCode} label={t('auth.placeholder.code')} /></>}
         </View> : <View testID="sign-in-mode" style={s.stack}>
           {mode === 'signup' && <Field icon="person-outline" testID="sign-in-name" placeholder={t('auth.placeholder.name')} value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />}
           <Field icon="mail-outline" testID="sign-in-email" placeholder={t('auth.placeholder.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textContentType="emailAddress" autoComplete="email" />
@@ -228,8 +240,22 @@ export default function SignIn() {
       <Text style={s.legal}>{t('auth.legal')}{' '}
         <Text accessibilityRole="link" onPress={() => router.push('/privacy-notice' as never)} style={s.legalLink}>{t('auth.privacyNotice')}</Text> · {t('auth.noticeVersion', { version: PRIVACY.noticeVersion })}
       </Text>
+      </View>
     </ScrollView>
   </KeyboardAvoidingView>;
+}
+
+// The one-time code as six boxes. One real (invisible) text field takes the typing and SMS autofill; the boxes only show it.
+function CodeBoxes({ value, onChange, onDone, label }: { value: string; onChange: (v: string) => void; onDone: () => void; label: string }) {
+  const [focused, setFocused] = useState(false);
+  return <View style={s.codeRow}>
+    {Array.from({ length: 6 }, (_, i) => <View key={i} style={[s.codeBox, (value.length === i || (i === 5 && value.length === 6)) && focused && s.codeBoxOn, !!value[i] && s.codeBoxFull]}>
+      <Text style={s.codeDigit}>{value[i] ?? ''}</Text>
+    </View>)}
+    <TextInput testID="sign-in-code" accessibilityLabel={label} value={value} onChangeText={onChange} autoFocus
+      keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="sms-otp" maxLength={6} onSubmitEditing={onDone} returnKeyType="go"
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} caretHidden style={s.codeInput} />
+  </View>;
 }
 
 // The sign in / create account capsule: a small pill with a highlight that slides to the chosen side.
@@ -273,15 +299,24 @@ function Field({ icon, prefix, trailing, testID, ...input }: React.ComponentProp
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fff', overflow: 'hidden' },
-  blob: { position: 'absolute', top: -190, right: -150, width: 320, height: 320, borderRadius: 160, backgroundColor: colors.limeSoft },
-  content: { paddingHorizontal: 22, flexGrow: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  photo: { width: '100%', backgroundColor: '#2A3A2F' },
+  sheet: { flexGrow: 1, marginTop: -28, paddingHorizontal: 22, borderTopLeftRadius: 32, borderTopRightRadius: 32, backgroundColor: '#fff' },
+  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDE2DC', marginTop: 10 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18 },
   skip: { minHeight: 44, minWidth: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center' },
   skipText: { color: INK, fontSize: 13, fontWeight: '700' },
   hero: { marginTop: 18, marginBottom: 22 },
-  capsuleRow: { marginTop: 28, flexDirection: 'row' },
+  capsuleRow: { marginTop: 18, flexDirection: 'row' },
+  capsuleCentre: { justifyContent: 'center' },
+  codeLabel: { color: INK, fontSize: 14, fontWeight: '700' },
+  codeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  codeBox: { flex: 1, aspectRatio: 0.86, maxWidth: 52, borderRadius: 14, borderWidth: 1.5, borderColor: LINE, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  codeBoxOn: { borderColor: colors.forest },
+  codeBoxFull: { borderColor: '#C9D2CB' },
+  codeDigit: { color: INK, fontSize: 22, fontWeight: '800' },
+  codeInput: { ...StyleSheet.absoluteFill, opacity: 0.02, color: 'transparent' },
   capsule: { flexDirection: 'row', padding: 3, borderRadius: 999, backgroundColor: FILL, borderWidth: 1, borderColor: LINE },
-  capsuleThumb: { position: 'absolute', top: 3, bottom: 3, left: 0, borderRadius: 999, backgroundColor: '#fff', boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(13,18,14,0.10)' }] },
+  capsuleThumb: { position: 'absolute', top: 3, bottom: 3, left: 0, borderRadius: 999, backgroundColor: colors.electricLime, boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(13,18,14,0.10)' }] },
   capsuleItem: { minHeight: 34, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center' },
   capsuleText: { color: SOFT, fontSize: 13, fontWeight: '700' },
   capsuleTextOn: { color: INK },
