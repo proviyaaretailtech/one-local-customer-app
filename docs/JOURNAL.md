@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — Hosted database caught up: pop-ups and four Master changes are live in the database
+
+**The founder ran the prepared catch-up on the hosted database: marketing pop-ups (0640) and Master's partner review, support inbox, role sets and test logins (0630-0633) now exist there, and five changes that were already there are now recorded.**
+
+- **Why:** the founder wants the app and Master Admin to work against the hosted database.
+- **Structural decisions:** followed the existing hosted routine (a hand-checked SQL file in docs/online-migrations run in the Supabase SQL editor, with a preflight that changes nothing if hosted moved). The money changes (0600-0604) and 0634 were left out because they are another session's uncommitted work, and local 0600 clashes with a hosted-only 0600_platform_approvals that has no file in the repository.
+- **What works now:** verified read-only after the run: all 10 ledger rows, every new table, function and pop-up column present, customers (anon and signed-in) cannot read the pop-up tables or run the approval function, and the two existing pop-ups are untouched.
+- **Left undone:** the live One Local server (Vercel) still runs older code, so the pop-up admin API and the new campaign card fields are not served from hosted yet; today's images (department icons, sign-in photo) are not in the hosted media store; Master Admin is not yet pointed at hosted.
+- **Open questions for the founder:** go ahead with deploying the current server code to the live One Local server?
+
 ## 2026-10-29 — One Local customer app: founder's logo colours, light/dark first screen, onboarding no longer stops, hosted preview
 
 **The logo now uses the founder's green (black "One", green "Local"; on dark screens a green sign-style badge with black "One" and white "Local"), the first screen has a light/dark switch, picking a searched city during onboarding carries on instead of stopping, and the "as live" preview now really uses the hosted database.**
