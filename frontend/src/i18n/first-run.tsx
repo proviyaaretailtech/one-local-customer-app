@@ -35,7 +35,7 @@ export function LanguageFirstRun() {
   return <View testID="language-first-run" accessibilityViewIsModal aria-modal style={[s.screen, !dark && s.screenLight]}>
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
       <View style={s.top}>
-        <BrandLogo tone={dark ? 'dark' : 'light'} height={dark ? 34 : 30} />
+        <BrandLogo tone={dark ? 'dark' : 'light'} height={30} />
         <Pressable testID="appearance-toggle" accessibilityRole="switch" accessibilityState={{ checked: dark }} accessibilityLabel={t(dark ? 'language.appearance.toLight' : 'language.appearance.toDark')}
           onPress={flip} hitSlop={8} style={[s.toggle, !dark && s.toggleLight]}>
           <View style={[s.toggleSide, !dark && s.toggleOn]}><Icon name="sunny" size={15} color={!dark ? '#050605' : 'rgba(255,255,255,0.6)'} /></View>
