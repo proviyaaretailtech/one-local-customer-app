@@ -1,7 +1,8 @@
 // The one "SOON" mark for an entry point whose feature is not live yet (src/features.ts): a dark pill with
 // lime text, pinned to the corner of the button it sits on. Tapping the button still opens the
 // feature's coming-soon page, so the badge only sets the expectation before the tap.
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useLanguage, useTranslation } from '../i18n';
 
 export function SoonBadge({ testID, corner = true }: { testID?: string; corner?: boolean }) {

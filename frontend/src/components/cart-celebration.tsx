@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, Pressable, StyleSheet } from 'react-native';
+import { Animated, View, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
 import { usePathname, useRouter } from 'expo-router';

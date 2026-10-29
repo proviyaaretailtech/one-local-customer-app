@@ -6,6 +6,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from "@expo-google-fonts/poppins";
+import { setPoppinsReady } from "@/src/ui/text";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { queryClient } from "@/src/query-client";
@@ -42,6 +44,11 @@ export default function RootLayout() {
   useEffect(() => {
     prewarmIcons();
   }, []);
+  // The app's typeface (src/ui/text.tsx). First render waits for it, so text never jumps from one font to another; if the files
+  // cannot load, the app goes ahead with the system font rather than staying blank.
+  const [fontsLoaded, fontError] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
+  setPoppinsReady(fontsLoaded);
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <I18nProvider>

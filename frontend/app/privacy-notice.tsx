@@ -3,7 +3,8 @@
 // are filled in once. Placeholders still to be filled show highlighted, with a "draft" banner.
 // The wording is in the catalogue (privacyNotice.*, English + Hindi): one key per paragraph.
 import { Fragment, type ReactNode } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { AccountLayout, accountStyles as s } from '@/src/components/account-layout';

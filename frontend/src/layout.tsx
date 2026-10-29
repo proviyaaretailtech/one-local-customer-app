@@ -3,7 +3,8 @@
 // with product grids that gain columns as the column widens.
 // Components size themselves with useAppDimensions() (the column), never the raw window width.
 import { createContext, useContext } from 'react';
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { useTranslation } from 'react-i18next';
 import { colors } from './theme';
 import { BrandLogo } from './components/brand-logo';

@@ -5,7 +5,8 @@
 // (sign-in opens and then brings them back here to carry on paying), and how to pay. Browsing and
 // filling the cart never need an account.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from "react-native";
+import { Text, TextInput } from "@/src/ui/text";
 import { Image } from "expo-image";
 import { useIsFocused, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -552,6 +553,7 @@ export default function CartScreen() {
                 )}
               </>}
             </View>
+            <View style={{ marginTop: spacing.md }}><VendorNote items={items} /></View>
             {moreCategories.length > 0 && <View testID="cart-more-categories" style={{ marginTop: spacing.lg, marginHorizontal: -spacing.lg }}>
               <Text style={styles.moreTitle}>{t('cart.more.title')}</Text>
               <CategoryRail categories={moreCategories} scope="cart-more" />
@@ -577,7 +579,6 @@ export default function CartScreen() {
               </View>
             </View>
           </View>}
-          <VendorNote items={items} />
           {online_payments ? (
             // Online payments live: "PAY USING" opens Payment Options; the big button pays with it.
             <View testID="checkout-footer" style={[styles.payBar, { marginBottom: 12, marginHorizontal: spacing.lg }]}>

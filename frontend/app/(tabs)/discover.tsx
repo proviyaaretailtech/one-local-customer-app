@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { View, Text, Pressable, StyleSheet, FlatList, ScrollView, Platform, ViewToken } from 'react-native';
+import { View, Pressable, StyleSheet, FlatList, ScrollView, Platform, ViewToken } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import type { Reel } from '@/src/api';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

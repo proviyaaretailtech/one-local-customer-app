@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useScreenPalette } from '../use-screen-path';
-import { View, Text, Pressable, Animated, StyleSheet, AccessibilityInfo, Platform } from 'react-native';
+import { View, Pressable, Animated, StyleSheet, AccessibilityInfo, Platform } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';

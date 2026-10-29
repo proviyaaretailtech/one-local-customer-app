@@ -1,6 +1,7 @@
 // Top menu bar for laptop and desktop browsers (see useIsDesktop). It replaces the phone's floating
 // dock: the same five places, plus search, bag and account, in one sticky row above every screen.
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { usePathname, useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { Tap } from './tap';

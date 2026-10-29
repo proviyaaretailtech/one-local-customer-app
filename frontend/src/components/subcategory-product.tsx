@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Animated, View, Text, Pressable, StyleSheet } from 'react-native';
+import { Animated, View, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,7 @@ import { useCart } from '../cart';
 import { colors } from '../theme';
 import { nativeDriver, useMotionAllowed } from '../motion';
 import { useFormat, useTranslation } from '../i18n';
+import { useEtaMinutes } from '../use-store-etas';
 import { unitPriceLabel } from '../unit-price';
 import { haptic } from '../haptics';
 import { HeartToggle } from './motion/heart-toggle';
@@ -25,7 +27,7 @@ export function unitPrice(product: Product): { amount: number; base: 'g' | 'ml' 
 }
 
 export function SubcategoryProduct({ product: p, index, saved, onSave }: { product: Product; index: number; saved: boolean; onSave: () => void }) {
-  const router = useRouter(); const { add, remove, qtyOf } = useCart(); const qty = qtyOf(p.id); const { t } = useTranslation(); const fmt = useFormat();
+  const router = useRouter(); const { add, remove, qtyOf } = useCart(); const qty = qtyOf(p.id); const eta = useEtaMinutes(p); const { t } = useTranslation(); const fmt = useFormat();
   const enter = useRef(new Animated.Value(0)).current; const motion = useMotionAllowed(); const unit = unitPrice(p);
   const discount = p.mrp > p.price ? Math.round((p.mrp-p.price)/p.mrp*100) : 0;
   useEffect(() => {
@@ -46,7 +48,7 @@ export function SubcategoryProduct({ product: p, index, saved, onSave }: { produ
     {!!discount && <Text testID={`product-discount-category-${p.id}`} style={styles.discount}>{t('category.offOnMrp', { pct: fmt.percent(discount) })}</Text>}
     <Pressable testID={`category-product-name-open-${p.id}`} accessibilityLabel={t('category.viewDetailsOf', { name: p.name })} onPress={() => router.push(`/product/${p.id}` as any)} style={styles.nameLink}><Text testID={`product-name-category-${p.id}`} numberOfLines={3} style={styles.name}>{p.name}</Text></Pressable>
     <View testID={`category-rating-${p.id}`} accessibilityLabel={t('category.ratedA11y', { rating: fmt.number(p.rating, { maxFractionDigits: 1 }) })} style={styles.rating}>{Array.from({ length: 5 }, (_, i) => <Icon key={i} name={p.rating >= i+1 ? 'star' : p.rating > i ? 'star-half' : 'star-outline'} size={11} color={colors.gold} />)}<Text style={styles.ratingValue}>{fmt.number(p.rating, { maxFractionDigits: 1 })}</Text></View>
-    <View testID={`category-delivery-${p.id}`} accessibilityLabel={t('category.deliveryA11y', { count: p.delivery_min, value: fmt.number(p.delivery_min) })} style={styles.delivery}><Icon name="time-outline" size={12} color={colors.muted} /><Text style={styles.deliveryText}>{fmt.eta(p.delivery_min)}</Text></View>
+    <View testID={`category-delivery-${p.id}`} accessibilityLabel={t('category.deliveryA11y', { count: eta, value: fmt.number(eta) })} style={styles.delivery}><Icon name="time-outline" size={12} color={colors.muted} /><Text style={styles.deliveryText}>{fmt.eta(eta)}</Text></View>
   </Animated.View>;
 }
 const styles = StyleSheet.create({

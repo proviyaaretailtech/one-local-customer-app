@@ -2,7 +2,8 @@
 // Name and delivery location are required; email is optional. The mobile number is already known from the code.
 // ProfileGate (src/components/profile-gate.tsx) sends a signed-in customer with no name here.
 import { useCallback, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, TextInput } from '@/src/ui/text';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';

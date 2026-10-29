@@ -881,7 +881,9 @@
       "unavailable": "Search unavailable. Please try again.",
       "cameraOff": "Camera access is off. Enable it in settings or choose a photo instead.",
       "photoFailed": "Could not open that photo. Please choose another."
-    }
+    },
+    "recent": "Recent searches",
+    "clearRecent": "Clear"
   },
   "voice": {
     "stopA11y": "Stop and search",
@@ -1279,7 +1281,14 @@
       "careTitle": "Pharmacy & Beauty",
       "careSub": "Up to {{pct}} off"
     },
-    "essentialsTitle": "Your daily essentials"
+    "essentialsTitle": "Your daily essentials",
+    "favouritesTitle": "Your favourites",
+    "favouritesSubtitle": "Saved items, one tap away",
+    "orderAgain": {
+      "title": "Order again",
+      "one": "{{name}}",
+      "more": "{{name}} and {{count}} more"
+    }
   },
   "shell": {
     "goPrevious": "Go to previous page",
@@ -2344,5 +2353,53 @@
     "finish": "Start shopping",
     "saveError": "We could not save your details. Please try again.",
     "differentNumber": "Use a different number"
+  },
+  "orderReceipt": {
+    "title": "Order receipt",
+    "order": "Order",
+    "date": "Date",
+    "store": "Store",
+    "deliverTo": "Deliver to",
+    "items": "Items",
+    "subtotal": "Item total",
+    "discount": "Discount",
+    "delivery": "Delivery fee",
+    "tax": "GST",
+    "total": "Total",
+    "payment": "Payment",
+    "footer": "Thank you for shopping local with OneLocal.",
+    "share": "Share receipt",
+    "copied": "Receipt copied"
+  },
+  "orderFeedback": {
+    "rateTitle": "How was your order?",
+    "deliveryTitle": "How was the delivery?",
+    "commentPlaceholder": "Anything to add? (optional)",
+    "submit": "Submit rating",
+    "thanks": "Thanks for rating your order",
+    "stars": "{{count}} stars",
+    "saveError": "We could not save that. Please try again.",
+    "reportTitle": "Something wrong with an item?",
+    "reportHint": "Tell us which item and what happened. We will review it and refund where it is due.",
+    "open": "Report a problem",
+    "choose": "Which item?",
+    "whatHappened": "What went wrong?",
+    "notePlaceholder": "Tell us more (optional)",
+    "send": "Send report",
+    "sent": "Report sent. We will review it and refund where it is due.",
+    "yourReports": "Your reports",
+    "kind": {
+      "missing": "Missing",
+      "wrong": "Wrong item",
+      "damaged": "Damaged",
+      "quality": "Poor quality"
+    },
+    "status": {
+      "open": "Under review",
+      "approved": "Approved",
+      "rejected": "Not approved",
+      "refunded": "Refunded"
+    },
+    "already": "You have already reported this. We are looking at it."
   }
 }

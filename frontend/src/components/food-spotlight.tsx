@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Tap } from './tap';
-import { Animated, View, Text, StyleSheet } from 'react-native';
+import { Animated, View, StyleSheet } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';

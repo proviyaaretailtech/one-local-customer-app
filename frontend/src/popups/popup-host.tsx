@@ -8,7 +8,8 @@
 // If the API fails (or on web without a backend) nothing is shown.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useShowFirstRun } from '@/src/i18n/first-run';
-import { InteractionManager, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { InteractionManager, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/ui/text';
 import { usePathname, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
