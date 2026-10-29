@@ -1,14 +1,16 @@
-// The "royal letter" pop-up (specs/marketing-popups/plan.md §3): a framed card, never full screen, with one photo or video
-// at the top and the message written inside the letter. Master Admin picks the frame style and seal colour; the frame,
-// flourishes, paper and wax seal are drawn here (SVG), so they are crisp at any size and need no download.
-//  - 86% of the screen width, at most 360 pt; the picture shrinks if the phone is short, so the whole letter always fits.
-//  - Video plays muted on a loop; a speaker button turns the sound on. With Reduce Motion it does not play (poster shown).
+// The campaign card (format 'letter', specs/marketing-popups/plan.md §3), in the 2026 look: never full screen, the photo or video
+// fills the top edge to edge with soft rounded corners, the message sits on a clean white panel below with one lime button,
+// and a round frosted close button floats on the picture. No ornate border.
+// Master Admin's "frame" picks the small label's tone (Classic = forest, Festive = deep red, Plain = no label) and the
+// "seal" colour tints that label; the layout is the same for all, so every campaign looks like part of the app.
+//  - 88% of the screen width, at most 360 pt; the picture shrinks on a short phone so the whole card always fits.
+//  - Video plays muted on a loop with a sound button; with Reduce Motion it does not play (poster shown).
 //  - Close is always visible; tapping outside and the back button close it too.
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useTranslation } from '@/src/i18n';
@@ -16,15 +18,9 @@ import { colors } from '../theme';
 import { contentFor, imageUrl } from './api';
 import type { Popup } from './types';
 
-type Style = 'royal_gold' | 'festive_red' | 'plain';
-// paper top / bottom, border, accent (flourishes, button text), ink (text)
-const LOOK: Record<Style, { paper: [string, string]; line: string; accent: string; ink: string; soft: string }> = {
-  royal_gold:  { paper: ['#FFFBF0', '#F5EAD0'], line: '#B8892B', accent: '#C9A04A', ink: '#2B2116', soft: '#6B5A43' },
-  festive_red: { paper: ['#FFF8EE', '#FBE7D3'], line: '#9C2A2A', accent: '#C9A04A', ink: '#2E1712', soft: '#6E4A3E' },
-  plain:       { paper: ['#FFFFFF', '#FAF8F3'], line: '#D9CBA6', accent: '#B8A57A', ink: '#1F1F1F', soft: '#6B6B6B' },
-};
-const PAD = 22;        // paper edge to the inner frame line
-const SEAL = 46;       // wax seal diameter
+const INK = '#0B1F16';
+const SOFT = '#5E6B63';
+const RADIUS = 28;
 
 type Props = { popup: Popup; lang: string; motion: boolean; onClose: () => void; onOpen: () => void };
 
@@ -32,100 +28,52 @@ export function LetterPopup({ popup, lang, motion, onClose, onOpen }: Props) {
   const { t } = useTranslation();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const c = contentFor(popup, lang);
-  const style: Style = (popup.frame?.style as Style) ?? 'royal_gold';
-  const look = LOOK[style] ?? LOOK.royal_gold;
-  const seal = popup.frame?.seal ?? '#9C2A2A';
   const media = popup.media;
+  const style = popup.frame?.style ?? 'royal_gold';
+  const tag = style === 'plain' ? null : (popup.is_sponsored ? t('popups.ad') : c.greeting?.replace(/[,，]\s*$/, '') || null);
+  const tagColor = popup.frame?.seal ?? (style === 'festive_red' ? '#9C2A2A' : colors.forest);
 
-  // Card width, then a picture that keeps its shape (4:5 or 1:1) but never pushes the letter off a short screen.
-  const cardW = Math.min(screenW * 0.86, 360);
-  const innerW = cardW - PAD * 2 - 8;
+  const cardW = Math.min(screenW * 0.88, 360);
   const ratio = media ? media.width / media.height : 4 / 5;
-  const maxPicH = screenH * 0.42;
-  const picH = Math.min(innerW / ratio, maxPicH);
-  const picW = picH * ratio;
+  const picH = Math.min(cardW / ratio, screenH * 0.5);
 
-  const [cardH, setCardH] = useState(0);
   const progress = useSharedValue(motion ? 0 : 1);
-  useEffect(() => { if (motion) progress.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }); }, [motion, progress]);
-  const entrance = useAnimatedStyle(() => ({ opacity: progress.value, transform: [{ translateY: (1 - progress.value) * 18 }, { scale: 0.96 + progress.value * 0.04 }] }));
+  useEffect(() => { if (motion) progress.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) }); }, [motion, progress]);
+  const entrance = useAnimatedStyle(() => ({ opacity: progress.value, transform: [{ translateY: (1 - progress.value) * 24 }, { scale: 0.97 + progress.value * 0.03 }] }));
 
   return <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
     <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel={t('popups.closeA11y')} />
     <View pointerEvents="box-none" style={s.center}>
-      <Animated.View testID="popup-letter" accessibilityViewIsModal accessibilityLabel={c.title || t('popups.dialogA11y')}
-        onLayout={e => setCardH(e.nativeEvent.layout.height)} style={[s.card, { width: cardW }, entrance]}>
-        {cardH > 0 && <Paper w={cardW} h={cardH} look={look} style={style} />}
+      <Animated.View testID="popup-letter" accessibilityViewIsModal accessibilityLabel={c.title || t('popups.dialogA11y')} style={[s.card, { width: cardW }, entrance]}>
+        {media && <View style={[s.pic, { height: picH }]}>
+          {media.type === 'video'
+            ? <CampaignVideo source={imageUrl(media.web_key ?? media.key)!} poster={imageUrl(media.poster_key)} play={motion} />
+            : <Image testID="popup-letter-photo" source={{ uri: imageUrl(media.key)! }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />}
+          {/* a soft fade into the white panel, so picture and text read as one piece */}
+          <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)']} style={s.fade} />
+        </View>}
 
-        <View style={[s.inner, { paddingHorizontal: PAD + 4, paddingTop: PAD + 12, paddingBottom: PAD + SEAL / 2 + 10 }]}>
-          {media && <View style={[s.pic, { width: picW, height: picH, borderColor: look.accent }]}>
-            {media.type === 'video'
-              ? <LetterVideo source={imageUrl(media.web_key ?? media.key)!} poster={imageUrl(media.poster_key)} play={motion} />
-              : <Image testID="popup-letter-photo" source={{ uri: imageUrl(media.key)! }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />}
-          </View>}
-          {popup.is_sponsored && <Text style={[s.ad, { color: look.soft }]}>{t('popups.ad')}</Text>}
-          {!!c.greeting && <Text style={[s.greeting, { color: look.soft }]}>{c.greeting}</Text>}
-          {!!c.title && <Text testID="popup-letter-title" style={[s.title, { color: look.ink }]}>{c.title}</Text>}
-          {!!c.body && <Text style={[s.body, { color: look.soft }]} numberOfLines={5}>{c.body}</Text>}
-          {!!c.cta_route && <Pressable testID="popup-cta" accessibilityRole="button" onPress={onOpen}
-            style={({ pressed }) => [s.cta, { backgroundColor: look.ink, borderColor: look.accent }, pressed && s.pressed]}>
-            <Text style={[s.ctaText, { color: '#F7E7B4' }]}>{c.cta_label || t('popups.open')}</Text>
-            <Icon name="arrow-forward" size={15} color="#F7E7B4" />
+        <View style={s.body}>
+          {!!tag && <View style={[s.tag, { backgroundColor: `${tagColor}14` }]}><View style={[s.dot, { backgroundColor: tagColor }]} /><Text style={[s.tagText, { color: tagColor }]} numberOfLines={1}>{tag}</Text></View>}
+          {!!c.title && <Text testID="popup-letter-title" style={s.title}>{c.title}</Text>}
+          {!!c.body && <Text style={s.text} numberOfLines={4}>{c.body}</Text>}
+          {!!c.cta_route && <Pressable testID="popup-cta" accessibilityRole="button" onPress={onOpen} style={({ pressed }) => [s.cta, pressed && s.pressed]}>
+            <Text style={s.ctaText}>{c.cta_label || t('popups.open')}</Text>
+            <Icon name="arrow-forward" size={16} color={INK} />
           </Pressable>}
         </View>
 
-        <View pointerEvents="none" style={[s.seal, { left: cardW / 2 - SEAL / 2, bottom: PAD - SEAL / 2 + 4 }]}><WaxSeal color={seal} /></View>
         <Pressable testID="popup-close" accessibilityRole="button" accessibilityLabel={t('popups.closeA11y')} hitSlop={12} onPress={onClose}
-          style={({ pressed }) => [s.close, { borderColor: look.line }, pressed && s.pressed]}>
-          <Icon name="close" size={18} color={look.ink} />
+          style={({ pressed }) => [s.close, pressed && s.pressed]}>
+          <Icon name="close" size={18} color={INK} />
         </Pressable>
       </Animated.View>
     </View>
   </Modal>;
 }
 
-// Paper, double rule, corner flourishes and the ornament at the top, drawn to the card's measured size.
-function Paper({ w, h, look, style }: { w: number; h: number; look: (typeof LOOK)[Style]; style: Style }) {
-  const o = 8, i = 13;   // outer and inner rule insets
-  const corner = (x: number, y: number, sx: number, sy: number) =>
-    `M ${x} ${y + sy * 22} C ${x} ${y + sy * 8} ${x + sx * 8} ${y} ${x + sx * 22} ${y} M ${x + sx * 6} ${y + sy * 16} C ${x + sx * 6} ${y + sy * 9} ${x + sx * 9} ${y + sy * 6} ${x + sx * 16} ${y + sy * 6}`;
-  return <Svg pointerEvents="none" width={w} height={h} style={StyleSheet.absoluteFill}>
-    <Defs>
-      <SvgGradient id="paper" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={look.paper[0]} /><Stop offset="1" stopColor={look.paper[1]} /></SvgGradient>
-    </Defs>
-    <Rect x={0} y={0} width={w} height={h} rx={18} fill="url(#paper)" />
-    <Rect x={o} y={o} width={w - o * 2} height={h - o * 2} rx={12} fill="none" stroke={look.line} strokeWidth={style === 'plain' ? 1 : 1.6} />
-    {style !== 'plain' && <>
-      <Rect x={i} y={i} width={w - i * 2} height={h - i * 2} rx={8} fill="none" stroke={look.accent} strokeWidth={0.8} />
-      <Path d={[corner(i + 4, i + 4, 1, 1), corner(w - i - 4, i + 4, -1, 1), corner(i + 4, h - i - 4, 1, -1), corner(w - i - 4, h - i - 4, -1, -1)].join(' ')}
-        stroke={look.accent} strokeWidth={1.3} fill="none" strokeLinecap="round" />
-      {/* top ornament: a small diamond between two short rules */}
-      <Path d={`M ${w / 2 - 34} ${o} H ${w / 2 - 10} M ${w / 2 + 10} ${o} H ${w / 2 + 34}`} stroke={look.paper[0]} strokeWidth={4} />
-      <Path d={`M ${w / 2} ${o - 6} L ${w / 2 + 6} ${o} L ${w / 2} ${o + 6} L ${w / 2 - 6} ${o} Z`} fill={look.accent} />
-    </>}
-  </Svg>;
-}
-
-// A wax seal pressed with the OneLocal "1".
-function WaxSeal({ color }: { color: string }) {
-  const r = SEAL / 2;
-  return <Svg width={SEAL} height={SEAL}>
-    <Defs>
-      <RadialGradient id="wax" cx="40%" cy="35%" r="70%"><Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.28} /><Stop offset="0.45" stopColor={color} /><Stop offset="1" stopColor={color} stopOpacity={0.9} /></RadialGradient>
-    </Defs>
-    {/* the uneven wax edge: twelve soft bumps */}
-    <Path fill={color} d={Array.from({ length: 12 }, (_, k) => {
-      const a = (k / 12) * Math.PI * 2, b = ((k + 0.5) / 12) * Math.PI * 2;
-      const p = (ang: number, rad: number) => `${r + Math.cos(ang) * rad} ${r + Math.sin(ang) * rad}`;
-      return `${k === 0 ? 'M' : 'L'} ${p(a, r - 1)} Q ${p(b, r + 0.5)} ${p(((k + 1) / 12) * Math.PI * 2, r - 1)}`;
-    }).join(' ') + ' Z'} />
-    <Circle cx={r} cy={r} r={r - 6} fill="url(#wax)" stroke="#FFFFFF" strokeOpacity={0.25} strokeWidth={1.2} />
-    <SvgText x={r} y={r + 7} fontSize={20} fontWeight="900" fill="#F7E7B4" textAnchor="middle">1</SvgText>
-  </Svg>;
-}
-
-// Muted loop with a speaker button; with Reduce Motion (play=false) only the poster (or the first frame) is shown.
-function LetterVideo({ source, poster, play }: { source: string; poster: string | null; play: boolean }) {
+// Muted loop with a sound button; with Reduce Motion (play=false) only the poster (or the first frame) is shown.
+function CampaignVideo({ source, poster, play }: { source: string; poster: string | null; play: boolean }) {
   const { t } = useTranslation();
   const view = useRef<VideoView>(null);
   const [muted, setMuted] = useState(true); const [started, setStarted] = useState(false);
@@ -154,21 +102,23 @@ function LetterVideo({ source, poster, play }: { source: string; poster: string 
 }
 
 const s = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(20,14,6,0.55)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8,16,11,0.55)' },
   center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
-  card: { borderRadius: 18, boxShadow: [{ offsetX: 0, offsetY: 18, blurRadius: 40, color: 'rgba(30,20,5,0.35)' }] },
-  inner: { alignItems: 'center', gap: 8 },
-  pic: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, marginBottom: 6, backgroundColor: colors.surfaceSecondary },
+  card: { borderRadius: RADIUS, backgroundColor: '#FFFFFF', overflow: 'hidden',
+    boxShadow: [{ offsetX: 0, offsetY: 24, blurRadius: 48, color: 'rgba(5,20,10,0.32)' }, { offsetX: 0, offsetY: 2, blurRadius: 6, color: 'rgba(5,20,10,0.10)' }] },
+  pic: { width: '100%', backgroundColor: colors.surfaceSecondary },
   fill: { width: '100%', height: '100%' },
-  ad: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  greeting: { fontSize: 14, fontStyle: 'italic', fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, "Times New Roman", serif' }) },
-  title: { fontSize: 21, lineHeight: 26, fontWeight: '700', textAlign: 'center', letterSpacing: -0.2,
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, "Times New Roman", serif' }) },
-  body: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  cta: { marginTop: 6, minHeight: 46, paddingHorizontal: 22, borderRadius: 23, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ctaText: { fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
-  seal: { position: 'absolute' },
-  close: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.85)' },
-  sound: { position: 'absolute', right: 8, bottom: 8, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 48 },
+  body: { paddingHorizontal: 22, paddingTop: 10, paddingBottom: 22, gap: 8 },
+  tag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  tagText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  title: { color: INK, fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.6 },
+  text: { color: SOFT, fontSize: 15, lineHeight: 21 },
+  cta: { marginTop: 8, minHeight: 52, borderRadius: 26, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  ctaText: { color: INK, fontSize: 16, fontWeight: '800' },
+  close: { position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.86)',
+    boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0,0,0,0.15)' }] },
+  sound: { position: 'absolute', left: 12, bottom: 14, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
   pressed: { opacity: 0.75 },
 });

@@ -163,7 +163,9 @@
     },
     "method": {
       "phone": "Mobile number",
-      "email": "Email"
+      "email": "Email",
+      "useEmail": "Use email instead",
+      "usePhone": "Use mobile number instead"
     },
     "signIn": "Sign in",
     "createAccount": "Create account",

@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — One Local customer app: 2026 campaign card, sign-in capsule, three redesign decks
+
+**The marketing pop-up now looks like a 2026 app card instead of a 2010 "royal letter", sign in and create account are one small always-visible capsule, and three full redesign directions were produced as decks for the founder to choose from.**
+
+- **Why:** the founder said the letter looked dated, the app still "feels stuck", and there was no way to reach "Create account" unless you first chose email.
+- **Structural decisions:** the campaign card keeps the same data and approval flow; only its look changed (edge-to-edge photo or video fading into a white panel, a small label, bold title, lime button, round close button). Master Admin's "frame" choice now sets the label style instead of an ornate border, so no campaign already made needs changing. On sign-in, mobile number versus email became a quiet link under the form, and the sign in / create account choice became a small capsule at the top that is always there (it only changes the words for a mobile number, because the same code signs in or creates the account).
+- **What works now:** checked in a headless phone-size browser: the capsule switches with a sliding highlight on both mobile and email; a brand-new account sees the new welcome card after the "One last step" screen. Three design decks (Calm Utility, Bento Local, Story-first; each one image with create account, sign in, location-adaptive home, campaign and store page) were generated in Higgsfield using 8.25 credits and handed to the founder.
+- **Why the app still feels stuck (summary given to the founder):** too many accent colours and per-department palettes; a heavy header repeated on every screen; small 9-11 px text; many different card styles; decorative noise (SOON pills, sample notices, stickers); nothing adapts to the place or time; mixed illustration styles; and a sign-in page crowded with consent text.
+- **Left undone:** none of the three decks is built yet (waiting for the founder's pick). The bottom menu still shows above the dimmed background behind pop-ups on the website. Not tested on a phone.
+- **Open questions for the founder:** which direction (A, B, C or a mix) should the app move to?
+
 ## 2026-10-29 — Marketing pop-ups: royal-letter cards with photo or video, run from Master Admin
 
 **The team can now make a framed "royal letter" pop-up with a photo or a short video in Master Admin, send it for a second person's approval, and it appears in the customer app with no app update, including a welcome letter for every new customer.**

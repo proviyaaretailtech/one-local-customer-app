@@ -16,7 +16,7 @@ import { colors } from '@/src/theme';
 import { recordChoices, usePrivacyChoices } from '@/src/privacy';
 import { PRIVACY } from '@/constants/privacy';
 import { safeLineHeight, useFormat, useLanguage, useTranslation } from '@/src/i18n';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useMotionAllowed } from '@/src/motion';
 
 // Light and quiet (after Glovo's sign-in): white page, soft filled fields with no borders, one bright
@@ -147,24 +147,17 @@ export default function SignIn() {
         <Pressable testID="sign-in-skip" accessibilityRole="button" onPress={leave} hitSlop={8} style={s.skip}><Text style={s.skipText}>{welcome ? t('auth.skipForNow') : t('common.close')}</Text></Pressable>
       </View>
 
-      <Animated.View entering={rise(0)} style={s.hero}>
+      {/* One small capsule, always there (except at checkout, where signing in is the only point): sign in or create an account.
+          With a mobile number both are the same code, so it only changes the words; with email it changes the form. */}
+      {!checkout && <Animated.View entering={rise(0)} style={s.capsuleRow}>
+        <ModeCapsule mode={mode} onChange={switchMode} labels={{ signin: t('auth.signIn'), signup: t('auth.createAccount') }} motion={motion} />
+      </Animated.View>}
+
+      <Animated.View key={checkout ? 'checkout' : mode} entering={motion ? FadeIn.duration(220) : undefined} style={s.hero}>
         {checkout
           ? <><Text testID="sign-in-checkout-title" style={[s.title, deva && s.noTrack]}>{t('auth.heroTitle.checkout')}</Text><Text style={s.sub}>{t('auth.heroSub.checkout')}</Text></>
           : <><Text style={[s.title, deva && s.noTrack]}>{mode === 'signin' ? t('auth.heroTitle.signin') : t('auth.heroTitle.signup')}</Text><Text style={s.sub}>{t('auth.heroSub.default')}</Text></>}
       </Animated.View>
-
-      {/* Big, obvious tabs: everyone can see which one they are on, and the switch is a tap, not a buried link. */}
-      {!checkout && !byPhone && <Animated.View entering={rise(1)} testID="sign-in-mode-tabs" accessibilityRole="tablist" style={s.segment}>
-        {(['signin', 'signup'] as const).map(m => <Pressable key={m} testID={`sign-in-mode-${m}-tab`} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} onPress={() => switchMode(m)} style={[s.segmentItem, mode === m && s.segmentOn]}>
-          <Text style={[s.segmentText, mode === m && s.segmentTextOn]}>{m === 'signin' ? t('auth.signIn') : t('auth.createAccount')}</Text>
-        </Pressable>)}
-      </Animated.View>}
-
-      {phoneAvailable && <Animated.View entering={rise(1)} testID="sign-in-method" accessibilityRole="tablist" style={s.segment}>
-        {(['phone', 'email'] as const).map(m => <Pressable key={m} testID={`sign-in-method-${m}`} accessibilityRole="tab" accessibilityState={{ selected: method === m }} onPress={() => { setMethod(m); setError(''); setNotice(''); }} style={[s.segmentItem, method === m && s.segmentOn]}>
-          <Text style={[s.segmentText, method === m && s.segmentTextOn]}>{m === 'phone' ? t('auth.method.phone') : t('auth.method.email')}</Text>
-        </Pressable>)}
-      </Animated.View>}
 
       <Animated.View entering={rise(2)} style={s.card}>
         {byPhone ? <View testID="sign-in-phone" style={s.stack}>
@@ -214,8 +207,10 @@ export default function SignIn() {
           <Pressable testID="sign-in-change-number" accessibilityRole="button" onPress={() => { setSentTo(''); setCode(''); setNotice(''); setError(''); }} style={s.link}><Text style={s.linkText}>{t('auth.changeNumber')}</Text></Pressable>
           <Pressable testID="sign-in-resend" accessibilityRole="button" disabled={wait > 0 || !!busy} onPress={sendCode} style={s.link}><Text style={[s.linkText, wait > 0 && { color: SOFT }]}>{wait > 0 ? t('auth.resendIn', { seconds: fmt.number(wait) }) : t('auth.resend')}</Text></Pressable>
         </View>}
-        {!byPhone && <Pressable testID={mode === 'signin' ? 'sign-in-mode-signup' : 'sign-in-mode-signin'} accessibilityRole="button" onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')} style={s.switch}>
-          <Text style={s.switchText}>{mode === 'signin' ? t('auth.switch.toSignup') : t('auth.switch.toSignin')}</Text>
+        {/* Mobile number or email is a quiet second choice under the form, not a second row of tabs. */}
+        {phoneAvailable && <Pressable testID={method === 'phone' ? 'sign-in-method-email' : 'sign-in-method-phone'} accessibilityRole="button"
+          onPress={() => { setMethod(method === 'phone' ? 'email' : 'phone'); setError(''); setNotice(''); }} style={s.switch}>
+          <Text style={s.switchText}>{method === 'phone' ? t('auth.method.useEmail') : t('auth.method.usePhone')}</Text>
         </Pressable>}
       </Animated.View>
 
@@ -235,6 +230,26 @@ export default function SignIn() {
       </Text>
     </ScrollView>
   </KeyboardAvoidingView>;
+}
+
+// The sign in / create account capsule: a small pill with a highlight that slides to the chosen side.
+function ModeCapsule({ mode, onChange, labels, motion }: { mode: 'signin' | 'signup'; onChange: (m: 'signin' | 'signup') => void; labels: Record<'signin' | 'signup', string>; motion: boolean }) {
+  const [box, setBox] = useState<Record<'signin' | 'signup', { x: number; w: number }>>({ signin: { x: 3, w: 0 }, signup: { x: 3, w: 0 } });
+  const x = useSharedValue(3); const w = useSharedValue(0);
+  useEffect(() => {
+    const target = box[mode]; if (!target.w) return;
+    x.value = motion ? withTiming(target.x, { duration: 220 }) : target.x;
+    w.value = motion ? withTiming(target.w, { duration: 220 }) : target.w;
+  }, [mode, box, motion, x, w]);
+  const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }], width: w.value }));
+  return <View testID="sign-in-mode-tabs" accessibilityRole="tablist" style={s.capsule}>
+    <Animated.View pointerEvents="none" style={[s.capsuleThumb, thumb]} />
+    {(['signin', 'signup'] as const).map(m => <Pressable key={m} testID={`sign-in-mode-${m}-tab`} accessibilityRole="tab" accessibilityState={{ selected: mode === m }}
+      onLayout={e => { const { x: lx, width } = e.nativeEvent.layout; setBox(b => (b[m].x === lx && b[m].w === width ? b : { ...b, [m]: { x: lx, w: width } })); }}
+      onPress={() => onChange(m)} hitSlop={6} style={s.capsuleItem}>
+      <Text style={[s.capsuleText, mode === m && s.capsuleTextOn]}>{labels[m]}</Text>
+    </Pressable>)}
+  </View>;
 }
 
 // A plain, unticked-by-default checkbox (never pre-ticked for consent).
@@ -263,7 +278,13 @@ const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   skip: { minHeight: 44, minWidth: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center' },
   skipText: { color: INK, fontSize: 13, fontWeight: '700' },
-  hero: { marginTop: 40, marginBottom: 24 },
+  hero: { marginTop: 18, marginBottom: 22 },
+  capsuleRow: { marginTop: 28, flexDirection: 'row' },
+  capsule: { flexDirection: 'row', padding: 3, borderRadius: 999, backgroundColor: FILL, borderWidth: 1, borderColor: LINE },
+  capsuleThumb: { position: 'absolute', top: 3, bottom: 3, left: 0, borderRadius: 999, backgroundColor: '#fff', boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(13,18,14,0.10)' }] },
+  capsuleItem: { minHeight: 34, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center' },
+  capsuleText: { color: SOFT, fontSize: 13, fontWeight: '700' },
+  capsuleTextOn: { color: INK },
   title: { color: INK, fontSize: 30, lineHeight: safeLineHeight(30, 36), fontWeight: '800', letterSpacing: -0.8 },
   noTrack: { letterSpacing: 0 }, // Devanagari: letter-spacing pulls conjuncts and matras apart
   sub: { color: SOFT, fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 330 },
