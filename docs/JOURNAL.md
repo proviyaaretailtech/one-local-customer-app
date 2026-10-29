@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-29 — All repositories pushed; the customer server release is built and waits for one push
+
+**Today's work is on GitHub in every repository, and a tested release of the customer server that keeps everything live today is ready to go live.**
+
+- **Why:** the founder asked for every change to be pushed to its own repository and for the customer server to go live.
+- **What was pushed:** Master Admin server (5 changes) and Master Admin web (7) to main; the workspace repository (353 changes) to main, where the automatic deploy has been broken since 8 October, so nothing went live from it; the customer app branch after merging two newer changes from the team (Poppins font, delivery times, order ratings and problem reports). The partner app was not touched; its own repository had a new change this morning and nothing of it was overwritten.
+- **Structural decisions:** the live customer server is published by copying the app's `frontend/` folder into the `one-local-server` repository, whose main branch Vercel deploys by itself (the way the 15 October release went out). The release branch `release/server-2026-10-29` joins that live release with today's work. Where both sides changed the same thing, both were kept: an order must pass the database's live-restaurant rule and the pickup-point check; restaurants report both platform hold and approval status. The alternative, deploying today's branch alone, lost because it would have removed partner sign-in by code, pickup-point checks, refund guards and push registration from the live server.
+- **What works now:** the release builds, passes the type check, and against the live database answers health, all 143 images (6 new: department icons and the sign-in market photo), pop-ups, reels and stores.
+- **Left undone:** the push that makes it live (blocked pending the founder's go-ahead); the live server has no Master keys yet (health shows Master not configured); 43 stuck outbox rows on the live database (already there, not caused today); the rider gateway's Vercel settings need their own file before the rider gateway and the customer server can share one branch; the workspace repository's deploy file is broken.
+- **Open questions for the founder:** go ahead with the live server push? Should the workspace deploy file be fixed, given that fixing it will redeploy the POS server (which sends sign-in codes) on every push to main?
+
 ## 2026-10-29 — Campaign button with words only now shows; real sign-in codes on the local stack
 
 **A campaign button typed without a destination (e.g. "Coming Soon") now appears, and the founder's phone gets real SMS codes when testing locally.**
