@@ -1,116 +1,103 @@
-// First-launch intro, tuned to feel calm and expensive rather than busy:
-//   1. a soft lime light blooms out of the black,
-//   2. the neon "1" settles in (scale + fade, one gentle overshoot — no drop, no bounce),
-//   3. "neCity" unfolds from behind the "1" while a light sweep glides across the lockup,
-//   4. the tagline rises, then everything eases forward and dissolves into the app.
-// Runs entirely on the UI thread (Reanimated), so the app loading behind it can't make it stutter.
-// Plays once per launch (~1.9 s). With Reduce Motion it is a short, still fade.
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
+// First-launch intro: a short brand video (~6 s, muted, portrait 9:16) plays full screen, then
+// dissolves into the app. Tap anywhere to skip.
+// The video is served from Supabase Storage (public bucket onecity-catalog, path app/intro/), in two
+// renditions: 720p for small or low-density screens, 1080p for the rest.
+// Phones fill the screen (cover). Tablets, landscape and desktop web would crop too much of a portrait
+// clip, so there the whole frame is shown (contain) over a blurred, full-bleed copy of its first frame.
+// With Reduce Motion the video is not played; the first frame shows briefly and fades.
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Image, PixelRatio, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useMotionAllowed } from '../motion';
-import { BrandLogo } from './brand-logo';
-import { colors } from '../theme';
 import { useTranslation } from '../i18n';
 
-const launch = globalThis as unknown as { __onecityIntroPlayed?: boolean };
+const launch = globalThis as unknown as { __onecityIntroPlayed?: boolean; __onecityIntroShowing?: boolean };
 const INK = '#050605';
-const outExpo = Easing.bezier(0.16, 1, 0.3, 1);     // long, silky settle
-const inOut = Easing.bezier(0.65, 0, 0.35, 1);
-const overshoot = Easing.bezier(0.34, 1.36, 0.64, 1); // one soft overshoot, no wobble
+const POSTER = require('../../assets/videos/intro-poster.jpg');
+const STORAGE = `${String(Constants.expoConfig?.extra?.supabaseUrl || '').replace(/\/$/, '')}/storage/v1/object/public/onecity-catalog/app/intro`;
+const VIDEO_ASPECT = 9 / 16;
 
-// Keep the native splash (same ink colour) up until the intro's first frame, so there is no flash.
+// Keep the native splash (same ink colour) up until the video can start, so there is no flash.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export function IntroSplash() {
   const [visible, setVisible] = useState(!launch.__onecityIntroPlayed);
   const { t } = useTranslation(); // safe here: I18nProvider holds the first render until the saved language is loaded
   const motion = useMotionAllowed();
-  const bloom = useSharedValue(0);  // lime light
-  const glyph = useSharedValue(0);  // the "1"
-  const word = useSharedValue(0);   // wordmark unfold
-  const sweep = useSharedValue(0);  // light band across the lockup
-  const tag = useSharedValue(0);    // tagline
-  const exit = useSharedValue(0);   // ease forward + dissolve
-  // The animation starts once the logo image is drawn (on the web it is fetched), or after 1.2 s whatever happens.
-  const [logoReady, setLogoReady] = useState(false);
-  useEffect(() => { const id = setTimeout(() => setLogoReady(true), 1200); return () => clearTimeout(id); }, []);
+  const { width, height } = useWindowDimensions();
+  // Wider than ~9:14.5 (tablets, landscape, desktop) → letterbox instead of cropping.
+  const wide = width / Math.max(height, 1) > 0.62;
+  // Pick the rendition from the pixels the video will actually cover; decided once per launch.
+  const source = useMemo(() => {
+    if (!STORAGE.startsWith('http')) return null;
+    const px = (wide ? height * VIDEO_ASPECT : width) * PixelRatio.get();
+    return `${STORAGE}/intro-${px > 800 ? 1080 : 720}.mp4`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const view = useRef<VideoView>(null);
+  const exit = useSharedValue(0);
+  const finishing = useRef(false);
+  const player = useVideoPlayer(visible && motion ? source : null, p => { p.loop = false; p.muted = true; });
+
+  const done = () => { launch.__onecityIntroShowing = false; setVisible(false); };
+  const finish = () => {
+    if (finishing.current) return;
+    finishing.current = true;
+    exit.value = withTiming(1, { duration: 420, easing: Easing.bezier(0.4, 0, 0.2, 1) }, f => { if (f) runOnJS(done)(); });
+  };
 
   useEffect(() => {
-    void SplashScreen.hideAsync().catch(() => {});
-    if (!visible || !logoReady) return;
+    if (!visible) { void SplashScreen.hideAsync().catch(() => {}); return; }
     launch.__onecityIntroPlayed = true;
     // Read by the pop-up host so no pop-up opens over the intro.
-    (globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing = true;
-    const done = () => { (globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing = false; setVisible(false); };
-    // Safety net: if the frame loop stalls (a background tab on the web pauses it), the finish callback
-    // never fires and a half-faded intro would sit over the app. Remove it on a plain timer as well.
-    const fallback = setTimeout(done, motion ? 2400 : 1200);
-    if (!motion) {
-      glyph.value = 1; word.value = 1; tag.value = 1; bloom.value = 0.6;
-      exit.value = withDelay(650, withTiming(1, { duration: 260 }, f => { if (f) runOnJS(done)(); }));
-      return () => clearTimeout(fallback);
+    launch.__onecityIntroShowing = true;
+    const reveal = () => { void SplashScreen.hideAsync().catch(() => {}); };
+    if (!motion || !source) {
+      reveal();
+      const id = setTimeout(finish, 700);
+      return () => clearTimeout(id);
     }
-    bloom.value = withTiming(1, { duration: 900, easing: outExpo });
-    glyph.value = withDelay(80, withTiming(1, { duration: 620, easing: overshoot }));
-    word.value = withDelay(420, withTiming(1, { duration: 620, easing: outExpo }));
-    sweep.value = withDelay(620, withTiming(1, { duration: 700, easing: inOut }));
-    tag.value = withDelay(820, withTiming(1, { duration: 500, easing: outExpo }));
-    exit.value = withDelay(1450, withSequence(withTiming(1, { duration: 450, easing: Easing.bezier(0.4, 0, 0.2, 1) }, f => { if (f) runOnJS(done)(); })));
-    return () => clearTimeout(fallback);
-  }, [visible, logoReady, motion, bloom, glyph, word, sweep, tag, exit]);
+    const play = () => {
+      reveal();
+      // Web: play() through the element so a blocked autoplay is not reported as an error.
+      const element = Platform.OS === 'web' ? (view.current as unknown as { nativeRef?: { current?: HTMLVideoElement } })?.nativeRef?.current : undefined;
+      if (element) void element.play().catch(() => {}); else player.play();
+    };
+    if (player.status === 'readyToPlay') play();
+    const ready = player.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay') play();
+      if (status === 'error') { reveal(); finish(); }
+    });
+    const ended = player.addListener('playToEnd', finish);
+    // On a slow network show the poster rather than holding the native splash.
+    const unblock = setTimeout(reveal, 1500);
+    // Safety net: if the video stalls or never ends, remove the intro on a plain timer.
+    const fallback = setTimeout(finish, 9000);
+    return () => { ready.remove(); ended.remove(); clearTimeout(unblock); clearTimeout(fallback); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, motion, player, source]);
 
-  const screen = useAnimatedStyle(() => ({ opacity: interpolate(exit.value, [0, 1], [1, 0]) }));
-  const stage = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(exit.value, [0, 1], [1, 1.12]) }] }));
-  const halo = useAnimatedStyle(() => ({
-    opacity: interpolate(bloom.value, [0, 1], [0, 0.5]),
-    transform: [{ scale: interpolate(bloom.value, [0, 1], [0.5, 1]) }],
-  }));
-  const one = useAnimatedStyle(() => ({
-    opacity: interpolate(glyph.value, [0, 0.4], [0, 1], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(glyph.value, [0, 1], [0.82, 1]) }],
-  }));
-  const wordmark = useAnimatedStyle(() => ({
-    opacity: word.value,
-    transform: [{ translateX: interpolate(word.value, [0, 1], [-28, 0]) }],
-  }));
-  const band = useAnimatedStyle(() => ({
-    opacity: interpolate(sweep.value, [0, 0.15, 0.85, 1], [0, 1, 1, 0]),
-    transform: [{ translateX: interpolate(sweep.value, [0, 1], [-160, 320]) }, { skewX: '-18deg' }],
-  }));
-  const tagline = useAnimatedStyle(() => ({
-    opacity: tag.value,
-    transform: [{ translateY: interpolate(tag.value, [0, 1], [10, 0]) }],
-  }));
+  const screen = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
 
   if (!visible) return null;
-  return <Animated.View testID="intro-splash" accessibilityLabel={t('shell.introLoading')} style={[s.screen, screen]} pointerEvents="none">
+  return <Animated.View testID="intro-splash" accessibilityLabel={t('shell.introLoading')} style={[s.screen, screen]}>
     <StatusBar style="light" />
-    <Animated.View style={[s.center, stage]}>
-      <Animated.View style={[s.halo, halo]}>
-        <Svg width={420} height={420}><Defs><RadialGradient id="introHalo" cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor={colors.lime} stopOpacity={0.9} /><Stop offset="0.35" stopColor={colors.lime} stopOpacity={0.35} /><Stop offset="1" stopColor={colors.lime} stopOpacity={0} />
-        </RadialGradient></Defs><Rect width={420} height={420} fill="url(#introHalo)" /></Svg>
-      </Animated.View>
-      <View style={s.lockup}>
-        <Animated.View style={one}><Animated.View style={wordmark}><BrandLogo tone="dark" height={64} onLoad={() => setLogoReady(true)} /></Animated.View></Animated.View>
-        <Animated.View style={[s.band, band]} />
-      </View>
-      <Animated.Text style={[s.tagline, tagline]}>{t('shell.introTagline')}</Animated.Text>
-    </Animated.View>
-    <Animated.Text style={[s.made, tagline]}>{t('shell.introMade')}</Animated.Text>
+    {wide && <Image source={POSTER} style={s.fill} resizeMode="cover" blurRadius={28} />}
+    {wide && <View style={[StyleSheet.absoluteFill, s.dim]} />}
+    <Image source={POSTER} style={s.fill} resizeMode={wide ? 'contain' : 'cover'} />
+    {motion && source && <View style={s.clip} pointerEvents="none"><VideoView ref={view} player={player} style={s.fill} contentFit={wide ? 'contain' : 'cover'} nativeControls={false} allowsPictureInPicture={false} /></View>}
+    <Pressable style={StyleSheet.absoluteFill} onPress={finish} accessibilityRole="button" />
   </Animated.View>;
 }
 
 const s = StyleSheet.create({
-  screen: { ...StyleSheet.absoluteFill, zIndex: 1000, backgroundColor: INK, alignItems: 'center', justifyContent: 'center' },
-  center: { alignItems: 'center' },
-  halo: { position: 'absolute', top: -170, width: 420, height: 420 },
-  lockup: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, overflow: 'hidden', paddingHorizontal: 6 },
-  band: { position: 'absolute', top: -20, bottom: -20, left: 0, width: 46, backgroundColor: 'rgba(255,255,255,0.16)' },
-  tagline: { color: colors.electricLime, fontSize: 11, fontWeight: '700', letterSpacing: 3.2, marginTop: 24 },
-  made: { position: 'absolute', bottom: 58, color: 'rgba(255,255,255,0.42)', fontSize: 10, letterSpacing: 1.6 },
+  screen: { ...StyleSheet.absoluteFill, zIndex: 1000, backgroundColor: INK },
+  clip: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  // A web <video>/<img> ignores inset for sizing, so give it an explicit size.
+  fill: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
+  dim: { backgroundColor: 'rgba(5,6,5,0.45)' },
 });
