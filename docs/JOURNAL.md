@@ -1,5 +1,34 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-31 — One Local customer app and Master Admin: pop-ups finished, Reels run from Master Admin
+
+**Pop-ups can now be written in English and Hindi, edited, paused and resumed from Master Admin, and the reels in Discover are added, ordered, paused and removed from a new Master Admin page.**
+
+- **Why:** the founder asked for pop-ups to be configurable from Master Admin and for Reels to be manageable there too. Checking pop-ups end to end found that editing a saved draft failed, the text could only be English, a live pop-up could only be ended for good, and Master Admin could not reach the One Local server on this computer at all. Reels had no admin anywhere: three sample reels were fixed in the database.
+- **Structural decisions:**
+  - **Reels live on the One Local server and are reached through the Master server,** the same way as pop-ups: Master checks the staff member's permission and records every change; the browser never calls One Local directly.
+  - **Permissions follow Master's roles.** One Local now honours the "Pop-ups" and "Reels" permissions a Master role grants (view only, or full access to change), instead of letting in super admins only. The alternative, keeping One Local super-admin-only, lost: granting the page to a marketing role in Master would then show a page that always refuses.
+  - **A reel links to a product, a brand, or both.** Real stores' products and brands are not in the demo tables, so the database's link check accepts a demo row or a store listing's own items. A reel whose product has gone is hidden instead of breaking the screen.
+  - **Pausing a pop-up keeps its approval.** Pause takes it off the app at once; Resume puts it back without a second approval (nothing customers see has changed), until its end date. End is still final.
+  - **Deleting a reel keeps the record** (hidden, not erased), like the rest of the platform's history.
+  - The database changes are two new migration files (0641 pause, 0642 reels), applied and tested on the local database only. Existing pop-ups and the three sample reels are unchanged and still show.
+- **What works now (checked in a browser on this computer):**
+  - **Master Admin → Operations → Pop-ups:** make a campaign card with an uploaded photo, write it in English and Hindi, pick the city and screens from lists, save, edit the draft again, send it for approval. The maker cannot approve it; a second admin can. It then showed in the customer app on Discover in Hindi. Pause hid it within half a minute, Resume brought it back, End stopped it. Every step is in both audit trails.
+  - **Master Admin → Operations → Reels:** a list per city in the order customers see them, saying whether each is showing, paused, not started, ended or missing its product. Upload a portrait video (its first frame becomes the poster unless one is uploaded), pick a product by searching, or a brand, write a caption, label and dates, and save. Move reels up and down, pause and show them, delete them. A new reel moved to the top appeared first in Discover and played in the Reels screen; pausing and deleting removed it within half a minute.
+  - The reel screen now shows each reel's label above the brand name (the three sample reels' labels show too), and real reels say "Brand ad" instead of "Sample brand ad".
+  - Both pages are in English and Hindi in Master Admin.
+- **Left undone:**
+  - **Hosted database and live servers:** migrations 0641 and 0642 exist on this computer only; they go with the next hosted catch-up, and the live One Local and Master servers need this code before the live Master Admin can use it.
+  - No APK or Play bundle was built, and this was not checked on the Android emulator yet.
+  - No new Master role was made: only "Super Admin" exists locally. Which roles get Pop-ups and Reels is the founder's call (Master Admin → Roles).
+  - Marathi text for pop-ups is not in the editor (the app can already show it).
+  - The independent review gate (`.claude/workflows/review-app-against-db.js`) was not run.
+  - The pop-ups check script reports two failures because its seeded "Navratri" sample pop-up ended on 20 October (old test data, not this change).
+  - Test data: a second local test admin (popups-qa2@local.test) was made for the approval step; its password is in the git-ignored `agent/backups/local-test-logins.txt`. The test pop-up was ended and the test reel deleted.
+- **Open questions for the founder:**
+  - Which Master roles should get Pop-ups and Reels, and should they only view or also change them?
+  - Should a new reel need a second person's approval like pop-ups do? Now it shows as soon as it is saved, unless "Show it in the app as soon as it is saved" is unticked.
+
 ## 2026-10-31 — One Local customer app: city photos fill their tiles
 
 **The nine popular-city photos on the location screen now fill their tiles edge to edge.**
