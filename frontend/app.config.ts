@@ -36,9 +36,9 @@ export default {
     ['expo-notifications', { color: '#B3F400' }],
     '@bacons/apple-targets',
     'expo-dev-client',
-    // Native launch screen: the app-icon tile on the intro's light background. The code-drawn intro starts from the
-    // same tile in the same place, so launch → intro has no jump (2026-10-31).
-    ['expo-splash-screen', { image: './assets/images/splash-icon.png', imageWidth: 140, resizeMode: 'contain', backgroundColor: '#F6F8F3', dark: { image: './assets/images/splash-icon.png', backgroundColor: '#F6F8F3' } }],
+    // Native launch screen: the app-icon tile (Fresh Lime) on the intro's dark green. The code-drawn intro starts from
+    // the same tile in the same place, so launch → intro has no jump (2026-10-31).
+    ['expo-splash-screen', { image: './assets/images/splash-icon.png', imageWidth: 140, resizeMode: 'contain', backgroundColor: '#0B1A10', dark: { image: './assets/images/splash-icon.png', backgroundColor: '#0B1A10' } }],
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
   ],
