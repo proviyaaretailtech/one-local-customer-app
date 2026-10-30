@@ -3,7 +3,8 @@
 // places. Street-level address search (Google) joins in once the Maps key is set. On first launch
 // this screen asks "Where are you?" and can be skipped (Latur).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, TextInput } from '@/src/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -206,7 +207,8 @@ export default function LocationPicker() {
                 const photo = CITY_PHOTO[p.name.toLowerCase()];
                 return <Pressable key={p.id} testID={`popular-${p.name.toLowerCase()}`} onPress={() => choosePlace(p)} style={[styles.tile, !!photo && styles.photoTile]}>
                   {photo ? <>
-                    <Image source={photo} resizeMode="cover" style={styles.tilePhoto} accessibilityIgnoresInvertColors />
+                    {/* expo-image fills the tile on every platform; React Native's Image kept its own smaller box on the web. */}
+                    <Image source={photo} contentFit="cover" style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
                     <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} start={{ x: 0, y: 0.25 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
                   </> : <>
                     <LinearGradient colors={[colors.limeSoft, colors.surface]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -302,7 +304,6 @@ const styles = StyleSheet.create({
   tileName: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
   tileState: { fontSize: 11, color: colors.muted },
   photoTile: { minHeight: 96, borderWidth: 0 },
-  tilePhoto: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }, // sized to the tile (web otherwise keeps the photo's own 480px)
   photoName: { color: '#FFFFFF' }, // on the photo's dark scrim in both themes
   photoState: { color: 'rgba(255,255,255,0.82)' },
   browse: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

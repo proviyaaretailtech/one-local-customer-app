@@ -1,5 +1,15 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-31 — One Local customer app: city photos fill their tiles
+
+**The nine popular-city photos on the location screen now fill their tiles edge to edge.**
+
+- **Why:** the founder saw the landmark photos drawn smaller than their tiles, with a white strip on the right and a grey band at the bottom, so the grid looked misaligned.
+- **Structural decisions:** the tiles now draw the photo with the same image component the Discover tiles use, which stretches to the tile on the web and on phones. The previous image component kept a smaller box on the web.
+- **What works now:** checked in the web preview at phone size: all nine tiles are filled and line up in three even rows. Tapping a tile still makes that city the selected one (Mumbai was tried and the app went on as Mumbai).
+- **Left undone:** not yet checked on the Android emulator; no app build was made.
+- **Open questions for the founder:** none.
+
 ## 2026-10-31 — One Local customer app: new logo files, app icon, code-drawn intro, findable account deletion
 
 **Fixed the four items from the tester's list: the Home logo, the splash screen, pop-ups not showing, and the app icon. Also made account deletion easy to find.**
