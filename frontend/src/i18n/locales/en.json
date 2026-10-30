@@ -695,6 +695,7 @@
     "soundOn": "Sound on",
     "exploreCreator": "Explore {{creator}} products",
     "sampleAd": "Sample brand ad · Explore collection",
+    "brandAd": "Brand ad · Explore collection",
     "addToCartA11y": "Add {{name}} to cart",
     "added": "Added · {{n}}",
     "addToCart": "Add to cart",

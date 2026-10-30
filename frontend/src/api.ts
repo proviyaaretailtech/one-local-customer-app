@@ -200,7 +200,9 @@ export type Brand = { id: string; name: string; department: string; logo: string
 export type EventListing = { id: string; title: string; kind: string; subtitle: string; venue: string; price: number; image: string; tag: string; slots: string[] };
 export type ThemedStore = { id: string; name: string; subtitle: string; eyebrow: string; categories: string[]; icon: string; image: string; sections: string[] };
 export type Catalog = { brands: Brand[]; products: Product[]; categories: Category[]; events: EventListing[]; themed_stores: ThemedStore[] };
-export type Reel = { id: string; video: string; video_web: string; product: Product; caption: string; creator: string; likes: number; tag: string; brand: Brand };
+// A reel promotes a product, a brand, or both (Master Admin -> Reels). poster: the still shown until the video plays (else the product photo);
+// is_demo: a sample reel, labelled as one.
+export type Reel = { id: string; video: string; video_web: string; product?: Product; caption: string; creator: string; likes: number; tag: string; brand?: Brand; poster?: string | null; is_demo?: boolean };
 export type AISearchResult = { query: string; product_ids: string[]; explanation: string; transcript?: string };
 export async function uploadSearch(mode: 'image' | 'voice', uri: string, name: string, type: string, signal: AbortSignal): Promise<AISearchResult> {
   const { Platform } = await import('react-native');

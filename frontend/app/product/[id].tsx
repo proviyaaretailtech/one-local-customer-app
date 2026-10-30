@@ -43,7 +43,7 @@ const stories = new Map<string, Story>();
 function quickStory(id: string): Story | null {
   const catalog = queryClient.getQueryData<Catalog>(['catalog']);
   const reels = queryClient.getQueryData<Reel[]>(['discovery']);
-  const product = catalog?.products.find(p => p.id === id) ?? reels?.find(r => r.product.id === id)?.product;
+  const product = catalog?.products.find(p => p.id === id) ?? reels?.find(r => r.product?.id === id)?.product;
   return product ? { product, gallery: [product.image], video: null, category: null, store: null, brand: null, related: [] } : null;
 }
 const INK = '#050605';
