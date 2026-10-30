@@ -65,6 +65,8 @@ tap_id() { for _ in 1 2 3 4; do tap_id_once "$@" && return 0; sleep 3; done; ech
 walk="ok"
 tap_text "Continue" 5 || walk="incomplete"
 tap_text "Latur" 8 || walk="incomplete"
+# First time on Home a signed-out customer is offered sign-in once (src/components/sign-in-prompt.tsx): skip it.
+tap_id "sign-in-skip" 6 || walk="sign-in was not offered on first open"
 # A promotional pop-up may open over Home (only when a campaign is live); close it if it is there.
 tap_id_once "popup-close" 3 || true
 tap_id "tab-reels" 8 || walk="incomplete"   # Discover (the round button; its label is not tappable)
@@ -84,6 +86,7 @@ tap_id_once "popup-close" 3 || true
 "$adb" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
 second=$("$adb" exec-out cat /sdcard/ui.xml 2>/dev/null || true)
 if [[ "$second" == *'resource-id="intro-splash"'* ]]; then walk="intro replayed on second launch"
+elif [[ "$second" == *'resource-id="sign-in-skip"'* ]]; then walk="sign-in offered again on second launch"
 elif [[ "$second" != *'resource-id="tab-home'* ]]; then walk="second launch did not reach the app"; fi
 
 crash=$("$adb" logcat -d -b crash 2>/dev/null | grep -A3 "Process: $pkg" | head -4 || true)
@@ -101,6 +104,6 @@ if [[ -n "$crash" || -n "$boundary" || -z "$pid" ]]; then
   exit 1
 fi
 [[ "$walk" == "ok" ]] || { echo "FAIL: $pkg ($version) stayed up but the walk failed: $walk"; exit 1; }
-echo "PASS: $pkg ($version) first launch, language, Latur, Discover, Home, and a second launch with no intro, with no crash or error screen"
+echo "PASS: $pkg ($version) first launch, language, Latur, the one-time sign-in offer, Discover, Home, and a second launch with no intro or sign-in offer, with no crash or error screen"
 [[ -n "$js" ]] && { echo "JS errors logged (app kept running):"; echo "$js"; }
 exit 0
