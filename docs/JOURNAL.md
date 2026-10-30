@@ -1,5 +1,24 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-31 — One Local customer app: new logo files, app icon, code-drawn intro, findable account deletion
+
+**Fixed the four items from the tester's list: the Home logo, the splash screen, pop-ups not showing, and the app icon. Also made account deletion easy to find.**
+
+- **Why:** the tester reported a broken Home logo, a frozen splash, no pop-ups, and an app icon that was just a green "O". The founder also asked for real logo files and an animated splash drawn by the app itself instead of a video.
+- **Structural decisions:**
+  - **Logo:** the OneLocal logo now exists as vector files (`frontend/assets/brand/`): black/green, white/green, black/white on green, all-white and all-dark. The app draws it from those outlines, so it is sharp at every size and needs no download. The letters come from the Poppins Bold font. A designer-drawn logo can later replace the outlines without changing any screen.
+  - **Splash:** the intro is now drawn in code, not a video: a light city skyline rises, a green road unrolls and the logo settles in once, in about 2.3 seconds. It works offline. A plain timer always removes it, which the video version did not guarantee.
+- **What works now:**
+  - **Home logo:** "One" is white wherever the background is dark (Home photo, sign-in photo, dark language screen, desktop side panel). Before, "One" was black and vanished.
+  - **App icon:** "One" over "Local" on the brand green, instead of the plain ring. The launch screen shows the same tile and hands over to the intro.
+  - **Pop-ups:** they appear again after the intro. The likely cause on the phone was the video intro never finishing. Its "intro is showing" flag stayed on, which blocks pop-ups, and it left a frozen picture over the app.
+  - **Account deletion:** Account now has a "Delete account" link that opens the existing delete confirmation directly. App stores require this to be easy to find.
+- **Left undone:**
+  - **Not yet on a real phone:** the new icon and launch screen only appear in a new app build. I checked the web preview at phone and tablet sizes, but did not run the Android smoke test.
+  - **Pop-ups on the phone:** if they are still missing in the next test build, the next thing to check is whether the live database has any live pop-ups.
+  - **Brand video:** the earlier video files (the brand video and the 1080p copy) are no longer used. They remain in local storage and in the project folder.
+- **Open questions for the founder:** is a font-based wordmark acceptable as the official logo, or will a designer supply a final drawn version? Should the intro play on every launch, or only the first (now: only the first)?
+
 ## 2026-10-30 — One Local customer app: new test APK with today's changes
 
 **A new test APK (version code 14) carries the map-confirmed location, landmark city tiles, first-launch-only brand video and the removed delivery-time chips.**
