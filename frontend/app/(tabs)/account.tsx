@@ -148,6 +148,10 @@ export default function AccountScreen() {
       <Pressable testID="sign-out-btn" accessibilityRole="button" accessibilityLabel={t('account.signOut')} onPress={() => { setSignOutError(''); setConfirm(true); }} style={s.signOut}>
         <Icon name="log-out-outline" size={19} color={colors.onError} /><Text style={s.signOutText}>{t('account.signOut')}</Text>
       </Pressable>
+      {/* App stores require account deletion to be easy to find: one tap from Account straight to the confirm step. */}
+      <Pressable testID="account-delete-btn" accessibilityRole="button" onPress={() => router.push({ pathname: '/privacy', params: { open: 'delete' } } as never)} hitSlop={6} style={s.deleteAccount}>
+        <Text style={s.deleteAccountText}>{t('account.deleteAccount')}</Text>
+      </Pressable>
     </View> : <View testID="account-guest-card" style={s.session}>
       {signedOut && <View testID="signed-out-notice" style={s.signedOut}><Icon name="checkmark-circle" size={18} color={colors.forest} /><Text style={s.signedOutText}>{t('account.signedOutNotice')}</Text></View>}
       <Text style={s.sub}>{t('account.guestPitch')}</Text>
@@ -241,6 +245,8 @@ const s = StyleSheet.create({
   sessionIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.limeSoft, alignItems: 'center', justifyContent: 'center' },
   signOut: { minHeight: 52, borderRadius: 16, borderWidth: 1.5, borderColor: colors.onError, backgroundColor: colors.error, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   signOutText: { color: colors.onError, fontSize: 15, fontWeight: '800' },
+  deleteAccount: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  deleteAccountText: { color: colors.muted, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   signInBottom: { minHeight: 52, borderRadius: 16, backgroundColor: colors.electricLime, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   signedOut: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.limeSoft },
   signedOutText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.forest, fontWeight: '600' },

@@ -51,7 +51,8 @@ export default function PrivacyScreen() {
   const [phone, setPhone] = useState<PhoneEntry[] | null>(null);
   const [busy, setBusy] = useState<'' | 'download' | 'clear' | 'delete'>('');
   const [note, setNote] = useState<Note | null>(null); const [error, setError] = useState<Problem | null>(null);
-  const [confirm, setConfirm] = useState<'' | 'clear' | 'delete'>('');
+  // Account → "Delete account" lands here with open=delete and goes straight to the confirm step (signed-in only).
+  const [confirm, setConfirm] = useState<'' | 'clear' | 'delete'>(() => (open === 'delete' && user ? 'delete' : ''));
   const [erased, setErased] = useState<{ reference: string; message: string; login?: string } | null>(null);
 
   const refreshPhone = () => { void phoneSummary().then(setPhone).catch(() => setPhone([])); };
