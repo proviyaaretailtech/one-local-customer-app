@@ -6,6 +6,7 @@ import { updateHeaders } from './app-identity';
 import { isNetworkError, reportNetworkFailure, reportNetworkSuccess } from './network/online-state';
 import { noteResponse } from './network/app-blocked-state';
 import { COMING_SOON_ALL, announceComingSoon, isAlwaysOpenApi } from './coming-soon-mode';
+import publishedMedia from '../server/data/media.json';
 // backendUrl is injected server-side via app.config.ts → extra; never use EXPO_PUBLIC_ vars for secrets.
 // In development on a phone (Expo Go), fall back to the dev server that served the app,
 // which also serves app/api.
@@ -15,7 +16,11 @@ const configuredBackend = (Constants.expoConfig?.extra?.backendUrl || devServer)
 // same-origin; native apps use the configured backend URL.
 export const BACKEND = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : configuredBackend;
 export const API = BACKEND + '/api';
-export const mediaUrl = (key: string) => `${API}/media/${key}`;
+// Published catalogue media (key -> public Storage URL, the same list the server's /api/media redirect reads). Going
+// straight to Storage skips a server round trip per picture (about a second each on mobile data), which left tiles
+// blank on phones. Keys not in the list (local development, where the file is empty) still go through the server.
+const PUBLISHED_MEDIA = publishedMedia as Record<string, string>;
+export const mediaUrl = (key: string) => PUBLISHED_MEDIA[key] || `${API}/media/${key}`;
 function resolveMedia(value: any): any {
   if (typeof value === 'string') { const media = value.match(/^(?:https?:\/\/[^/]+)?\/api\/media\/(.+)$/); return media ? mediaUrl(media[1]) : value; }
   if (Array.isArray(value)) return value.map(resolveMedia);

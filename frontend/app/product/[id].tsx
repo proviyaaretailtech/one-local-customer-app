@@ -15,7 +15,8 @@ import Icon from '@react-native-vector-icons/ionicons';
 import * as Haptics from 'expo-haptics';
 import { colors, radius, spacing } from '@/src/theme';
 import { logoSize, logoTile } from '@/src/logo-tile';
-import { apiGet, Product } from '@/src/api';
+import { apiGet, Catalog, Product, Reel } from '@/src/api';
+import { queryClient } from '@/src/query-client';
 import { useCart } from '@/src/cart';
 import { useCustomer } from '@/src/customer';
 import { useCompare, COMPARE_LIMIT } from '@/src/compare';
@@ -36,6 +37,15 @@ type Story = {
   related: Product[];
 };
 const SLIDE_MS = 2600;
+// Stories already opened this session, so going back to a product never waits again.
+const stories = new Map<string, Story>();
+// A first-paint story from a product the app already has in its catalogue or Discover feed.
+function quickStory(id: string): Story | null {
+  const catalog = queryClient.getQueryData<Catalog>(['catalog']);
+  const reels = queryClient.getQueryData<Reel[]>(['discovery']);
+  const product = catalog?.products.find(p => p.id === id) ?? reels?.find(r => r.product.id === id)?.product;
+  return product ? { product, gallery: [product.image], video: null, category: null, store: null, brand: null, related: [] } : null;
+}
 const INK = '#050605';
 
 export default function ProductDetail() {
@@ -51,8 +61,14 @@ export default function ProductDetail() {
   const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!id) return; setStory(null); setFailed(false); setSlide(0); setPlaying(false); setWatching(false);
-    apiGet<Story>(`/products/${id}/story`).then(setStory).catch(() => setFailed(true));
+    if (!id) return; setSlide(0); setPlaying(false); setWatching(false);
+    // Open at once: a product seen before shows its saved story; one the app already lists (Home, Discover, a rail)
+    // shows its photo, name and price straight away while the full story loads. A blank placeholder for seconds on
+    // every tap made the app feel stuck on phones.
+    const known = stories.get(id); setStory(known ?? quickStory(id)); setFailed(false);
+    let live = true;
+    apiGet<Story>(`/products/${id}/story`).then(full => { stories.set(id, full); if (live) setStory(full); }).catch(() => { if (live && !known) setFailed(true); });
+    return () => { live = false; };
   }, [id]);
 
   // Slideshow: each slide slowly zooms and pans; after SLIDE_MS it moves on (a single photo replays its zoom).
