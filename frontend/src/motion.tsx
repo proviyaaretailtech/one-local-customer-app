@@ -37,7 +37,10 @@ export function CityMotionProvider({ children }: { children: React.ReactNode }) 
   const scrollRef = useRef<ScrollView>(null);
   const [claims, setClaims] = useState(0);
   const claimScrollUnderDock = useCallback(() => { setClaims(n => n + 1); return () => setClaims(n => n - 1); }, []);
-  return <ScrollContext.Provider value={{ y, headerHeight, setHeaderHeight, scrollRef, scrollUnderDock: claims > 0, claimScrollUnderDock }}>{children}</ScrollContext.Provider>;
+  // Stable unless something in it changes: every focus claims the dock, and a fresh object re-rendered every reader.
+  const scrollUnderDock = claims > 0;
+  const value = useMemo(() => ({ y, headerHeight, setHeaderHeight, scrollRef, scrollUnderDock, claimScrollUnderDock }), [y, headerHeight, scrollUnderDock, claimScrollUnderDock]);
+  return <ScrollContext.Provider value={value}>{children}</ScrollContext.Provider>;
 }
 export const useCityScroll = () => useContext(ScrollContext)!;
 // The scroll position drives the collapsing header on the native (UI) thread, so the header follows the

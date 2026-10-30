@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Tap } from './tap';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from '@/src/ui/text';
@@ -78,15 +78,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // What One Local offers where the customer is. No position yet means the Latur default.
   const at = point ?? CITY_CENTER;
   const { data: coverage = null } = useQuery({ queryKey: ['coverage', at.lat, at.lng], queryFn: () => coverageAt(at), staleTime: 10 * 60_000 });
-  const setLocation = (value: string, next: Point | null = null) => {
+  const setLocation = useCallback((value: string, next: Point | null = null) => {
     setLocationText(value); setPoint(next);
     AsyncStorage.multiSet([['one-latur-location', value], ['one-latur-location-point', next ? JSON.stringify(next) : '']]).catch(() => {});
-  };
-  const openLocation = () => router.push('/location' as never);
+  }, []);
+  const openLocation = useCallback(() => router.push('/location' as never), [router]);
+  // The shell re-renders on every navigation. These context values must keep their identity unless they really change:
+  // a fresh object here re-rendered every location reader and every useSafeAreaInsets() user in the app on each tap,
+  // which held taps and tab switches for seconds on phones.
+  const locationValue = useMemo(() => ({ location, point, coverage, setLocation, edit: openLocation }), [location, point, coverage, setLocation, openLocation]);
+  const insetTop = immersive || isHome ? insets.top : 0;
+  const bodyInsets = useMemo(() => ({ ...insets, top: insetTop, bottom: 0 }), [insets, insetTop]);
   useLocationFirst(hasSaved, waitForLanguage);
   // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
-  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
-  return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
+  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={locationValue}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
+  return <DeliveryLocationContext.Provider value={locationValue}><View style={styles.container}>
     {desktop && !FULL_SCREEN.some(p => path.startsWith(p)) && <DesktopNav />}
     <View style={styles.page}>
     {!reels && !isHome && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><View>{/* transparent: the page's own gradient (CityScroll) shows through */}
@@ -110,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Tap>
       <Tap testID="compact-voice" accessibilityLabel={t('shell.searchByVoice')} hitSlop={6} style={styles.compactIcon} onPress={() => router.push('/smart-search?mode=voice' as any)}><Icon name="mic-outline" size={19} color={colors.forest} /></Tap>
     </Animated.View>}
-    <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive || isHome ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
+    <SafeAreaInsetsContext.Provider value={bodyInsets}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
