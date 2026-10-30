@@ -1,6 +1,6 @@
 // The OneLocal wordmark, drawn as vector outlines (brand-wordmark-paths.ts) so it is sharp at every size and shows
 // instantly, offline, with nothing to download.
-// tone 'light' = on white/light screens (black "One", green "Local", the founder's green #72D400, 2026-10-29);
+// tone 'light' = on white/light screens (black "One", green "Local", the founder's green #76EC00, 2026-10-31);
 // 'dark' = on photos and coloured headers: black "One", white "Local", no background (founder, 2026-10-29);
 // 'ink' = on the app's near-black: white "One", green "Local".
 // The box keeps the old PNG's proportions (900×188) so screens laid out around it do not move.
@@ -10,7 +10,7 @@ import Svg, { Path } from 'react-native-svg';
 import { WORDMARK_LOCAL, WORDMARK_ONE, WORDMARK_VIEWBOX } from './brand-wordmark-paths';
 
 export const BRAND_INK = '#0B1A10';
-export const BRAND_GREEN = '#72D400';
+export const BRAND_GREEN = '#76EC00';
 const FILLS = {
   light: { one: BRAND_INK, local: BRAND_GREEN },
   dark: { one: BRAND_INK, local: '#FFFFFF' },

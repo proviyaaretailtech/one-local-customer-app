@@ -29,7 +29,9 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#72D400"
+        "backgroundImage": "./assets/images/adaptive-icon-background.png",
+        "monochromeImage": "./assets/images/adaptive-icon-monochrome.png",
+        "backgroundColor": "#76EC00"
       },
       "package": "com.proviyaa.onelatur",
       "versionCode": 12
@@ -47,7 +49,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 140,
           "resizeMode": "contain",
-          "backgroundColor": "#F6F8F3"
+          "backgroundColor": "#0B1A10"
         }
       ],
       "expo-font",
