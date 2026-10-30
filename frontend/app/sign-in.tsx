@@ -153,7 +153,7 @@ export default function SignIn() {
         <Image testID="sign-in-photo" source={mediaUrl('signin-market-v1')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" transition={200} />
         <LinearGradient pointerEvents="none" colors={['rgba(6,18,11,0.45)', 'rgba(6,18,11,0)']} locations={[0, 0.4]} style={StyleSheet.absoluteFill} />
         <View style={[s.top, { paddingTop: insets.top + 8 }]}>
-          <BrandLogo tone="dark" height={24} />
+          <BrandLogo tone="ink" height={24} />
           <Pressable testID="sign-in-skip" accessibilityRole="button" onPress={leave} hitSlop={8} style={s.skip}><Text style={s.skipText}>{welcome ? t('auth.skipForNow') : t('common.close')}</Text></Pressable>
         </View>
       </View>

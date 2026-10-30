@@ -53,7 +53,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     <View testID="app-frame" style={s.backdrop}>
       <View style={s.glowA} /><View style={s.glowB} />
       {panel && <View style={s.panel}>
-        <View style={s.brand}><BrandLogo tone="dark" height={44} /></View>
+        <View style={s.brand}><BrandLogo tone="ink" height={44} /></View>
         <Text style={[s.headline, { lineHeight: lineHeight(48, 52) }]}>{t('shell.panel.headline')}</Text>
         <Text style={s.copy}>{t('shell.panel.copy')}</Text>
         <View style={s.chips}>{[{ id: 'food', label: departmentName(t, 'food') }, { id: 'grocery', label: departmentName(t, 'grocery') }, { id: 'shops', label: departmentName(t, 'shops') }, { id: 'care', label: t('shell.panel.care') }, { id: 'book-it', label: departmentName(t, 'book-it') }].map(c => <View key={c.id} style={s.chip}><Text style={s.chipText}>{c.label}</Text></View>)}</View>

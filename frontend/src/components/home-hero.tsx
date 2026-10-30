@@ -66,7 +66,7 @@ function Hero({ catalog }: { catalog: Catalog }) {
     <View style={[s.heroInner, { paddingTop: insets.top + 6 }]}>
       {!desktop && <View style={s.topRow}>
         <Tap testID="header-brand-home" accessibilityRole="button" accessibilityLabel={t('shell.home')} style={s.brand}>
-          <BrandLogo testID="company-logo" tone="dark" height={28} />
+          <BrandLogo testID="company-logo" tone="ink" height={28} />
         </Tap>
         <View style={s.actions}>
           <HeroIcon testID="header-wallet-button" label={t('shell.wallet')} onPress={() => router.navigate('/wallet' as never)} soon={!features.wallet}><Wallet size={19} color="#FFFFFF" strokeWidth={1.8} /></HeroIcon>
