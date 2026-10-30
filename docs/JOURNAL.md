@@ -1,5 +1,25 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-31 — One Local customer app: bounce intro over a sketch of India, new icon, one-time sign-in, FINAL test APK
+
+**The app now opens with a lime ball bouncing onto the OneLocal logo over a hand-sketched India, carries the flat-green icon, offers sign-in once on first open, and a test APK named FINAL has all of it.**
+
+- **Why:** the founder's review found the intro flat and dated, the app icon a plain green "O", the logo vanishing on dark photos, the language page flashing before the splash, and new customers never asked to sign in.
+- **Structural decisions:**
+  - **Intro drawn by the app, not a video.** Indian monuments and everyday icons are stored in the app as line drawings (`frontend/scripts/brand/` bakes them into `src/components/intro-art.ts`) and animated on the phone's graphics thread: they draw themselves in like a pencil while the ball bounces with squash and stretch and lands as the "O". The alternative, AI or rendered videos, lost: they needed downloading, looked generic, and did not play reliably on phones.
+  - **Strokes are drawn once (the big monuments twice).** Drawing every stroke twice for a pencil look froze the Android emulator before the logo appeared.
+  - **Sign-in is offered exactly once.** A flag saved on the phone before the sign-in screen opens means it never comes back, whatever the person chooses; signed-in customers are never asked, and "Skip for now" stays.
+  - **The APK was built from the release branch, like v14,** with today's customer-app commits copied onto it, the same EAS "pilot" profile, live server and signing key, built on this Mac to skip the cloud queue. Pilot builds now skip Android's lint-vital report, which ran out of memory and stalled the build; it is a report, not part of the app.
+- **What works now (FINAL APK on the Android emulator):**
+  - First open: the dark-green icon tile, then the sketch of India drawing itself, the ball's bounce and the full OneLocal logo, then the language screen, about 5 seconds from tapping the icon, with no white screen and nothing flashing first. The phone taps on each bounce (felt only on a real phone).
+  - Language, then Latur, then the one-time sign-in offer, then Home; Discover shows its tiles and a reel opens with Shop Now; a second launch goes straight in with no intro and no sign-in offer.
+  - Saved as `OneLocal-2026-10-31-FINAL.apk` in Downloads (115 MB, version code 14 like v14, so it installs over v14 as an update).
+- **Left undone:**
+  - The launch-check script's Discover step no longer finds the tiles by their test IDs in this build (the tiles are there and open); the script needs a new way to find a tile.
+  - The release-branch commits are not pushed. The pop-ups and Reels admin work (entry above) is not in this APK.
+  - The review gate was not run (UI-only change).
+- **Open questions for the founder:** should the intro play on every launch, or only the first time (now: first time only)? Is about 3 seconds the right length?
+
 ## 2026-10-31 — One Local customer app and Master Admin: pop-ups finished, Reels run from Master Admin
 
 **Pop-ups can now be written in English and Hindi, edited, paused and resumed from Master Admin, and the reels in Discover are added, ordered, paused and removed from a new Master Admin page.**
