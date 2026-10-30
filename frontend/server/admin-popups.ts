@@ -1,10 +1,11 @@
-// Marketing pop-ups, written from Master Admin (specs/marketing-popups/plan.md). Platform super admins only (requireAdmin).
+// Marketing pop-ups, written from Master Admin (specs/marketing-popups/plan.md). Super admins, and staff whose Master Admin role includes
+// the pop-ups feature (requireFeature: seeing needs view_popups, changing needs full access and manage_popups).
 // Customers read the live ones through GET /api/popups (server/popups.ts); this file is the admin side:
-//   list / read / create / edit a draft, move it through the workflow (submit, return, approve, end) and read its numbers.
+//   list / read / create / edit a draft, move it through the workflow (submit, return, approve, pause, resume, end) and read its numbers.
 // The database (migration 0640) is the authority: shapes, frame, repeat rules, "a second person approves" and "frozen once
 // submitted" are enforced there; the checks here only turn mistakes into clear messages before the write.
 import { z } from 'zod';
-import { AdminError, audit, requireAdmin } from './admin';
+import { AdminError, audit, POPUPS_FEATURE, requireFeature } from './admin';
 import { db, dbConfigured } from './db';
 import { limit, readBody } from './http';
 import { clearPopupCache } from './popups';
@@ -83,7 +84,7 @@ function fromDb(error: { code?: string; message?: string }): never {
   if (m.includes('OL_POPUP_SELF_APPROVAL')) throw new AdminError(409, 'self_approval', 'A second person must approve this pop-up.');
   if (m.includes('OL_POPUP_FROZEN')) throw new AdminError(409, 'frozen', 'A submitted, live or ended pop-up cannot be edited. End it and make a copy.');
   if (m.includes('OL_POPUP_BAD_MOVE')) throw new AdminError(409, 'bad_move', m.replace(/^.*OL_POPUP_BAD_MOVE:\s*/, '').replace(/^./, c => c.toUpperCase()) + '.');
-  if (m.includes('OL_POPUP_EXPIRED')) throw new AdminError(409, 'expired', 'The end date has already passed. Change the dates first.');
+  if (m.includes('OL_POPUP_EXPIRED')) throw new AdminError(409, 'expired', 'The end date has already passed. Make a copy with new dates.');
   if (m.includes('OL_POPUP_NOT_FOUND')) throw notFound();
   if (error.code === '23503') throw bad('That city does not exist.', 'unknown_city');
   if (error.code === '23514') throw bad('The pop-up breaks a rule: ' + (m.match(/constraint "([^"]+)"/)?.[1] ?? 'check the fields') + '.');
@@ -94,12 +95,15 @@ function fromDb(error: { code?: string; message?: string }): never {
 const PopupId = z.uuid();
 const idOf = (id: string) => { if (!PopupId.safeParse(id).success) throw notFound(); return id; };
 
+const view = (request: Request) => requireFeature(request, POPUPS_FEATURE, false);
+const manage = (request: Request) => requireFeature(request, POPUPS_FEATURE, true);
+
 export async function listPopups(request: Request) {
-  await requireAdmin(request, false); needDb();
+  await view(request); needDb();
   const url = new URL(request.url);
   let q = db().from('ol_popups').select(COLUMNS, { count: 'exact' }).order('created_at', { ascending: false }).limit(200);
   const status = url.searchParams.get('status'); const city = url.searchParams.get('city');
-  if (status && ['draft', 'submitted', 'approved', 'live', 'ended'].includes(status)) q = q.eq('status', status);
+  if (status && ['draft', 'submitted', 'approved', 'live', 'paused', 'ended'].includes(status)) q = q.eq('status', status);
   if (city && /^[a-z0-9_-]{1,40}$/.test(city)) q = q.eq('city_id', city);
   const { data, error, count } = await q;
   if (error) fromDb(error);
@@ -107,7 +111,7 @@ export async function listPopups(request: Request) {
 }
 
 export async function getPopup(request: Request, id: string) {
-  await requireAdmin(request, false); needDb();
+  await view(request); needDb();
   const { data, error } = await db().from('ol_popups').select(COLUMNS).eq('id', idOf(id)).maybeSingle();
   if (error) fromDb(error);
   if (!data) throw notFound();
@@ -116,7 +120,7 @@ export async function getPopup(request: Request, id: string) {
 }
 
 export async function createPopup(request: Request) {
-  const admin = await requireAdmin(request, true); needDb();
+  const admin = await manage(request); needDb();
   limit(admin.userId, 'admin-popup-write', 60, 60_000);
   const draft = parseDraft(await readBody(request, 64 * 1024));
   const { data, error } = await db().from('ol_popups').insert({ ...draft, status: 'draft', created_by: admin.userId }).select(COLUMNS).single();
@@ -127,7 +131,7 @@ export async function createPopup(request: Request) {
 }
 
 export async function updatePopup(request: Request, id: string) {
-  const admin = await requireAdmin(request, true); needDb();
+  const admin = await manage(request); needDb();
   limit(admin.userId, 'admin-popup-write', 60, 60_000);
   const draft = parseDraft(await readBody(request, 64 * 1024));
   const { data, error } = await db().from('ol_popups').update(draft).eq('id', idOf(id)).select(COLUMNS).maybeSingle();
@@ -138,13 +142,13 @@ export async function updatePopup(request: Request, id: string) {
   return data;
 }
 
-const Action = z.object({ action: z.enum(['submit', 'return', 'approve', 'end']), note: z.string().trim().max(300).optional() });
+const Action = z.object({ action: z.enum(['submit', 'return', 'approve', 'pause', 'resume', 'end']), note: z.string().trim().max(300).optional() });
 
 export async function popupAction(request: Request, id: string) {
-  const admin = await requireAdmin(request, true); needDb();
+  const admin = await manage(request); needDb();
   limit(admin.userId, 'admin-popup-write', 60, 60_000);
   const body = Action.safeParse(await readBody(request, 4 * 1024));
-  if (!body.success) throw bad('action must be submit, return, approve or end.');
+  if (!body.success) throw bad('action must be submit, return, approve, pause, resume or end.');
   const { data, error } = await db().rpc('ol_popup_set_status', { p_id: idOf(id), p_action: body.data.action, p_actor: admin.userId, p_note: body.data.note ?? null });
   if (error) fromDb(error);
   clearPopupCache();
@@ -154,7 +158,7 @@ export async function popupAction(request: Request, id: string) {
 
 // Shown / tapped / closed per day for one pop-up (from ol_popup_events), plus how many people saw it.
 export async function popupResults(request: Request, id: string) {
-  await requireAdmin(request, false); needDb();
+  await view(request); needDb();
   const { data, error } = await db().from('ol_popup_events').select('event, at, customer_key_hash').eq('popup_id', idOf(id)).order('at', { ascending: false }).limit(20000);
   if (error) fromDb(error);
   const days = new Map<string, { day: string; impression: number; tap: number; close: number }>();
@@ -168,4 +172,19 @@ export async function popupResults(request: Request, id: string) {
   const rows = [...days.values()].sort((a, b) => b.day.localeCompare(a.day));
   const total = rows.reduce((t, r) => ({ impression: t.impression + r.impression, tap: t.tap + r.tap, close: t.close + r.close }), { impression: 0, tap: 0, close: 0 });
   return { total, people: people.size, days: rows };
+}
+
+// What the editor offers: the cities One Local delivers in, and the app screens a pop-up can be put on (blocked screens left out).
+export const POPUP_SCREENS = ['home', 'discover', 'reels', 'grocery', 'food', 'care', 'pharmacy', 'beauty', 'shops', 'book-it', 'categories',
+  'category', 'collection', 'store', 'product', 'brand', 'search', 'orders', 'account', 'wallet'] as const;
+
+export async function popupOptions(request: Request) {
+  await view(request); needDb();
+  return { cities: await cities(), screens: POPUP_SCREENS };
+}
+
+export async function cities(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await db().from('ol_service_areas').select('city_id, name, deleted_at').order('name');
+  if (error) fromDb(error);
+  return (data ?? []).filter(c => !c.deleted_at).map(c => ({ id: c.city_id as string, name: c.name as string }));
 }
