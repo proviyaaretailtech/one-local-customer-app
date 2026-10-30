@@ -1,5 +1,16 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-30 — One Local customer app: new test APK with today's changes
+
+**A new test APK (version code 14) carries the map-confirmed location, landmark city tiles, first-launch-only brand video and the removed delivery-time chips.**
+
+- **Why:** the founder asked for a fresh APK with today's work.
+- **What changed:** today's five customer-app commits were copied onto the release branch `release/server-2026-10-29` (the branch the cloud builds come from), and a pilot-channel APK was built on EAS. Conflicts were settled in favour of today's work, except the app's runtime version rule, which stays as on the release branch so over-the-air updates keep matching.
+- **What works now (on the Android emulator):** the app opens, Home loads from the live server, Discover shows its tiles, a reel opens, Food loads; a fresh install opens straight onto Home in Latur. Saved as `OneLocal-2026-10-30-test-v14.apk` in Downloads.
+- **The "Couldn't load this right now" screen the founder saw** was the older build on the emulator after the emulator lost its internet (its name lookups hung). The live server answered normally. The emulator was restarted with fixed name servers and the error is gone.
+- **Left undone:** the uncommitted change to the launch video framing (show the whole clip, inset on phones) is not in this build, at the founder's choice. The release-branch commits are not pushed. The launch-check script's walk still expects the old location screen and needs updating to the new photo tiles; the checks were done by hand this time. No Play bundle was built.
+- **Open questions for the founder:** none.
+
 ## 2026-10-30 — One Local customer app: popular-city tiles show landmark photos
 
 **The nine popular-city tiles on the location screen now show a photo of each city's landmark instead of a big pale letter.**
