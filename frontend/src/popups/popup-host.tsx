@@ -24,7 +24,7 @@ import { contentFor, fetchPopups, imageUrl, sendPopupEvent } from './api';
 import { ComingSoonReceipts } from './coming-soon-receipt';
 import { useDeliveryLocation } from '../delivery-location';
 import { allowedByFrequency, isBlockedPath, markShown, screenOf, session } from './rules';
-import type { Popup } from './types';
+import type { Popup, PopupFormat } from './types';
 import { COMING_SOON_ALL } from '../coming-soon-mode';
 import { useAuth } from '../auth';
 import { LetterPopup } from './letter-popup';
@@ -32,13 +32,15 @@ import { LetterPopup } from './letter-popup';
 const SETTLE_MS = 1000;
 const SEEN_AFTER_MS = 1200;
 const INTERACTIONS_CAP_MS = 1500;
+// Coming-soon build: only letters (welcome and announcements) and coming-soon receipts (they list the stores on the way
+// and have no button); other promo pop-ups' "See offers" buttons lead nowhere yet.
+const COMING_SOON_FORMATS: readonly PopupFormat[] = ['letter', 'coming_soon'];
 const introShowing = () => !!(globalThis as { __onecityIntroShowing?: boolean }).__onecityIntroShowing;
 
 export function PopupHost() {
   const pathname = usePathname() ?? '/';
   // No pop-up over the first-run language chooser either.
   const firstRun = useShowFirstRun();
-  // Coming-soon build: only letters (welcome and announcements); other promo pop-ups' "See offers" buttons lead nowhere yet.
   const blocked = isBlockedPath(pathname) || firstRun;
   const screen = screenOf(pathname);
   // The town the pop-ups were fetched for, printed on coming-soon receipts. PopupHost sits outside the shell, so this is
@@ -52,7 +54,7 @@ export function PopupHost() {
   const userId = useAuth().session?.user?.id ?? '';
   const { data } = useQuery({
     queryKey: ['popups', screen, lang, hasCart, userId],
-    queryFn: async () => (await fetchPopups(screen, lang, hasCart)).filter(p => !COMING_SOON_ALL || p.format === 'letter'),
+    queryFn: async () => (await fetchPopups(screen, lang, hasCart)).filter(p => !COMING_SOON_ALL || COMING_SOON_FORMATS.includes(p.format)),
     enabled: !blocked, staleTime: 60_000, retry: false,
   });
   const dataRef = useRef<Popup[] | undefined>(data);
@@ -134,7 +136,12 @@ export function PopupHost() {
         if (p && !cancelled) schedule(p, x => { v.stripDone = true; setStrip(x); }, () => !v.stripDone);
       }
     })();
-    return () => { cancelled = true; timers.forEach(clearTimeout); tasks.forEach(t => t.cancel()); };
+    return () => {
+      cancelled = true; timers.forEach(clearTimeout); tasks.forEach(t => t.cancel());
+      // Left before anything could show (on a first launch the one-time sign-in offer opens over home at once): the next
+      // view of this screen gets the app-open moment instead.
+      if (!v.modalDone && !v.stripDone && session.firstViewOf.get(screen) === v.index) session.firstViewOf.delete(screen);
+    };
   }, [pathname, blocked, ready, screen, lang]);  // data is read through dataRef so a refetch does not restart the wait
 
   if (blocked) return null;
