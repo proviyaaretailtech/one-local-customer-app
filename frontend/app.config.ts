@@ -41,6 +41,8 @@ export default {
     ['expo-splash-screen', { image: './assets/images/splash-icon.png', imageWidth: 140, resizeMode: 'contain', backgroundColor: '#0B1A10', dark: { image: './assets/images/splash-icon.png', backgroundColor: '#0B1A10' } }],
     // Our folder name has spaces; keeps pod build scripts working (see the plugin).
     './plugins/with-space-safe-paths',
+    // Release builds ran out of Gradle metaspace in R8 after lint; gives the daemon more (see the plugin).
+    './plugins/with-gradle-memory',
   ],
   extra: {
     ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
