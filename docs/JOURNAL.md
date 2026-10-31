@@ -1,5 +1,23 @@
 # One Local Mobile App Development Journal
 
+## 2026-11-01 — One Local customer app: version 17 is on Play internal testing
+
+**The tested FINAL build (version code 17, with the pop-up fix) is now Play's internal testing release. The public Play Store version is unchanged.**
+
+- **Why:** the founder wanted the tested .aab on Play without disturbing anything else in the Play setup.
+- **Structural decisions:**
+  - **Uploads go through the Play Console connection on this Mac** (Google service account "one-local-play"). The alternative, EAS Submit, lost because it would have sent the Play key to Expo's servers.
+  - **The connection's own upload tool timed out**: it sends the 84 MB file in one request. So a short script on this Mac sends it in 8 MB pieces with the same Play steps. Each failed attempt was cancelled on Play's side, and the tracks were read back after every attempt: nothing changed until the last one.
+  - **This app sends Play changes for review automatically.** Play refused to hold the release back, so it went out the normal way, the same as "Start rollout" in Play Console.
+- **What works now:** Play shows internal testing at 17 (1.0.0), fully rolled out, and the uploaded file's fingerprint matches the tested .aab. Production stays at 11 (1.0.0, India), closed testing at 11, and open testing is empty.
+- **Left undone:**
+  - Production still runs version 11. Promoting 17 is the founder's call; like every build so far, it is in coming-soon mode.
+  - The Master Admin pop-ups are still only on this Mac's test database.
+  - The upload script lives with the Play connection on this Mac (`~/.claude/mcp-servers/google-play-mcp/play-upload.py`), not in the repository.
+- **Open questions for the founder:**
+  - When should version 17, or a later build, be promoted from internal testing to production?
+  - Should the Play key be replaced, since its text was shared in a chat?
+
 ## 2026-10-31 — One Local customer app: the Home pop-up shows on phones again, first Play Store .aab
 
 **Phone builds now show the live Home pop-up. This was proven on the Play Store build itself, and that build (.aab, version code 17) is in Downloads.**
