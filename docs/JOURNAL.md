@@ -1,5 +1,31 @@
 # One Local Mobile App Development Journal
 
+## 2026-10-31 — One Local customer app: the Home pop-up shows on phones again, first Play Store .aab
+
+**Phone builds now show the live Home pop-up. This was proven on the Play Store build itself, and that build (.aab, version code 17) is in Downloads.**
+
+- **Why:** the founder saw no pop-up in the FINAL APK. The online server that phones use has one live pop-up for Latur, the "Coming soon to OneLocal" receipt, but every phone build threw it away. Phone builds run in "coming soon" mode (browsing works; ordering, paying and booking say "Coming soon"), and since 29 October that mode kept only "letter" pop-ups.
+- **Structural decisions:**
+  - **Coming-soon receipts are allowed in coming-soon builds.** A receipt only lists stores on the way and has no button, so it cannot lead to a hidden screen. Other promotional pop-ups stay hidden in these builds because their "See offers" buttons lead nowhere yet.
+  - **The one-time sign-in offer no longer uses up the opening pop-up.** On a first open, the sign-in offer covers Home a moment after Home appears. If the pop-ups had loaded by then, coming back to Home skipped the pop-up. Now a Home visit that ends before anything showed passes the pop-up on to the next visit.
+  - **Release builds give Android's build tool more memory**, through a small build setting applied on every build. The store build ran out of memory while shrinking the code after the lint check. The alternative was to skip lint, as test APKs do; it lost because lint is a real release check, and it still runs.
+  - **The .aab was proven, not just built.** Google's bundletool turned the .aab into one installable APK, which was installed on the emulator and used like a new customer would.
+- **What works now (the .aab's own APK on the Android emulator, talking to the online server):**
+  - First open: the intro, language, Latur, and the one-time sign-in offer. After "Skip", the "Coming soon to OneLocal" receipt (Purushottam Super Market and three more stores) opens over Home, and Close works.
+  - A second open the same day goes straight to Home with no pop-up (it shows once a day), no intro and no sign-in offer.
+  - The launch check passes with the pop-up required (`EXPECT_POPUP=1`). Its Discover step now opens a reel with a link: Discover's playing videos stop Android's screen reader from reading the screen, which is why the check could not find the tiles before.
+  - `OneLocal-2026-10-31-FINAL.aab` in Downloads: 84 MB, version 1.0.0, version code 17. It uses the same signing key, online server and Supabase project as the FINAL APK, and the "stable" update channel.
+- **Left undone:**
+  - **Pop-ups made in Master Admin do not reach phones.** Master Admin and its pop-ups live on this computer's test database, while phones read the online server, which has only the receipt (live until 12 November). Putting Master Admin's pop-ups on phones needs the online database and server updated. That is outside local-only work and needs the founder's go-ahead.
+  - Nothing has been uploaded to Play yet. The Play Console connection is installed but waits for the Play service-account key.
+  - The release-branch commits are not pushed. The reels poster and label work and the pop-up pause work are not in this build, because the online server needs them first.
+  - Version codes 15 and 16 went to two builds that failed: first the Android SDK location was missing, then the build ran out of memory. 17 is the one to upload.
+  - The review gate was not run (two small app fixes and a build setting).
+- **Open questions for the founder:**
+  - Should pop-ups made in Master Admin go live on phones now? That means moving the pop-up tables and Master Admin onto the online database: an online migration, after the review gate.
+  - The receipt campaign ends on 12 November. What should replace it?
+  - The Play build is in coming-soon mode like every build so far. Is that what should go to Play's testers?
+
 ## 2026-10-31 — One Local customer app: bounce intro over a sketch of India, new icon, one-time sign-in, FINAL test APK
 
 **The app now opens with a lime ball bouncing onto the OneLocal logo over a hand-sketched India, carries the flat-green icon, offers sign-in once on first open, and a test APK named FINAL has all of it.**
