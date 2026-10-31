@@ -6,6 +6,11 @@
 # check does not catch Android-only failures (module load order, native modules, the press wrapper in src/native/).
 #
 #   scripts/android-smoke.sh path/to/app.apk [seconds=30] [screenshot.png]
+#   EXPECT_POPUP=1 scripts/android-smoke.sh …   also fails when no pop-up opens over Home on the first open (set it when
+#                                                a campaign is live on the server the build talks to)
+#
+# A Play .aab cannot be installed directly: make one APK from it first (bundletool build-apks --mode=universal, signed
+# with ~/.android/debug.keystore) and check that.
 #
 # Start an emulator first: "$ANDROID_HOME/emulator/emulator" -avd Pixel_7
 # On an emulator a build signed with another key is uninstalled first (its test data goes); on a real phone
@@ -67,16 +72,22 @@ tap_text "Continue" 5 || walk="incomplete"
 tap_text "Latur" 8 || walk="incomplete"
 # First time on Home a signed-out customer is offered sign-in once (src/components/sign-in-prompt.tsx): skip it.
 tap_id "sign-in-skip" 6 || walk="sign-in was not offered on first open"
-# A promotional pop-up may open over Home (only when a campaign is live); close it if it is there.
-tap_id_once "popup-close" 3 || true
+# A promotional pop-up opens over Home a few seconds later when a campaign is live; close it. With EXPECT_POPUP=1 a
+# missing pop-up fails the check.
+if [[ "${EXPECT_POPUP:-0}" == 1 ]]; then tap_id "popup-close" 3 || walk="no pop-up opened over Home on first open"
+else tap_id_once "popup-close" 3 || true; fi
 tap_id "tab-reels" 8 || walk="incomplete"   # Discover (the round button; its label is not tappable)
-# Scroll Discover down and back up: playing tiles scroll out of view and their video players are released.
-# Open a playing reel tile (Discover loses focus, every tile video is released), then come back.
-tap_id "discover-tile-" 6 || walk="incomplete"
+# Discover's playing tile videos never let the screen go idle, so uiautomator cannot read it ("could not get idle
+# state") and its tiles cannot be found by id. Open the reels with a link instead: Discover loses focus and releases
+# every tile video, as with a tap on a tile. Back returns to Discover.
+"$adb" shell am start -a android.intent.action.VIEW -d "onecity://reels" "$pkg" >/dev/null; sleep 6
 "$adb" shell input keyevent 4; sleep 4
+# Scroll Discover down and back up: playing tiles scroll out of view and their video players are released.
 for dir in up up down down; do
   if [[ $dir == up ]]; then "$adb" shell input swipe 540 1900 540 900 300; else "$adb" shell input swipe 540 900 540 1900 300; fi; sleep 3
 done
+# Back again leaves Discover for Home (the tab bar goes back through its history).
+"$adb" shell input keyevent 4; sleep 4
 tap_id "tab-home" 5 || walk="incomplete"
 tap_id_once "popup-close" 3 || true
 
@@ -104,6 +115,6 @@ if [[ -n "$crash" || -n "$boundary" || -z "$pid" ]]; then
   exit 1
 fi
 [[ "$walk" == "ok" ]] || { echo "FAIL: $pkg ($version) stayed up but the walk failed: $walk"; exit 1; }
-echo "PASS: $pkg ($version) first launch, language, Latur, the one-time sign-in offer, Discover, Home, and a second launch with no intro or sign-in offer, with no crash or error screen"
+echo "PASS: $pkg ($version) first launch, language, Latur, the one-time sign-in offer,$([[ "${EXPECT_POPUP:-0}" == 1 ]] && echo " the Home pop-up,") Discover and a reel, Home, and a second launch with no intro or sign-in offer, with no crash or error screen"
 [[ -n "$js" ]] && { echo "JS errors logged (app kept running):"; echo "$js"; }
 exit 0
