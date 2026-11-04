@@ -41,7 +41,7 @@ const GROUPS: { id: 'orders' | 'account' | 'rewards' | 'help'; rows: Row[] }[] =
     { icon: 'information-circle-outline', id: 'about', route: '/about' },
   ] },
 ];
-const DIETS: { id: Diet; dot?: string }[] = [{ id: '' }, { id: 'veg', dot: '#1B8A3A' }, { id: 'egg', dot: '#D99A00' }, { id: 'nonveg', dot: '#B3261E' }];
+const DIETS: { id: Diet; dot?: string }[] = [{ id: '' }, { id: 'veg', dot: colors.veg }, { id: 'egg', dot: '#D99A00' }, { id: 'nonveg', dot: colors.nonVeg }];
 const NOTIFY = ['orders', 'offers', 'bookings'] as const;
 // Sample earning rule for the teaser only — the real rule is decided with the Coins design (docs/ONELOCAL_COINS_PLAN.md).
 const COINS_PER_RUPEE = 1 / 10;

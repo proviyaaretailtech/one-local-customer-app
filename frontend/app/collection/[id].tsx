@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '@/src/theme';
-import { useCatalog } from '@/src/use-catalog';
+import { useBrowseCatalog } from '@/src/use-catalog';
 import { BrandRail, LoadState, ProductRail, SectionTitle } from '@/src/components/catalog-sections';
 import { ProductCard } from '@/src/components/product-card';
 import { CollectionScene } from '@/src/components/collection-scene';
@@ -14,7 +14,7 @@ import { storePalette } from '@/src/store-palettes';
 import { useFormat, useTranslation } from '@/src/i18n';
 
 export default function Collection() {
-  const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter(); const { data, isError, refetch } = useCatalog(); const { t } = useTranslation(); const fmt = useFormat();
+  const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter(); const { data, isError, refetch } = useBrowseCatalog(); const { t } = useTranslation(); const fmt = useFormat();
   const [selected, setSelected] = useState(''); const [query, setQuery] = useState(''); const [festival, setFestival] = useState('ganesh'); const [budget, setBudget] = useState(false);
   useEffect(() => { setSelected(''); setQuery(''); setBudget(false); setFestival('ganesh'); }, [id]);
   if (!data) return <LoadState error={isError} retry={refetch} />;

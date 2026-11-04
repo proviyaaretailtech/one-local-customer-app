@@ -12,9 +12,8 @@ import { setPoppinsReady } from "@/src/ui/text";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { queryClient } from "@/src/query-client";
 import { CartProvider } from "@/src/cart";
-import { AppShell } from '@/src/components/app-shell';
+import { AppShell, screenFrame } from '@/src/components/app-shell';
 import { colors } from '@/src/theme';
-import { CityMotionProvider } from '@/src/motion';
 import { CustomerProvider } from '@/src/customer';
 import { AuthProvider } from '@/src/auth';
 import { ProfileGate } from '@/src/components/profile-gate';
@@ -59,7 +58,7 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               {Platform.OS === "web" && <Head><title>OneLocal</title></Head>}
-              <CustomerProvider><ProfileLanguageSync /><AuthProvider><ProfileGate /><CompareProvider><CityMotionProvider><AppFrame><AppShell><Stack screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><ComingSoonGate /><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CityMotionProvider></CompareProvider></AuthProvider></CustomerProvider>
+              <CustomerProvider><ProfileLanguageSync /><AuthProvider><ProfileGate /><CompareProvider><AppFrame><AppShell><Stack screenLayout={screenFrame} screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><ComingSoonGate /><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>

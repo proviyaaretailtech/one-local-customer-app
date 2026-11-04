@@ -15,7 +15,8 @@ import Icon from '@react-native-vector-icons/ionicons';
 import * as Haptics from 'expo-haptics';
 import { colors, radius, spacing } from '@/src/theme';
 import { logoSize, logoTile } from '@/src/logo-tile';
-import { apiGet, Product } from '@/src/api';
+import { QueryClient, useQueryClient } from '@tanstack/react-query';
+import { apiGet, Catalog, Product, Store } from '@/src/api';
 import { useCart } from '@/src/cart';
 import { useCustomer } from '@/src/customer';
 import { useCompare, COMPARE_LIMIT } from '@/src/compare';
@@ -38,22 +39,37 @@ type Story = {
 const SLIDE_MS = 2600;
 const INK = '#050605';
 
+// What the app already holds about an item (the catalogue and the shop list the list screens load), so its page slides in
+// whole instead of as a skeleton; the story request then adds its other photos, its video and similar items.
+function heldStory(queryClient: QueryClient, id: string): Story | null {
+  const catalog = queryClient.getQueryData<Catalog>(['catalog']); const product = catalog?.products.find(p => p.id === id);
+  if (!catalog || !product) return null;
+  const category = catalog.categories.find(c => c.id === product.category_id);
+  return {
+    product, gallery: [product.image], video: null, related: [],
+    category: category ? { id: category.id, name: category.name } : null,
+    store: queryClient.getQueryData<Store[]>(['stores'])?.find(s => s.id === product.store_id) ?? null,
+    brand: catalog.brands.find(b => b.id === product.brand_id) ?? null,
+  };
+}
+
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useAppDimensions();
   const { add, remove, qtyOf, totalItems, totalPrice } = useCart();
   const { saved, toggleSaved, error: savedError } = useCustomer();
   const compare = useCompare(); const motion = useMotionAllowed(); const { t } = useTranslation(); const fmt = useFormat();
-  const [story, setStory] = useState<Story | null>(null); const [failed, setFailed] = useState(false);
+  const queryClient = useQueryClient();
+  const [story, setStory] = useState<Story | null>(() => id ? heldStory(queryClient, id) : null); const [failed, setFailed] = useState(false);
   const [slide, setSlide] = useState(0); const [playing, setPlaying] = useState(false); const [watching, setWatching] = useState(false);
   const etas = useStoreEtas();
   const [compareFull, setCompareFull] = useState(false); const [tick, setTick] = useState(0);
   const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!id) return; setStory(null); setFailed(false); setSlide(0); setPlaying(false); setWatching(false);
+    if (!id) return; setStory(s => s?.product.id === id ? s : heldStory(queryClient, id)); setFailed(false); setSlide(0); setPlaying(false); setWatching(false);
     apiGet<Story>(`/products/${id}/story`).then(setStory).catch(() => setFailed(true));
-  }, [id]);
+  }, [id, queryClient]);
 
   // Slideshow: each slide slowly zooms and pans; after SLIDE_MS it moves on (a single photo replays its zoom).
   useEffect(() => {

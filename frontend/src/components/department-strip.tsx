@@ -3,12 +3,13 @@ import { Tap } from './tap';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { colors } from '../theme';
 import { departments, departmentName } from '../departments';
 import { useTranslation } from '../i18n';
 import { mediaUrl } from '../api';
 import { nativeDriver, useMotionAllowed } from '../motion';
+import { useScreenPath } from '../use-screen-path';
 
 function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean; delay: number }) {
   const tilt = useRef(new Animated.Value(0)).current; const motion = useMotionAllowed();
@@ -19,8 +20,9 @@ function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean
   }, [delay, motion, selected, tilt]);
   return <Animated.View style={[styles.circle, { transform: [{ translateY: tilt }, { rotate: tilt.interpolate({ inputRange: [-6, 0], outputRange: ['-8deg', '0deg'] }) }, { scale: selected ? 1.12 : 1 }] }]}><Image testID={`department-icon-${id}`} source={mediaUrl(`icon-${id}-v4`)} style={styles.icon} contentFit="contain" /></Animated.View>;
 }
+// Each department page has its own strip (in its header), which marks that page, so a page being left keeps its mark.
 export function DepartmentStrip() {
-  const path = usePathname(); const router = useRouter(); const { t } = useTranslation();
+  const path = useScreenPath(); const router = useRouter(); const { t } = useTranslation();
   return <View testID="department-strip" style={styles.row}>{departments.map((d, i) => {
     const selected = path === d.route || (d.id === 'care' && ['/beauty', '/pharmacy'].includes(path));
     return <Tap testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={departmentName(t, d.id).replace('\n', ' ')} accessibilityState={{ selected }} key={d.id} onPress={() => router.navigate(d.route as any)} style={[styles.item]}>

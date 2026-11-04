@@ -2,6 +2,7 @@
 // sparks with a light "add" haptic; unsaving just deflates with a softer one. The pop plays on the
 // user's tap, not when the saved list loads, so screens never fire hearts on their own.
 // Reduce Motion: no pop, no sparks; the haptic stays.
+import { useState } from 'react';
 import { Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import Icon from '@react-native-vector-icons/ionicons';
@@ -20,11 +21,15 @@ export function HeartToggle({ saved, onToggle, size = 17, color = colors.muted, 
   const motion = useMotionAllowed();
   const scale = useSharedValue(1);
   const burst = useSharedValue(0);
+  // The sparks are built on the first save, not up front: a screen of product cards would otherwise build six animated
+  // views per heart that only a tap ever shows, and pay for them every time it opens.
+  const [sparks, setSparks] = useState(false);
   const press = () => {
     const saving = !saved;
     if (saving) haptic.add(); else haptic.remove();
     if (motion) {
       if (saving) {
+        setSparks(true);
         scale.value = withSequence(withTiming(0.7, { duration: duration.instant }), withSpring(1, reSpring.bouncy));
         burst.value = 0; burst.value = withTiming(1, { duration: duration.gentle, easing: reEasing.enter });
       } else {
@@ -37,7 +42,7 @@ export function HeartToggle({ saved, onToggle, size = 17, color = colors.muted, 
   const tint = saved ? (savedColor ?? color) : color;
   return <Pressable {...rest} onPress={press} style={style}>
     <View pointerEvents="none" style={s.center}>
-      {motion && Array.from({ length: SPARKS }, (_, i) => <Spark key={i} i={i} burst={burst} color={tint} reach={size * 0.95} />)}
+      {motion && sparks && Array.from({ length: SPARKS }, (_, i) => <Spark key={i} i={i} burst={burst} color={tint} reach={size * 0.95} />)}
       <Animated.View style={heartStyle}><Icon name={saved ? 'heart' : 'heart-outline'} size={size} color={tint} /></Animated.View>
     </View>
   </Pressable>;

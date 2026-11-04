@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Tap } from './tap';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from '@/src/ui/text';
@@ -8,14 +8,13 @@ import { useSafeAreaInsets, SafeAreaInsetsContext } from 'react-native-safe-area
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
-import { paletteFor } from '../departments';
 import { useCart } from '../cart';
 import { DepartmentStrip } from './department-strip';
-import { useCityScroll } from '../motion';
+import { CityMotionProvider, useCityScroll } from '../motion';
 import { FloatingCart } from './floating-cart';
 import { BottomNavigation, dockSpace } from './bottom-navigation';
 import { CartCelebration } from './cart-celebration';
-import { DeliveryLocationContext, Point } from '../delivery-location';
+import { DeliveryLocationContext, Point, useDeliveryLocation } from '../delivery-location';
 import { useQuery } from '@tanstack/react-query';
 import { CITY_CENTER, coverageAt } from '../places';
 import { OneGlyph } from './one-button';
@@ -23,14 +22,19 @@ import { BrandLogo } from './brand-logo';
 import { SoonBadge } from './soon-badge';
 import { useFeatures } from '../features';
 import { useFormat, useShowFirstRun, useTranslation } from '../i18n';
-import { HOME_COMPACT_AT } from './home-hero';
+import { HEADER_COMPACT_AT } from './brand-header';
 import { DesktopNav } from './desktop-nav';
 import { useIsDesktop } from '../layout';
 import { useFastestEta } from '../use-fastest-eta';
+import { ScreenPathProvider, useRoutePath } from '../use-screen-path';
 
 const BARE = ['/sign-in', '/welcome'];
 const FULL_SCREEN = ['/location', '/address-map', '/address-form'];
-const IMMERSIVE = ['/product/', '/brand/'];
+const IMMERSIVE = ['/product/', '/brand/', '/store/', '/category/', '/search', '/discover'];
+// Pages that draw the brand header themselves (src/components/brand-header.tsx) instead of this shell's header.
+const OWN_HEADER = ['/', '/categories', '/food', '/book-it'];
+const SCROLLING = ['/', '/food', '/grocery', '/shops', '/care', '/pharmacy', '/beauty', '/book-it', '/categories'];
+const UTILITY = ['/reels', '/account', '/enquiries'];
 const LOCATION_ASKED_KEY = 'onecity.location-asked.v1';
 
 // First launch only: after the intro, ask where the customer is (any place in India), because
@@ -50,22 +54,8 @@ function useLocationFirst(hasSavedLocation: boolean | null, waitForLanguage: boo
 
 export function BrandMark({ large = false }: { large?: boolean }) { return <View style={[styles.mark, large && styles.largeMark]}><Text style={[styles.one, large && styles.largeOne]}>1</Text></View>; }
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const path = usePathname(); const desktop = useIsDesktop(); const router = useRouter(); const insets = useSafeAreaInsets(); const { totalItems } = useCart(); const features = useFeatures(); const fastest = useFastestEta();
-  const { t } = useTranslation(); const fmt = useFormat(); const waitForLanguage = useShowFirstRun();
-  const scrolling = ['/', '/food', '/grocery', '/shops', '/care', '/pharmacy', '/beauty', '/book-it', '/categories'].includes(path);
-  const reels = !scrolling; const palette = paletteFor(path);
-  const utility = ['/discover', '/reels', '/account', '/enquiries'].includes(path);
-  const back = () => router.canGoBack() ? router.back() : router.replace('/(tabs)');
-  const isHome = path === '/';
-  // Photo-led pages draw edge to edge under the status bar and place their own buttons below it.
-  const immersive = IMMERSIVE.some(p => path.startsWith(p));
-  const { y, headerHeight, setHeaderHeight, scrollRef, scrollUnderDock } = useCityScroll();
-  const [compact, setCompact] = useState(false);
-  // Only once the real header is measured and its search bar has scrolled away; before layout the
-  // height is 0, which used to show both search bars at the top of the page.
-  // Home draws its own photo hero instead of this header; the compact bar arrives once the hero has gone.
-  const compactFrom = isHome ? HOME_COMPACT_AT : headerHeight - 70;
-  useEffect(() => { const id = y.addListener(({ value }) => setCompact((isHome || headerHeight > 0) && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom, isHome]);
+  const path = usePathname(); const desktop = useIsDesktop(); const router = useRouter(); const insets = useSafeAreaInsets(); const waitForLanguage = useShowFirstRun();
+  const scrolling = SCROLLING.includes(path); const bare = BARE.includes(path);
   // i18n-ignore: the default place name is data, not UI copy
   const [location, setLocationText] = useState('Latur, Maharashtra'); const [point, setPoint] = useState<Point | null>(null);
   const [hasSaved, setHasSaved] = useState<boolean | null>(null);
@@ -79,18 +69,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // What One Local offers where the customer is. No position yet means the Latur default.
   const at = point ?? CITY_CENTER;
   const { data: coverage = null } = useQuery({ queryKey: ['coverage', at.lat, at.lng], queryFn: () => coverageAt(at), staleTime: 10 * 60_000 });
-  const setLocation = (value: string, next: Point | null = null) => {
+  const setLocation = useCallback((value: string, next: Point | null = null) => {
     setLocationText(value); setPoint(next);
     AsyncStorage.multiSet([['one-latur-location', value], ['one-latur-location-point', next ? JSON.stringify(next) : '']]).catch(() => {});
-  };
-  const openLocation = () => router.push('/location' as never);
+  }, []);
+  const openLocation = useCallback(() => router.push('/location' as never), [router]);
+  // This shell re-renders on every navigation (it follows the path). Its context values change only when what they hold
+  // does: every product card reads both, and a fresh object each time re-rendered every card on every screen switch.
+  const deliveryLocation = useMemo(() => ({ location, point, coverage, setLocation, edit: openLocation }), [location, point, coverage, setLocation, openLocation]);
   useLocationFirst(hasSaved, waitForLanguage);
-  // Full-screen takeovers (sign-in) get no header, tab bar or floating cart, and handle their own insets.
-  if (BARE.includes(path)) return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>{children}</View></DeliveryLocationContext.Provider>;
-  return <DeliveryLocationContext.Provider value={{ location, point, coverage, setLocation, edit: openLocation }}><View style={styles.container}>
-    {desktop && !FULL_SCREEN.some(p => path.startsWith(p)) && <DesktopNav />}
+  // Full-screen takeovers (sign-in) get no tab bar or floating cart. The screens stay where they are in the tree on every
+  // path: moving them for these pages rebuilt every open screen. Each screen draws its own top (ScreenFrame below).
+  return <DeliveryLocationContext.Provider value={deliveryLocation}><View style={styles.container}>
+    {desktop && !bare && !FULL_SCREEN.some(p => path.startsWith(p)) && <DesktopNav />}
     <View style={styles.page}>
-    {!reels && !isHome && <Animated.View testID="city-header" onLayout={e => { if (scrolling) setHeaderHeight(e.nativeEvent.layout.height); }} style={scrolling ? [styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }] : undefined}><View>{/* transparent: the page's own gradient (CityScroll) shows through */}
+    {children}
+    {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
+    <BottomNavigation />
+    {!bare && <CartCelebration top={insets.top + 8} />}
+    </View>
+  </View></DeliveryLocationContext.Provider>;
+}
+
+// A scrolling page's own top, which moves with the page, so leaving the page takes it along instead of snapping it away: the
+// shell's header (unless the page draws the brand header itself), then the white scrim behind the status bar and the compact
+// search bar, both arriving as the page scrolls.
+function ScrollingChrome({ path, back }: { path: string; back: () => void }) {
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { totalItems } = useCart(); const features = useFeatures(); const fastest = useFastestEta();
+  const { t } = useTranslation(); const fmt = useFormat(); const { location, edit: openLocation } = useDeliveryLocation();
+  const isHome = path === '/'; const ownHeader = OWN_HEADER.includes(path);
+  const { y, headerHeight, setHeaderHeight, scrollRef } = useCityScroll();
+  const [compact, setCompact] = useState(false);
+  // Only once the real header is measured and its search bar has scrolled away; before layout the
+  // height is 0, which used to show both search bars at the top of the page.
+  // Home and Categories draw the brand header instead of this one; the compact bar arrives once its search bar has gone.
+  const compactFrom = ownHeader ? HEADER_COMPACT_AT : headerHeight - 70;
+  const scrimHeight = insets.top + 106;
+  useEffect(() => { const id = y.addListener(({ value }) => setCompact((ownHeader || headerHeight > 0) && value > compactFrom)); return () => y.removeListener(id); }, [y, headerHeight, compactFrom, ownHeader]);
+  return <>
+    {!ownHeader && <Animated.View testID="city-header" onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)} style={[styles.scrollingHeader, { transform: [{ translateY: y.interpolate({ inputRange: [0, headerHeight], outputRange: [0, -headerHeight], extrapolate: 'clamp' }) }] }]}><View>{/* transparent: the page's own gradient (CityScroll) shows through */}
       <View style={{ paddingTop: insets.top }}><View style={styles.header}>
         <View style={styles.topRow}><View style={styles.topLead}>{!isHome && <Tap testID="global-back-button" accessibilityLabel={t('shell.goPrevious')} onPress={back} style={styles.backButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Tap>}<Tap testID="header-brand-home" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><BrandLogo testID="company-logo" tone="light" height={22} /></Tap></View>
           <View style={styles.topActions}>{[{ id: 'wallet', label: t('shell.wallet'), icon: 'wallet-outline', route: '/wallet' }, { id: 'cart', label: t('shell.cart'), icon: 'bag-handle-outline', route: '/cart' }, { id: 'profile', label: t('shell.profile'), icon: 'person-outline', route: '/account' }].map(b => <Tap testID={b.id === 'profile' ? 'header-profile-btn' : `header-${b.id}-button`} accessibilityLabel={b.label} key={b.id} onPress={() => router.navigate(b.route as any)} style={styles.iconButton}><Icon name={b.icon as any} size={18} color={colors.onSurface} />{b.id === 'wallet' && !features.wallet && <SoonBadge testID="header-wallet-button-soon" />}{b.id === 'cart' && totalItems > 0 && <View style={styles.badge}><Text testID="header-cart-count" style={styles.badgeText}>{fmt.number(totalItems)}</Text></View>}</Tap>)}</View>
@@ -99,8 +116,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <View style={styles.searchRow}><Tap testID="header-search-button" accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as any)} style={styles.searchText}><Icon name="search-outline" size={18} color={colors.onSurface} /><Text style={styles.placeholder}>{t('shell.searchPlaceholder')}</Text></Tap><Tap testID="header-voice-search" accessibilityLabel={t('shell.searchVoice')} onPress={() => router.push('/smart-search?mode=voice' as any)} style={styles.searchIcon}><Icon name="mic-outline" size={18} color={colors.onSurface} />{!features.ai_search && <SoonBadge testID="header-voice-search-soon" />}</Tap><View style={styles.searchDivider} /><Tap testID="header-camera-search" accessibilityLabel={t('shell.searchPhoto')} onPress={() => router.push('/smart-search?mode=image' as any)} style={styles.searchIcon}><Icon name="camera-outline" size={19} color={colors.onSurface} />{!features.ai_search && <SoonBadge testID="header-camera-search-soon" />}</Tap></View>
       </View><DepartmentStrip /></View>
     </View></Animated.View>}
-    {scrolling && (isHome || headerHeight > 0) && <Animated.View pointerEvents="none" style={[styles.scrim, { height: insets.top + 40, opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }) }]}><LinearGradient colors={[colors.surface, colors.surface, 'rgba(255,255,255,0)']} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} /></Animated.View>}
-    {scrolling && (isHome || headerHeight > 0) && <Animated.View testID="compact-header" pointerEvents={compact ? 'auto' : 'none'} style={[styles.compact, { top: insets.top + 6,
+    {/* Solid behind the status bar, easing out under the compact bar (top + 6, 52 tall) and fading over 48pt below it. */}
+    {(ownHeader || headerHeight > 0) && <Animated.View pointerEvents="none" style={[styles.scrim, { height: scrimHeight, opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }) }]}><LinearGradient colors={[colors.surface, colors.surface, 'rgba(255,255,255,0.75)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']} locations={[0, insets.top / scrimHeight, (insets.top + 58) / scrimHeight, (insets.top + 88) / scrimHeight, 1]} style={StyleSheet.absoluteFill} /></Animated.View>}
+    {(ownHeader || headerHeight > 0) && <Animated.View testID="compact-header" pointerEvents={compact ? 'auto' : 'none'} style={[styles.compact, { top: insets.top + 6,
       opacity: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0, 1], extrapolate: 'clamp' }),
       transform: [{ translateY: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [-14, 0], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [compactFrom - 30, compactFrom + 10], outputRange: [0.96, 1], extrapolate: 'clamp' }) }] }]}>
       {isHome
@@ -111,13 +129,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Tap>
       <Tap testID="compact-voice" accessibilityLabel={t('shell.searchByVoice')} hitSlop={6} style={styles.compactIcon} onPress={() => router.push('/smart-search?mode=voice' as any)}><Icon name="mic-outline" size={19} color={colors.forest} /></Tap>
     </Animated.View>}
-    <SafeAreaInsetsContext.Provider value={{ ...insets, top: immersive || isHome ? insets.top : 0, bottom: 0 }}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
-    {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
-    <BottomNavigation />
-    <CartCelebration top={insets.top + 8} />
-    </View>
-  </View></DeliveryLocationContext.Provider>;
+  </>;
 }
+
+// Each screen's own frame, set by its own route, never by the path the app is showing: the screen's path and scroll position
+// for everything on it (useScreenPath, useCityScroll), the room it leaves under the status bar and above the dock, the insets
+// its content sees, and its top (the utility pages' bar, a scrolling page's header). One frame around the whole stack changed
+// with every navigation, so the page being left jumped, re-rendered and lost its top in the middle of the transition.
+function ScreenFrame({ children }: { children: React.ReactNode }) {
+  const path = useRoutePath(); const insets = useSafeAreaInsets(); const router = useRouter(); const { t } = useTranslation();
+  const scrolling = SCROLLING.includes(path);
+  // Photo-led pages draw edge to edge under the status bar and place their own buttons below it.
+  const immersive = IMMERSIVE.some(p => path.startsWith(p));
+  const top = immersive || OWN_HEADER.includes(path) ? insets.top : 0;
+  const pageInsets = useMemo(() => ({ ...insets, top, bottom: 0 }), [insets, top]);
+  // These pages leave room at their own ends, so they run on under the floating dock instead of stopping above it.
+  const underDock = scrolling || path.startsWith('/category/');
+  const back = () => router.canGoBack() ? router.back() : router.replace('/(tabs)');
+  // Full-screen takeovers handle their own insets.
+  return <ScreenPathProvider value={path}><CityMotionProvider>{BARE.includes(path) ? children : <View style={[styles.body, !scrolling && !immersive && { paddingTop: insets.top }, !underDock && { paddingBottom: dockSpace(insets.bottom) }]}><SafeAreaInsetsContext.Provider value={pageInsets}>{UTILITY.includes(path) && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</SafeAreaInsetsContext.Provider>
+    {scrolling && <ScrollingChrome path={path} back={back} />}
+  </View>}</CityMotionProvider></ScreenPathProvider>;
+}
+// For a navigator's screenLayout. The tabs navigator frames its own screens.
+export const screenFrame = ({ route, children }: { route: { name: string }; children: React.ReactElement }) => route.name === '(tabs)' ? children : <ScreenFrame>{children}</ScreenFrame>;
 const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   etaChip: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.electricLime },

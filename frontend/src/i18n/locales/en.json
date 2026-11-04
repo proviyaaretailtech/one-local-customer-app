@@ -497,7 +497,6 @@
     "addItem": "Add {{name}}",
     "removeOneItem": "Remove one {{name}}",
     "addOneItem": "Add one {{name}}",
-    "add": "ADD",
     "moreFromBrand": "More from {{name}}",
     "details": {
       "title": "Product details",
@@ -518,11 +517,10 @@
     "sampleBadge": "Sample store",
     "following": "Following",
     "follow": "Follow store",
-    "allItems": "All Items",
-    "allProducts": "All Products",
-    "emptyCategory": "No products in this category",
     "notFound": "This store isn’t here.",
-    "backHome": "Back to OneLocal"
+    "backHome": "Back to OneLocal",
+    "inside": "Inside {{name}}",
+    "allItems": "All Items"
   },
   "category": {
     "notFound": "Category not found",
@@ -545,7 +543,6 @@
     "chooseSort": "Choose sort",
     "chooseBrand": "Choose brand",
     "chooseType": "Choose type",
-    "saveFailed": "Could not save your favourites. Please try again.",
     "empty": "No matching items",
     "clearFilters": "Clear filters",
     "browse": "Browse categories",
@@ -567,12 +564,7 @@
     "searchCategory": "Search category",
     "closeFilters": "Close filters",
     "reset": "Reset",
-    "showItems": "Show items",
-    "offOnMrp": "{{pct}} OFF on MRP",
-    "ratedA11y": "Rated {{rating}} out of 5, sample rating",
-    "deliveryA11y_one": "Estimated delivery {{value}} minute, sample estimate",
-    "deliveryA11y_other": "Estimated delivery {{value}} minutes, sample estimate",
-    "viewDetailsOf": "View details of {{name}}"
+    "showItems": "Show items"
   },
   "collection": {
     "notFound": "This little store isn’t here.",
@@ -850,8 +842,7 @@
     "dept": {
       "food": "Food",
       "grocery": "Groceries",
-      "shops": "Shops",
-      "care": "Pharmacy\n& Beauty"
+      "shops": "Shops"
     },
     "finds": "{{value}} finds for you",
     "creditGoogle": "Listings from Google Maps.",
@@ -959,7 +950,7 @@
     "categories": "Categories",
     "discover": "Discover",
     "discoverButton": "Discover. Hold for One AI",
-    "discoverHint": "Tap to discover reels. Long press to ask the shopping assistant."
+    "discoverHint": "Tap to discover reels. Long press to ask the shopping assistant, or hold and drag to the red siren for emergency helplines."
   },
   "departments": {
     "food": {
@@ -975,16 +966,7 @@
       "name": "Pharmacy\n& Beauty"
     },
     "bookIt": {
-      "name": "Book It",
-      "moviesTitle": "A date with the big screen",
-      "moviesSubtitle": "Sample movie listings · choose your show",
-      "eventsTitle": "Be there. Feel it live.",
-      "eventsSubtitle": "Music, culture and something different",
-      "activitiesTitle": "A little adventure awaits",
-      "activitiesSubtitle": "Make your next weekend count",
-      "enquiriesTitle": "Your saved enquiries",
-      "enquiriesSub": "Keep your plans in one place",
-      "demoNotice": "Demo experiences only. Enquiries are saved in the app; no tickets are issued, payments taken or venues contacted."
+      "name": "Book It"
     },
     "filters": {
       "burgers": "Burgers",
@@ -1030,94 +1012,7 @@
     "seeAllLabel": "See all {{title}}",
     "loadFailed": "Couldn’t load this right now",
     "shopStore": "Shop {{name}}",
-    "followedTitle": "Your local favourites",
-    "followedSubtitle": "The stores you follow, always first.",
-    "storesTitle": "A little world for every mood",
-    "storesSubtitle": "SHOP BY STORE · Five edits, made for you.",
-    "trendingTitle": "Trending in Latur",
-    "trendingSubtitle": "Good finds. Everyone’s talking.",
-    "picksTitle": "Top picks for you",
-    "picksSubtitle": "A few things we think you’ll love.",
-    "foodTitle": "What are you craving?",
-    "foodSubtitle": "FOOD · The names you know. The bites you love.",
-    "groceryTitle": "A fresh start, every day",
-    "grocerySubtitle": "GROCERY SHOP · Your everyday essentials.",
-    "shopsTitle": "A little city shopping",
-    "shopsSubtitle": "SHOPS · Style, sound & lovely little spaces.",
-    "pharmacyTitle": "A little care goes a long way",
-    "pharmacySubtitle": "PHARMACY & BEAUTY · Feel good, inside and out.",
-    "beautyTitle": "Find your everyday glow",
-    "beautySubtitle": "Your next little obsession.",
-    "bookTitle": "Make room for good times",
-    "bookSubtitle": "BOOK IT · Movies, events & little adventures.",
-    "neighbourhoodTitle": "Meet your neighbourhood",
-    "neighbourhoodSubtitle": "Independent stores. A little closer to home.",
     "storeMeta": "{{time}} · {{rating}} rating",
-    "budgetTitle": "Little prices. Lots to love.",
-    "budgetSubtitle": "Everything here under {{amount}}",
-    "brandsTitle": "Meet your next favourite brand",
-    "brandsSubtitle": "{{value}} demo brands, one little city",
-    "footerTitle": "One city. Endless possibilities.",
-    "footerSub": "Made for Latur. Made for you.",
-    "sampleNotice": "Explore our sample catalogue. Brand listings, prices and booking experiences are for demonstration.",
-    "categories": {
-      "eyebrow": "LITTLE FINDS. ENDLESS POSSIBILITIES.",
-      "title": "Your city, by category.",
-      "searchLabel": "Search categories and products",
-      "storeTitle": "Shop by Store",
-      "storeSubtitle": "Five little worlds. Which one is yours?",
-      "festiveEyebrow": "THE CELEBRATION EDIT",
-      "festiveTitle": "Big festive energy. Little joyful finds.",
-      "festiveLink": "Step into Festive Time",
-      "groups": {
-        "fresh": {
-          "title": "Fresh little beginnings",
-          "subtitle": "From the farm to your everyday."
-        },
-        "pantry": {
-          "title": "Grocery & kitchen",
-          "subtitle": "A well-stocked kind of happy."
-        },
-        "snacks": {
-          "title": "Snacks, sips & sweet things",
-          "subtitle": "For the in-between moments."
-        },
-        "festive": {
-          "title": "Celebrate a little more",
-          "subtitle": "Bappa’s favourites to garba-night essentials."
-        },
-        "food": {
-          "title": "Cravings, taken care of",
-          "subtitle": "A delicious detour."
-        },
-        "fitness": {
-          "title": "Move. Fuel. Feel good.",
-          "subtitle": "Find your everyday strong."
-        },
-        "care": {
-          "title": "Your feel-good routine",
-          "subtitle": "A little care, from head to toe."
-        },
-        "home": {
-          "title": "Home, health & little upgrades",
-          "subtitle": "All the useful things, together."
-        }
-      },
-      "quickTitle": "Small prices. Lovely finds.",
-      "quickSubtitle": "Every pick under {{amount}} · sample prices",
-      "brandsTitle": "The brands you keep coming back to",
-      "brandsSubtitle": "{{value}} demo brand collections to explore",
-      "moreBrands": "More brands, more favourites",
-      "bookTitle": "Make a little time for fun",
-      "bookSubtitle": "Movies, music and a change of scene.",
-      "assistantTitle": "Not sure where to start?",
-      "assistantText": "Tell One your budget. Find your little favourites.",
-      "note": "Made for Latur. Curated for you. Demo brand listings, illustrative images and sample prices.",
-      "storeCategories": {
-        "title": "Store categories",
-        "subtitle": "What each local store sells"
-      }
-    },
     "promos": {
       "heading": "A LITTLE LOCAL. A LOT TO LOVE.",
       "featured": "FEATURED",
@@ -1232,7 +1127,9 @@
       "switchHome": "Daily goodness",
       "switchShops": "Fresh style",
       "switchCare": "A little self-care",
-      "sample": "A sample brand spotlight · curated for you"
+      "sample": "A sample brand spotlight · curated for you",
+      "title": "In spotlight",
+      "subtitle": "Sponsored picks from shops near you"
     },
     "collection": {
       "caption": "A ONECITY LITTLE WORLD",
@@ -1269,25 +1166,17 @@
       "store": "Store"
     },
     "hero": {
-      "eyebrow": "GOOD FOOD · BRIGHTER DAYS",
-      "title": "Fresh choices\nfor a happier you.",
-      "searchPlaceholder": "Search for food, groceries, shops…",
-      "photoLabel": "A fresh salad bowl",
+      "searchPlaceholder": "Search groceries & more",
       "fastDelivery": "Delivery in {{time}}"
     },
-    "offers": {
-      "groceryTitle": "Up to {{pct}} off",
-      "grocerySub": "on daily groceries",
-      "careTitle": "Pharmacy & Beauty",
-      "careSub": "Up to {{pct}} off"
+    "services": {
+      "care": "Pharma & Beauty",
+      "bookIt": "Booking & Services"
     },
-    "essentialsTitle": "Your daily essentials",
-    "favouritesTitle": "Your favourites",
-    "favouritesSubtitle": "Saved items, one tap away",
-    "orderAgain": {
-      "title": "Order again",
-      "one": "{{name}}",
-      "more": "{{name}} and {{count}} more"
+    "origin": {
+      "local": "LOCAL",
+      "national": "NATIONAL",
+      "only": "Show local items only"
     }
   },
   "shell": {
@@ -1405,7 +1294,12 @@
     "openPhotoAd": "Open {{name}} photo ad",
     "forYou": "FOR YOU",
     "shop": "Shop",
-    "photoCaption": "{{name}}. A little find for your everyday."
+    "photoCaption": "{{name}}. A little find for your everyday.",
+    "intro": {
+      "featured": "Featured",
+      "skip": "Skip",
+      "watch": "Watch the reel"
+    }
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -2401,5 +2295,87 @@
       "refunded": "Refunded"
     },
     "already": "You have already reported this. We are looking at it."
+  },
+  "sos": {
+    "dropHere": "Drop for help",
+    "open": "Emergency helplines",
+    "title": "Emergency help",
+    "body": "Tap a number to open it in your phone app.",
+    "emergency": "Emergency",
+    "ambulance": "Ambulance",
+    "police": "Police",
+    "fire": "Fire",
+    "call": "Call {{name}} on {{number}}"
+  },
+  "categories": {
+    "group": {
+      "fresh": "FRESH",
+      "groceries": "Groceries",
+      "beautyWellness": "Beauty & Wellness",
+      "household": "Household & Essentials",
+      "snacksDrinks": "Snacks & Drinks",
+      "otherPicks": "Other Picks"
+    },
+    "sub": {
+      "vegetables": "Fresh Vegetables",
+      "fruits": "Fresh Fruits",
+      "dairyBread": "Dairy & Bread",
+      "meatSeafood": "Meat & Seafood",
+      "attaRiceDal": "Atta, Rice & Dal",
+      "masalas": "Masalas",
+      "oilsGhee": "Oils & Ghee",
+      "cereals": "Cereals & Breakfast",
+      "bathBody": "Bath & Body",
+      "hairSkin": "Hair Care & Skincare",
+      "makeup": "Makeup",
+      "healthPharma": "Health & Pharma",
+      "electronics": "Electronics",
+      "stationery": "Stationery",
+      "homeDecor": "Home & Decor",
+      "giftsPooja": "Gifts & Pooja",
+      "chipsNamkeen": "Chips & Namkeen",
+      "sweetsBakery": "Sweets & Bakery",
+      "drinksJuices": "Drinks & Juices",
+      "iceCream": "Ice Cream & More",
+      "fashion": "Fashion & Accessories",
+      "travelFitness": "Travel & Fitness",
+      "kids": "Kids",
+      "imported": "Imported"
+    }
+  },
+  "categoryShops": {
+    "subtitle_one": "{{value}} shop has this",
+    "subtitle_other": "{{value}} shops have this",
+    "items_one": "{{value}} item",
+    "items_other": "{{value}} items",
+    "empty": "No shop near you has this yet.",
+    "shoppingAt": "You're shopping at",
+    "change": "Change",
+    "changeShop": "Pick another shop"
+  },
+  "foodPage": {
+    "quote": "The kitchens Latur loves, one tap away.",
+    "count_one": "{{value}} restaurant delivering to you",
+    "count_other": "{{value}} restaurants delivering to you",
+    "offer": "Up to {{pct}} off",
+    "orderNow": "Order now",
+    "featured": "Featured"
+  },
+  "restaurant": {
+    "search": "Search the menu",
+    "menu": "Menu",
+    "onDishes_one": "on {{value}} dish",
+    "onDishes_other": "on {{value}} dishes"
+  },
+  "bookItPage": {
+    "dining": "Dining",
+    "events": "Events",
+    "activities": "Activities",
+    "play": "Play",
+    "stay": "Stay",
+    "appointment": "Book an appointment",
+    "appointmentLine": "A doctor's visit or roadside help, booked ahead",
+    "breakdown": "Breakdown help",
+    "doctor": "Doctor"
   }
 }

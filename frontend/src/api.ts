@@ -85,17 +85,23 @@ export async function api<T>(path: string): Promise<T> {
 export type Category = { id: string; name: string; emoji: string; color: string; department: string; image: string };
 export type DiscoverChip = { id: string; label: string; emoji: string; color: string };
 export type Banner = { id: string; title: string; subtitle: string; image: string; bg: string };
+/** Whether a product is made or sold locally or is a national brand; the server marks each product. */
+export type Origin = 'local' | 'national';
 export type Product = {
   id: string; name: string; weight: string; price: number; mrp: number;
   image: string; category_id: string; store_id: string;
   delivery_min: number; discount_pct?: number | null; rating: number;
   department?: string; brand_id?: string;
+  origin?: Origin; // absent until the server marks products
 };
 export type StoreMedia = { type: "video" | "image"; url: string; thumbnail?: string; video_web?: string };
 export type Store = {
   id: string; name: string; logo: string; tagline: string;
   delivery_time: string; rating: number; tags: string[]; media: StoreMedia[];
+  department?: string; // 'food' for restaurants
 };
+/** A shop's banner picture: its first photo, or a video's still if it has none. */
+export const storeBanner = (store: Store) => store.media.find(m => m.type === 'image')?.url ?? store.media.find(m => m.thumbnail)?.thumbnail;
 
 export type Coupon = {
   code: string; label: string; kind: "flat" | "pct"; value: number;

@@ -16,6 +16,9 @@ import { duration } from '../motion-tokens';
 import { lastHapticAt } from './haptic-clock';
 
 export * from 'react-native';
+// In development Fast Refresh reads every export of this file. react-native's PushNotificationIOS then listens on a
+// native module Expo apps don't ship, which throws on iOS at launch; this own export wins over `export *`.
+export const PushNotificationIOS = undefined;
 export default RN;
 
 type Handler = ((e: GestureResponderEvent) => unknown) | null | undefined;

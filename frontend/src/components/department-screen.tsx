@@ -8,7 +8,7 @@ import Icon from '@react-native-vector-icons/ionicons';
 import { colors } from '../theme';
 import { departments, DepartmentId, inDepartment, departmentFilterLabel } from '../departments';
 import { useTranslation } from '../i18n';
-import { useCatalog } from '../use-catalog';
+import { useBrowseCatalog } from '../use-catalog';
 import { BrandRail, CategoryRail, LoadState, SectionTitle } from './catalog-sections';
 import { ProductCard } from './product-card';
 import { BrandSpotlight } from './brand-spotlight';
@@ -23,7 +23,7 @@ export function DepartmentScreen({ id }: { id: DepartmentId }) {
 }
 
 function LiveDepartment({ id }: { id: DepartmentId }) {
-  const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useAppDimensions().width; const { t } = useTranslation();
+  const d = departments.find(x => x.id === id)!; const { data, isError, refetch } = useBrowseCatalog(); const [filter, setFilter] = useState('All'); const [brand, setBrand] = useState(''); const router = useRouter(); const width = useAppDimensions().width; const { t } = useTranslation();
   if (!data) return <LoadState error={isError} retry={refetch} />;
   if (!data.products.some(p => inDepartment(p.department, id)) && id !== 'book-it') return <ExploreTown initial={id} empty />;
   const brands = data.brands.filter(b => inDepartment(b.department, id)); const categories = data.categories.filter(c => inDepartment(c.department, id));
