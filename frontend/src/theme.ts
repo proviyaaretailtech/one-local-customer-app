@@ -35,7 +35,6 @@ const light = {
   onError: "#CC0000",
   errorDeep: "#8A0000",
   info: "#F5F6F8",
-  onInfo: "#1A1A1A",
 
   // Lines
   border: "#EAECEF",
@@ -78,13 +77,6 @@ const light = {
   fitnessTop: '#C9DBF8',
   gourmet: '#884E37',
   gourmetTop: '#F3DAC6',
-  characterSkin: '#F4B88D',
-  characterLight: '#FFDCB9',
-  characterShadow: '#C47C51',
-  characterShoe: '#3C354C',
-  characterBlush: '#EC927E',
-  characterBody: '#BFA4EA',
-  characterDeep: '#7964AA',
   cream: "#F8F9F5",
   transparent: "transparent",
   overlay: "rgba(0,0,0,0.45)",
@@ -114,9 +106,10 @@ const light = {
   inkSoft: '#416034',
   shadow: 'rgba(30,64,30,0.07)',
   walletInk: '#253E26',
-  // India's food marks: green for veg, brown-red for non-veg.
+  // India's food marks: green for veg, brown-red for non-veg, yellow for egg.
   veg: '#1B8A3A',
   nonVeg: '#B3261E',
+  egg: '#D99A00',
   whiteGlassLine: 'rgba(255,255,255,0.28)',
   localGlass: 'rgba(118,236,0,0.55)', // the Local / National switch when on Local: the brand lime, see-through
   // Home service tiles: a soft gold card, pale where it glows in the middle.
@@ -125,10 +118,15 @@ const light = {
   // The Categories grid's tiles: the same card in a soft teal mint.
   mintTile: '#CDEBE3',
   mintGlow: '#EFFAF6',
-  // The launch intro: the native splash's ink, the light in the middle of its brand green, and the wordmark's own green.
+  // The launch intro: the native splash's ink and the wordmark's own green; its Diwali night (a deep green, lighter in the
+  // middle), and the diyas' brass, the brass in shadow and the flame's orange edge.
   splashInk: '#050605',
-  forestGlow: '#2E8B5F',
   logoGreen: '#72D400',
+  diwaliNight: '#03150E',
+  diwaliGreen: '#0E3626',
+  diyaBrass: '#D9A04A',
+  diyaShade: '#7A4E17',
+  diyaFlame: '#FF8B21',
 };
 
 export type ThemeColors = typeof light;
@@ -241,6 +239,8 @@ export const mintIconShadow = shapeShadow(8, 6, '18,82,68', 0.45);
 export const skyIconShadow = shapeShadow(8, 6, '20,70,92', 0.45);
 /** Keeps a white icon readable on any photo, light or dark. */
 export const photoIconShadow = shapeShadow(1, 3, '0,0,0', 0.45);
+/** A soft glow of gold round fine gold lines on a dark ground (the launch intro's rangoli). */
+export const goldLineGlow = shapeShadow(0, 3, '255,199,44', 0.85);
 
 /** What a control sits on: a photo (white glass) or a plain light page (soft panes). */
 export type Tone = 'photo' | 'light';

@@ -1,6 +1,6 @@
 // Picking a shop for a catalogue category: the category's icon and how many shops have it, then a card for each shop (most
-// items first) raised out of the page in soft neumorphism: its logo and name in its own colour, a strip of what it has in
-// the category on its own tint, and how many on a badge at the card's corner. A card opens the category at that shop.
+// items first) raised out of the page in soft neumorphism: its logo and name, a strip of what it has in the category on
+// its own tint, and how many on a badge (in its own colour) at the card's corner. A card opens the category at that shop.
 import { useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -18,13 +18,17 @@ import { useStores } from '@/src/use-stores';
 import { useScreenPalette } from '@/src/use-screen-path';
 import { byShop, CATEGORY_GROUPS } from '@/src/shop-categories';
 import { useFormat, useTranslation } from '@/src/i18n';
+import { useMotionAllowed } from '@/src/motion';
+import { duration, reEasing, stagger } from '@/src/motion-tokens';
+import Reanimated, { FadeInDown } from 'react-native-reanimated';
 
 const SIDE = 16;
 const THUMBS = 4; // items shown on a card; its badge counts them all
+const RISE_IN = 4;
 
 export default function CategoryShops() {
   const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter(); const insets = useSafeAreaInsets(); const palette = useScreenPalette();
-  const { data, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const { t } = useTranslation(); const fmt = useFormat();
+  const { data, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const { t } = useTranslation(); const fmt = useFormat(); const motion = useMotionAllowed();
   const shops = useMemo(() => data ? byShop(data.products.filter(p => p.category_id === id), stores).sort((a, b) => b.products.length - a.products.length) : [], [data, stores, id]);
   if (!data) return <LoadState error={isError} retry={refetch} />;
   const name = data.categories.find(c => c.id === id)?.name ?? id;
@@ -46,11 +50,12 @@ export default function CategoryShops() {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.list}>
       {shops.length ? shops.map(({ store, products }, n) => {
         const [wash, ink] = tints[n]; const items = t('categoryShops.items', { count: products.length, value: fmt.number(products.length) });
-        return <Tap key={store.id} testID={`category-shop-${store.id}`} accessibilityRole="button" accessibilityLabel={`${t('home.shopStore', { name: store.name })}, ${items}`} onPress={() => router.push(`/category/${id}?store=${store.id}` as never)} style={[s.card, { backgroundColor: page }]}>
+        // The first few cards rise in one after another as the page opens; the rest are below the fold.
+        return <Reanimated.View key={store.id} entering={motion && n < RISE_IN ? FadeInDown.duration(duration.gentle).delay(n * stagger * 1.4).easing(reEasing.enter) : undefined}><Tap testID={`category-shop-${store.id}`} accessibilityRole="button" accessibilityLabel={`${t('home.shopStore', { name: store.name })}, ${items}`} onPress={() => router.push(`/category/${id}?store=${store.id}`)} style={[s.card, { backgroundColor: page }]}>
           <View style={s.head}>
             <View style={s.logoTile}>{!!store.logo && <Image source={store.logo} style={s.logo} contentFit="contain" />}</View>
             <View style={s.copy}>
-              <Text numberOfLines={1} style={[s.name, { color: ink }]}>{store.name}</Text>
+              <Text numberOfLines={1} style={s.name}>{store.name}</Text>
               <View style={s.meta}>
                 <Icon name="flash" size={12} color={colors.forest} /><Text style={s.metaText}>{fmt.deliveryTime(store.delivery_time)}</Text>
                 <View style={s.dot} />
@@ -63,7 +68,7 @@ export default function CategoryShops() {
             <View style={[s.go, { backgroundColor: ink }]}><Icon name="chevron-forward" size={16} color={colors.surface} /></View>
           </View>
           <View testID={`category-shop-count-${store.id}`} style={[s.count, { backgroundColor: ink }]}><Text style={s.countText}>{fmt.number(products.length)}</Text></View>
-        </Tap>;
+        </Tap></Reanimated.View>;
       }) : <View testID="category-shops-empty" style={s.empty}>
         <View style={[s.emptyWell, { backgroundColor: page }]}><Icon name="storefront-outline" size={26} color={palette.color} /></View>
         <Text style={s.emptyText}>{t('categoryShops.empty')}</Text>
@@ -90,7 +95,7 @@ const s = StyleSheet.create({
   logoTile: logoTile(52),
   logo: { width: logoSize(52), height: logoSize(52) },
   copy: { flex: 1, minWidth: 0, gap: 4, paddingRight: 18 },
-  name: { fontSize: 17, lineHeight: 22, fontWeight: '800', letterSpacing: -0.2 },
+  name: { fontSize: 17, lineHeight: 22, fontWeight: '800', letterSpacing: -0.2, color: colors.onSurface },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 12, fontWeight: '600', color: colors.muted },
   dot: { width: 3, height: 3, borderRadius: 2, marginHorizontal: 4, backgroundColor: colors.muted },

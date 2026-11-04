@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { createContext, memo, useContext } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
@@ -13,6 +13,9 @@ import { useEtaMinutes } from '../use-store-etas';
 import { Tap } from './tap';
 import { AddToCart } from './add-to-cart';
 import { HeartToggle } from './motion/heart-toggle';
+/** Set where items open in place instead of on a page of their own: the product sheet shows a related item in itself. */
+export const OpenProductContext = createContext<((id: string) => void) | null>(null);
+
 // memo: a card redraws only when its own product or the wishlist changes (its "+" watches the bag by itself).
 // Glovo-clean: no box around the card — a rounded picture tile carries it; the price leads; a round "+" sits on the
 // picture and grows into the quantity stepper once the item is in the bag.
@@ -22,15 +25,16 @@ export const ProductCard = memo(function ProductCard({ product: p, width = 140, 
   const router = useRouter(); const palette = useScreenPalette(); const { saved, toggleSaved, ready } = useSavedProducts(); const { t } = useTranslation(); const fmt = useFormat();
   const id = scope ? `${scope}-${p.id}` : p.id; const isSaved = saved.includes(p.id); const narrow = !!width && width < 120;
   const imageH = narrow ? 104 : 124; const eta = useEtaMinutes(p);
+  const openHere = useContext(OpenProductContext); const open = () => openHere ? openHere(p.id) : router.push(`/product/${p.id}`);
   return <View testID={`product-card-${id}`} style={[s.card, width ? { width } : s.fill]}>
     <View style={[s.imageWrap, { height: imageH }, !!accent && [s.standing, { boxShadow: popBase(BASE, accent) }]]}>
       <View pointerEvents="none" style={s.placeholder}><Icon name="image-outline" size={28} color="rgba(11,31,22,0.22)" /></View>
-      <Tap testID={`product-open-${id}`} accessibilityLabel={t('product.viewItem', { name: p.name })} onPress={() => router.push(`/product/${p.id}` as any)} style={s.imagePress} radius={16} glow={false} haptic={false}><Image testID={`product-image-${id}`} source={p.image} style={s.image} contentFit="cover" transition={150} /></Tap>
+      <Tap testID={`product-open-${id}`} accessibilityLabel={t('product.viewItem', { name: p.name })} onPress={open} style={s.imagePress} radius={16} glow={false} haptic={false}><Image testID={`product-image-${id}`} source={p.image} style={s.image} contentFit="cover" transition={150} cachePolicy="memory-disk" /></Tap>
       <HeartToggle testID={`save-product-${id}`} disabled={!ready} accessibilityLabel={isSaved ? t('product.unsaveItem', { name: p.name }) : t('product.saveItem', { name: p.name })} accessibilityState={{ selected: isSaved }} saved={isSaved} onToggle={() => { void toggleSaved(p.id).catch(() => {}); }} hitSlop={8} style={s.heart} size={19} color={colors.surface} savedColor={colors.onError} />
       {!!p.discount_pct && <View style={s.discount}><Text testID={`product-discount-${id}`} style={s.discountText}>{t('product.off', { pct: fmt.percent(p.discount_pct) })}</Text></View>}
       <View style={s.addDock}><AddToCart product={p} id={id} tint={accent ?? palette.color} /></View>
     </View>
-    <Pressable testID={`product-name-open-${id}`} accessibilityLabel={t('product.viewItemDetails', { name: p.name })} onPress={() => router.push(`/product/${p.id}` as any)} style={s.content}>
+    <Pressable testID={`product-name-open-${id}`} accessibilityLabel={t('product.viewItemDetails', { name: p.name })} onPress={open} style={s.content}>
       <View style={s.priceWrap}><Text testID={`product-price-${id}`} style={s.price}>{fmt.money(p.price)}</Text>{p.mrp > p.price && <Text testID={`product-mrp-${id}`} style={s.mrp}>{fmt.money(p.mrp)}</Text>}</View>
       <Text testID={`product-name-${id}`} numberOfLines={2} style={s.name}>{p.name}</Text>
       <Text testID={`product-weight-${id}`} numberOfLines={1} style={s.weight}>{p.weight}</Text>

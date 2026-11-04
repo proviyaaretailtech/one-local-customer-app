@@ -58,7 +58,7 @@ export default function RootLayout() {
             <CartProvider>
               <StatusBar style="dark" />
               {Platform.OS === "web" && <Head><title>OneLocal</title></Head>}
-              <CustomerProvider><ProfileLanguageSync /><AuthProvider><ProfileGate /><CompareProvider><AppFrame><AppShell><Stack screenLayout={screenFrame} screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }} /></AppShell><ComingSoonGate /><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CompareProvider></AuthProvider></CustomerProvider>
+              <CustomerProvider><ProfileLanguageSync /><AuthProvider><ProfileGate /><CompareProvider><AppFrame><AppShell><Stack screenLayout={screenFrame} screenOptions={{ headerShown: false, title: 'OneLocal', animation: 'ios_from_right', gestureEnabled: true, fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.surface } }}>{/* A sheet over the page it came from; it animates itself. */}<Stack.Screen name="product/[id]" options={{ presentation: 'containedTransparentModal', animation: 'none', gestureEnabled: false, contentStyle: { backgroundColor: 'transparent' } }} /></Stack></AppShell><ComingSoonGate /><LanguageFirstRun /><IntroSplash /><NetworkStatus /><PopupHost /><UpdateGate /></AppFrame></CompareProvider></AuthProvider></CustomerProvider>
             </CartProvider>
           </QueryClientProvider>
         </ErrorBoundary>

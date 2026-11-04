@@ -10,6 +10,7 @@ import { haptic } from '../../haptics';
 import { useMotionAllowed } from '../../motion';
 import { duration, reEasing, reSpring } from '../../motion-tokens';
 import { colors } from '../../theme';
+import { COMING_SOON_ALL } from '../../coming-soon-mode';
 
 const SPARKS = 6;
 
@@ -25,6 +26,8 @@ export function HeartToggle({ saved, onToggle, size = 17, color = colors.muted, 
   // views per heart that only a tap ever shows, and pay for them every time it opens.
   const [sparks, setSparks] = useState(false);
   const press = () => {
+    // Coming-soon build: nothing is saved or followed, so no celebration; the "coming soon" toast says why.
+    if (COMING_SOON_ALL) { onToggle(); return; }
     const saving = !saved;
     if (saving) haptic.add(); else haptic.remove();
     if (motion) {

@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next';
-import { useTranslation } from 'react-i18next';
 import { colors } from './theme';
 import { storePalette } from './store-palettes';
 export const departments = [
@@ -10,14 +9,17 @@ export const departments = [
   { id: 'book-it', label: 'Book It', icon: 'ticket-outline', color: colors.book, soft: colors.bookSoft, image: 'concert', route: '/book-it', title: 'Less scrolling.\nMore living.', subtitle: 'Movies, live music & little adventures.', eyebrow: 'MAKE ROOM FOR GOOD TIMES', filters: ['All', 'Movies', 'Events', 'Activities'], top: colors.bookTop, mid: colors.bookMid, fade: colors.bookFade }, // i18n-ignore: English fallback data; screens show departmentName(t, id) / departmentFilterLabel(t, filter)
 ] as const;
 export type DepartmentId = typeof departments[number]['id'];
+/** Each department's picture (Home's services, the Search and Discover chips), bundled so it shows offline and at once. */
+export const departmentArt: Record<DepartmentId, number> = {
+  food: require('../assets/images/departments/food.png'), grocery: require('../assets/images/departments/grocery.png'), shops: require('../assets/images/departments/shops.png'),
+  care: require('../assets/images/departments/care.png'), 'book-it': require('../assets/images/departments/book-it.png'),
+};
 const NAME_KEYS = { food: 'departments.food.name', grocery: 'departments.grocery.name', shops: 'departments.shops.name', care: 'departments.care.name', 'book-it': 'departments.bookIt.name' } as const;
 /** The department's name in the current language (the Care one keeps its line break). Unknown ids fall back to the English label. */
 export function departmentName(t: TFunction, id: string): string {
   const key = (NAME_KEYS as Record<string, (typeof NAME_KEYS)[DepartmentId]>)[id];
   return key ? t(key) : departments.find(d => d.id === id)?.label ?? id;
 }
-/** const name = useDepartmentName(); name('food') */
-export function useDepartmentName() { const { t } = useTranslation(); return (id: string) => departmentName(t, id); }
 // The filter chips keep their English word as the CODE (it filters the catalogue and builds test ids); only the shown label is translated.
 const FILTER_KEYS = {
   Burgers: 'departments.filters.burgers', Pizza: 'departments.filters.pizza', Coffee: 'departments.filters.coffee', Chicken: 'departments.filters.chicken',

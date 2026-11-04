@@ -113,6 +113,20 @@ asks for it.
   as their screens are revamped.
 - **The old copy goes in the same change.** A revamped screen leaves no unused styles, helpers or components behind.
 
+### Picture icons (the tiles on Home, Categories, Food and Book It)
+
+All 43 follow one look (2026-11-04), so a new one must too:
+
+- A real studio product photo, not a 3D render: true materials (printed film, paper, glass, metal, fabric).
+- Two objects, three at most: one behind, one in front overlapping it a little, on one baseline, grouped about as tall
+  as wide.
+- Front three-quarter view from slightly above, long lens; soft key light from the upper left; natural, slightly warm
+  colour.
+- Transparent background with no floor or baked shadow (`IconTile` draws the shadow); clean edges, no white halo.
+- 192 px PNG, the group fitted to 94% of the square and centred. Brand packs are current and spelled right.
+- Made with `gpt_image_2_5` at medium quality. Ask for "a compact, roughly square grouping": wide groups (Dairy &
+  Bread, Dining) come out smaller in the tile.
+
 ## Data rules (so components plug into the backend)
 
 - Domain components take the API's own types from `src/api.ts` and do not reshape them. If the UI needs a value the

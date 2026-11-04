@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/src/ui/text';
-import { gridColumns, useAppDimensions } from '../layout';
+import { gridColumns, useAppDimensions, useLineHeight } from '../layout';
 import { Image } from 'expo-image';
 import Icon from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
@@ -47,14 +47,14 @@ export const BrandRail = memo(function BrandRail({ brands, scope, onSelect, acti
   // While the coming-soon switch is on nothing can be ordered, so every brand is marked SOON; otherwise only brands with nothing listed yet.
   const soon = (id: string) => COMING_SOON_ALL || (!!data && !data.products.some(p => p.brand_id === id || p.store_id === id));
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandRail}>
-    {brands.map(b => <Tap testID={`${scope}-brand-${b.id}`} key={b.id} onPress={() => onSelect ? onSelect(b.id) : router.push(`/brand/${b.id}` as any)} style={styles.brandItem}>
+    {brands.map(b => <Tap testID={`${scope}-brand-${b.id}`} key={b.id} onPress={() => onSelect ? onSelect(b.id) : router.push(`/brand/${b.id}`)} style={styles.brandItem}>
       <View style={[styles.brandCircle, !hasLogo(b) && { backgroundColor: monogramTint(b.name)[0] }, active === b.id && styles.selectedBrand]}>{hasLogo(b) ? <Image testID={`${scope}-brand-logo-${b.id}`} source={b.logo} contentFit="contain" style={styles.brandLogo} onError={() => setBroken(prev => new Set(prev).add(b.id))} /> : <Text testID={`${scope}-brand-wordmark-${b.id}`} style={[styles.brandMonogram, { color: monogramTint(b.name)[1] }]} numberOfLines={1} accessibilityLabel={b.name}>{monogram(b.name)}</Text>}{soon(b.id) && <View testID={`${scope}-brand-soon-${b.id}`} style={styles.soon}><Text style={styles.soonText}>{t('popups.comingSoon.soon')}</Text></View>}</View><Text testID={`${scope}-brand-name-${b.id}`} style={styles.brandName} numberOfLines={2}>{b.name}</Text>
     </Tap>)}
   </ScrollView>;
 });
 export const CategoryRail = memo(function CategoryRail({ categories, scope }: { categories: Category[]; scope: string }) {
-  const router = useRouter();
-  return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{categories.map(c => <Tap key={c.id} testID={`${scope}-category-${c.id}`} onPress={() => router.push(`/category/${c.id}` as any)} style={styles.category}><Image source={c.image} style={styles.categoryImage} contentFit="cover" /><Text style={styles.categoryName} numberOfLines={2}>{c.name}</Text></Tap>)}</ScrollView>;
+  const router = useRouter(); const lineHeight = useLineHeight();
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>{categories.map(c => <Tap key={c.id} testID={`${scope}-category-${c.id}`} onPress={() => router.push(`/category/${c.id}`)} style={styles.category}><Image source={c.image} style={styles.categoryImage} contentFit="cover" /><Text style={[styles.categoryName, { lineHeight: lineHeight(13, 16) }]} numberOfLines={2}>{c.name}</Text></Tap>)}</ScrollView>;
 });
 export function LoadState({ error, retry }: { error?: boolean; retry?: () => void }) {
   const { t } = useTranslation();

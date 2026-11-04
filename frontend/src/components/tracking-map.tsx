@@ -14,7 +14,6 @@ import { PinBadge, RiderBadge, StaleHint, type TrackingMapProps } from './tracki
 
 export type { TrackingMapProps } from './tracking-parts';
 /** Phones always have a map; whether Android's tiles load depends on the build's Maps SDK key. */
-export const trackingMapAvailable = true;
 
 const EDGE = { top: 56, right: 48, bottom: 56, left: 48 };
 

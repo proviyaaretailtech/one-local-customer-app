@@ -8,7 +8,7 @@ import { IconTile } from '@/src/ui/icon-tile';
 import { Tap } from '@/src/components/tap';
 import { colors } from '@/src/theme';
 import { CityScroll } from '@/src/motion';
-import { useAppDimensions } from '@/src/layout';
+import { useAppDimensions, useLineHeight } from '@/src/layout';
 import { useScreenPalette } from '@/src/use-screen-path';
 import { BrandHeader } from '@/src/components/brand-header';
 import { CATEGORY_GROUPS } from '@/src/shop-categories';
@@ -19,7 +19,7 @@ const GAP = 12;
 const COLUMNS = 4;
 
 export default function Categories() {
-  const router = useRouter(); const { t } = useTranslation(); const palette = useScreenPalette(); const { width } = useAppDimensions();
+  const router = useRouter(); const { t } = useTranslation(); const palette = useScreenPalette(); const { width } = useAppDimensions(); const lineHeight = useLineHeight();
   const cell = (width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
   return <CityScroll testID="categories-screen" bleed showsVerticalScrollIndicator={false} contentContainerStyle={s.content}>
     {/* A light wash of the page's own colour (the purple the dock picks Categories out in), fading to white. */}
@@ -30,9 +30,9 @@ export default function Categories() {
       <View style={s.grid}>
         {group.items.map(item => {
           const name = t(item.name);
-          return <Tap key={item.id} testID={`category-tile-${item.id}`} accessibilityRole="button" accessibilityLabel={name} onPress={() => router.push(`/category/shops/${item.category}` as never)} style={[s.cell, { width: cell }]}>
+          return <Tap key={item.id} testID={`category-tile-${item.id}`} accessibilityRole="button" accessibilityLabel={name} onPress={() => router.push(`/category/shops/${item.category}`)} style={[s.cell, { width: cell }]}>
             <IconTile source={item.icon} variant="mint" />
-            <Text numberOfLines={2} style={s.name}>{name}</Text>
+            <Text numberOfLines={2} style={[s.name, { lineHeight: lineHeight(12, 15) }]}>{name}</Text>
           </Tap>;
         })}
       </View>

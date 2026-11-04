@@ -27,6 +27,7 @@ import { departmentName } from '../departments';
 import { haptic } from '../haptics';
 import { useMotionAllowed } from '../motion';
 import { useIsDesktop } from '../layout';
+import { duration } from '../motion-tokens';
 
 const tabs = [
   { id: 'home', path: '/', icon: House },
@@ -79,6 +80,9 @@ export function BottomNavigation() {
       if (success && i >= 0) { scrubbed.value = 1; scheduleOnRN(scrubOpen, i); }
     });
   const onLayout = (e: LayoutChangeEvent) => { slot.value = e.nativeEvent.layout.width / tabs.length; };
+  // The product sheet (app/product/[id].tsx) floats over the page with its own add-to-cart bar, so the dock fades away.
+  const away = path.startsWith('/product/');
+  const fade = useAnimatedStyle(() => ({ opacity: withTiming(away ? 0 : 1, { duration: duration.base }) }), [away]);
 
   // Once the app has settled, the other tabs are built in the background, one at a time while JavaScript is idle, so the
   // first tap on each finds it ready instead of building it then. Not Discover: building it starts its videos.
@@ -93,9 +97,9 @@ export function BottomNavigation() {
     return () => { clearTimeout(timer); if (idle !== undefined) g.cancelIdleCallback?.(idle); };
   }, [desktop, router]);
 
-  // Full-screen flows. Product pages keep the dock: their sticky add-to-bag bar sits just above it.
+  // Full-screen flows.
   if (desktop || ['/location', '/address-map', '/address-form', '/sign-in', '/welcome'].includes(path)) return null;
-  return <>
+  return <Animated.View pointerEvents={away ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill, fade]}>
     {/* Starts clear well above the dock (the Discover button pokes up ~30pt) and turns white towards the screen edge. */}
     {!dark && <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)']} style={[styles.fade, { height: dockBottom(insets.bottom) + DOCK_HEIGHT + 40 }]} />}
     <View pointerEvents="box-none" style={[styles.float, { bottom: dockBottom(insets.bottom) }]}>
@@ -104,7 +108,7 @@ export function BottomNavigation() {
           {/* Frosted glass: the page stays readable through the dock without competing with the icons. */}
           <BlurView pointerEvents="none" intensity={60} tint={dark ? 'dark' : 'light'} style={[StyleSheet.absoluteFill, styles.glass]} />
           {tabs.map((tab, i) => tab.id === 'discover'
-            ? <View key={tab.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, dark && styles.light]}>{labels.discover}</Text></View>
+            ? <View key={tab.id} style={styles.item}><View style={[styles.center, dark && styles.darkCenter]}><OneButton selected={path === '/discover' || dark} onDiscover={() => router.navigate('/(tabs)/discover')} onAssistant={() => router.push('/assistant')} /></View><Text testID="discover-tab-label" style={[styles.label, styles.discoverLabel, dark && styles.light]}>{labels.discover}</Text></View>
             : <Tap key={tab.id} testID={`tab-${tab.id}`} accessibilityRole="tab" accessibilityLabel={labels[tab.id]} accessibilityState={{ selected: selected(tab.id, tab.path) }} glow={false}
                 onPress={() => { if (!scrubbed.value) open(i); }} style={styles.item}>
                 <DockIcon index={i} finger={finger} slot={slot} motion={motion} selected={selected(tab.id, tab.path)}>
@@ -115,7 +119,7 @@ export function BottomNavigation() {
         </View>
       </GestureDetector>
     </View>
-  </>;
+  </Animated.View>;
 }
 
 function DockIcon({ index, finger, slot, motion, selected, children }: { index: number; finger: SharedValue<number>; slot: SharedValue<number>; motion: boolean; selected: boolean; children: React.ReactNode }) {
@@ -151,5 +155,7 @@ const styles = StyleSheet.create({
   glass: { borderRadius: 33, overflow: 'hidden' },
   item: { flex: 1, minHeight: 45, alignItems: 'center', gap: 5 }, label: { fontSize: 10, fontWeight: '500', color: colors.muted }, active: { color: colors.forest, fontWeight: '700' },
   center: { marginTop: -30, marginBottom: -5, borderWidth: 6, borderColor: colors.surface, borderRadius: 40, backgroundColor: colors.surface },
+  // Up over the button's white ring (the dock's own white), as close to the other labels as it goes clear of the button.
+  discoverLabel: { marginTop: -8 },
   dark: { backgroundColor: 'rgba(26,26,26,0.92)', borderColor: 'rgba(255,255,255,0.08)' }, darkCenter: { borderColor: colors.brandPrimary, backgroundColor: colors.brandPrimary }, light: { color: colors.surface },
 });

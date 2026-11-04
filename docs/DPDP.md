@@ -238,8 +238,9 @@ Owners: **Founder** (business and legal decisions), **Lawyer** (review), **Engin
 - **The law asks:** transfers abroad are allowed except to countries the government restricts by
   notification (none that we know of so far), subject to any requirements it sets.
 - **We now do:** the database and sign-in are in Supabase's **Mumbai** region. The notice lists
-  what may leave India: Google Maps queries, OpenStreetMap town-sized map areas (Europe; no name or
-  phone), and the SMS provider once chosen.
+  what may leave India: Google Maps queries, the phone's own map service (Apple Maps on iPhone, Google
+  on Android) naming the area when someone taps "Use current location", OpenStreetMap town-sized map
+  areas (Europe; no name or phone), and the SMS provider once chosen.
 - **Missing:** confirm the API host's region (Vercel or a container host; choose Mumbai), the SMS
   provider's region, and where Supabase support or backups may be accessed from.
 - **Owner:** Founder, Engineering.

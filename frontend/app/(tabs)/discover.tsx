@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { View, StyleSheet, FlatList, ScrollView, Platform, ViewToken } from 'react-native';
+import { View, StyleSheet, FlatList, Platform, ViewToken } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mediaUrl, type Reel } from '@/src/api';
+import type { Reel } from '@/src/api';
 import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,10 +14,11 @@ import { useDiscovery } from '@/src/use-discovery';
 import { LoadState } from '@/src/components/catalog-sections';
 import { OneGlyph } from '@/src/components/one-button';
 import { Tap } from '@/src/components/tap';
+import { ChipRow } from '@/src/components/chip-row';
 import { MutedVideo } from '@/src/components/muted-video';
 import { FeaturedReelsIntro } from '@/src/components/featured-reels-intro';
 import { useFormat, useTranslation } from '@/src/i18n';
-import { departmentName } from '@/src/departments';
+import { departmentArt, departmentName } from '@/src/departments';
 import { useFeatures } from '@/src/features';
 import { useAuth } from '@/src/auth';
 import { SoonBadge } from '@/src/components/soon-badge';
@@ -30,16 +31,18 @@ const SIDE = 10; const GAP = 6;
 // The day the featured reels intro last played for an account (`<key>:<account id>`, signed-out guests share 'guest'):
 // it plays the first time each account opens Discover each day.
 const INTRO_KEY = 'onelocal.discover.featured-intro.v1';
-// Each filter's 3D icon from Home's services ('Reels' gets a play icon instead, 'All' none).
-const FILTER_ICONS: Record<string, string> = { Food: 'icon-food-v4', Fresh: 'icon-grocery-v4', Care: 'icon-care-v4' };
+// Each filter's picture from Home's services ('Reels' gets a play icon instead, 'All' none).
+const FILTER_ICONS: Record<string, number> = { Food: departmentArt.food, Fresh: departmentArt.grocery, Care: departmentArt.care };
 
 export default function Discover() {
   const focused = useIsFocused(); const features = useFeatures(); const motion = useMotionAllowed(); const [visible, setVisible] = useState<string[]>([]); // Reduce Motion: tiles stay still photos
   const [intro, setIntro] = useState(false);
-  const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken<Reel>[] }) => {
-    setVisible(viewableItems.filter(v => v.isViewable && !!v.item?.video).map(v => v.item.id).slice(0, MAX_PLAYING));
-  }).current;
-  const viewability = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const [onViewable] = useState(() => ({ viewableItems }: { viewableItems: ViewToken<Reel>[] }) => {
+    const next = viewableItems.filter(v => v.isViewable && !!v.item?.video).map(v => v.item.id).slice(0, MAX_PLAYING);
+    setVisible(prev => (prev.join() === next.join() ? prev : next));
+  });
+  // A tile has to stay in view a moment before its video starts, so a fast scroll does not spin players up and down.
+  const [viewability] = useState(() => ({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }));
   // The tiles wait while the intro plays over them.
   const playing = useCallback((id: string) => motion && focused && !intro && visible.includes(id), [motion, focused, intro, visible]);
   const { data, isError, refetch } = useDiscovery(); const [filter, setFilter] = useState('All');
@@ -67,14 +70,13 @@ export default function Discover() {
     <LinearGradient pointerEvents="none" colors={[colors.cityMid, colors.cityFade, colors.surface]} locations={[0, 0.5, 1]} style={[styles.wash, { height: insets.top + 260 }]} />
     <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
       <View style={styles.headCopy}><Text testID="discover-title" style={styles.title}>{t('discover.title')}<Text style={styles.green}>.</Text></Text><Text testID="discover-subtitle" style={styles.subtitle}>{t('discover.subtitle')}</Text></View>
-      <Tap testID="discover-search" accessibilityRole="button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search' as never)} style={styles.round}><Icon name="search-outline" size={19} color={colors.onSurface} /></Tap>
-      <Tap testID="discover-ai-button" accessibilityRole="button" accessibilityLabel={t('discover.askLabel')} onPress={() => router.push('/assistant' as never)} style={styles.ai}><OneGlyph size={20} /><Text style={styles.aiLabel}>{t('discover.askAi')}</Text>{!features.assistant && <SoonBadge testID="discover-ai-soon" />}</Tap>
+      <Tap testID="discover-search" accessibilityRole="button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.round}><Icon name="search-outline" size={19} color={colors.onSurface} /></Tap>
+      <Tap testID="discover-ai-button" accessibilityRole="button" accessibilityLabel={t('discover.askLabel')} onPress={() => router.push('/assistant')} style={styles.ai}><OneGlyph size={20} /><Text style={styles.aiLabel}>{t('discover.askAi')}</Text>{!features.assistant && <SoonBadge testID="discover-ai-soon" />}</Tap>
     </View>
-    <ScrollView horizontal style={styles.filters} contentContainerStyle={styles.filterContent} showsHorizontalScrollIndicator={false}>{['All', 'Reels', 'Food', 'Fresh', 'Care'].map(f => { const on = filter === f;
-      return <Tap key={f} testID={`discover-filter-${f.toLowerCase()}`} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setFilter(f)} style={[styles.chip, f !== 'All' && styles.chipWithIcon, on && styles.selected]}>
-        {f === 'Reels' ? <View style={[styles.play, on && styles.playOn]}><Icon name="play" size={12} color={on ? colors.forest : colors.surface} /></View> : !!FILTER_ICONS[f] && <Image source={mediaUrl(FILTER_ICONS[f])} style={styles.chipIcon} contentFit="contain" cachePolicy="memory-disk" />}
-        <Text style={[styles.chipText, on && styles.selectedText]}>{filterLabel[f]}</Text>
-      </Tap>; })}</ScrollView>
+    <ChipRow selected={filter} onSelect={setFilter} style={styles.filters} contentContainerStyle={styles.filterContent} chips={['All', 'Reels', 'Food', 'Fresh', 'Care'].map(f => ({
+      id: f, testID: `discover-filter-${f.toLowerCase()}`, label: filterLabel[f],
+      lead: f === 'All' ? undefined : f === 'Reels' ? (on: boolean) => <View style={[styles.play, on && styles.playOn]}><Icon name="play" size={12} color={on ? colors.forest : colors.surface} /></View> : () => <Image source={FILTER_ICONS[f]} style={styles.chipIcon} contentFit="contain" cachePolicy="memory-disk" />,
+    }))} />
     {!data ? <LoadState error={isError} retry={refetch} /> : <FlatList testID="discover-grid" key={columns} numColumns={columns} data={filtered} keyExtractor={r => r.id} showsVerticalScrollIndicator={false} onViewableItemsChanged={onViewable} viewabilityConfig={viewability} contentContainerStyle={styles.grid} columnWrapperStyle={styles.gridRow} ListHeaderComponent={<Text testID="discover-content-notice" style={styles.notice}>{t('discover.notice')}</Text>} ListEmptyComponent={<Text testID="discover-empty" style={styles.empty}>{t('discover.empty')}</Text>} renderItem={({ item: r, index }) => <Tap testID={`discover-tile-${r.id}`} accessibilityLabel={r.video ? t('discover.openReel', { name: r.product.name }) : t('discover.openPhotoAd', { name: r.product.name })} onPress={() => router.push({ pathname: '/reels', params: { id: r.id } } as never)} style={[styles.tile, { width: tileWidth, height: tileWidth * 1.6 }]}>
       <Image testID={`discover-image-${r.id}`} source={r.product.image} contentFit="cover" style={StyleSheet.absoluteFill} transition={180} />
       {!!r.video && playing(r.id) && <MutedVideo source={Platform.OS === 'web' ? r.video_web : r.video} />}
@@ -99,15 +101,9 @@ const styles = StyleSheet.create({
   aiLabel: { color: colors.surface, fontSize: 13, fontWeight: '800' },
   filters: { flexGrow: 0, flexShrink: 0 },
   filterContent: { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 42, paddingHorizontal: 16, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipWithIcon: { paddingLeft: 6, paddingRight: 14 },
-  // The picked filter fills with the brand green, on a darker base.
-  selected: { backgroundColor: colors.forest, borderColor: colors.forest, boxShadow: popBase(3, colors.forestDeep) },
   chipIcon: { width: 30, height: 30 },
   play: { width: 26, height: 26, marginLeft: 2, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.forest },
   playOn: { backgroundColor: colors.electricLime },
-  chipText: { color: colors.onSurface, fontSize: 13, fontWeight: '700' },
-  selectedText: { color: colors.surface },
   grid: { paddingHorizontal: SIDE, paddingBottom: 135 },
   gridRow: { gap: GAP, marginBottom: GAP },
   tile: { backgroundColor: colors.cream, overflow: 'hidden', borderRadius: radius.md },

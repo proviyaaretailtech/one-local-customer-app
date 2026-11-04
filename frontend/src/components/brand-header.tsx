@@ -1,7 +1,8 @@
 // The top of Home and Categories: the brand, the fastest delivery time, the location, wallet and profile, then search and
 // the Local / National switch. `tone`: 'photo' is white glass over a backdrop (Home), 'light' is soft panes on a plain
-// page (Categories). It starts below the status bar, and its heights are fixed so where its search bar sits
-// (HEADER_COMPACT_AT) is known before layout: the shell's compact search bar takes over from there.
+// page (Categories). `origin`: whether the page lists products, so the switch has something to filter (Book It does
+// not); without it the search bar takes the whole row. It starts below the status bar, and its heights are fixed so where
+// its search bar sits (HEADER_COMPACT_AT) is known before layout: the shell's compact search bar takes over from there.
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +34,7 @@ function HeaderIcon({ testID, label, onPress, tone, children, soon }: { testID: 
   </Tap>;
 }
 
-export function BrandHeader({ tone }: { tone: Tone }) {
+export function BrandHeader({ tone, origin = true }: { tone: Tone; origin?: boolean }) {
   const router = useRouter(); const insets = useSafeAreaInsets(); const { t } = useTranslation(); const fmt = useFormat();
   const { location, edit } = useDeliveryLocation(); const features = useFeatures(); const desktop = useIsDesktop(); const fastest = useFastestEta();
   const onPhoto = tone === 'photo'; const ink = onPhoto ? colors.surface : colors.onSurface;
@@ -54,13 +55,13 @@ export function BrandHeader({ tone }: { tone: Tone }) {
       </View>
       {/* Desktop has these in its top menu. */}
       {!desktop && <View style={s.actions}>
-        <HeaderIcon testID="header-wallet-button" label={t('shell.wallet')} tone={tone} onPress={() => router.navigate('/wallet' as never)} soon={!features.wallet}><Wallet size={19} color={ink} strokeWidth={1.8} /></HeaderIcon>
-        <HeaderIcon testID="header-profile-btn" label={t('shell.profile')} tone={tone} onPress={() => router.navigate('/account' as never)}><User size={19} color={ink} strokeWidth={1.8} /></HeaderIcon>
+        <HeaderIcon testID="header-wallet-button" label={t('shell.wallet')} tone={tone} onPress={() => router.navigate('/wallet')} soon={!features.wallet}><Wallet size={19} color={ink} strokeWidth={1.8} /></HeaderIcon>
+        <HeaderIcon testID="header-profile-btn" label={t('shell.profile')} tone={tone} onPress={() => router.navigate('/account')}><User size={19} color={ink} strokeWidth={1.8} /></HeaderIcon>
       </View>}
     </View>
     <View style={s.searchRow}>
-      <SearchBar testID="header-search-button" tone={tone} placeholder={t('home.hero.searchPlaceholder')} accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search' as never)} style={s.search} />
-      <OriginToggle tone={tone} />
+      <SearchBar testID="header-search-button" tone={tone} placeholder={t('home.hero.searchPlaceholder')} accessibilityLabel={t('shell.searchProducts')} onPress={() => router.navigate('/search')} style={s.search} />
+      {origin && <OriginToggle tone={tone} />}
     </View>
   </View>;
 }

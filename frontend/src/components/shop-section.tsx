@@ -34,7 +34,7 @@ const ShopSection = memo(function ShopSection({ store, products, names, scope, t
   const kinds = useMemo(() => Array.from(new Map(products.map(p => [p.category_id, p.image]))), [products]);
   const shown = useMemo(() => (picked ? products.filter(p => p.category_id === picked) : products).slice(0, RAIL), [products, picked]);
   return <View testID={`${scope}-section`} style={[s.card, { backgroundColor: wash }]}>
-    <Tap testID={`${scope}-open`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}` as never)} style={s.head}>
+    <Tap testID={`${scope}-open`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}`)} style={s.head}>
       <View style={s.logoTile}>{!!store.logo && <Image source={store.logo} style={s.logo} contentFit="contain" />}</View>
       <View style={s.copy}>
         <Text numberOfLines={1} style={[s.name, { color: ink }]}>{store.name}</Text>

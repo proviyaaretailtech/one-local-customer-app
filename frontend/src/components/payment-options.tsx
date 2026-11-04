@@ -1,13 +1,14 @@
+import type { ComponentProps } from 'react';
 import type { ParseKeys } from 'i18next';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/src/ui/text';
 import Icon from '@react-native-vector-icons/ionicons';
 import { PaymentMethod, UpiApp } from '../customer';
-import { colors } from '../theme';
+import { colors, radius, soft } from '../theme';
 import { useFeatures } from '../features';
 import { paymentMethodKey, t as translate, useTranslation } from '@/src/i18n';
 // The option rows hold catalogue KEYS, not words: the words are looked up while rendering, in the current language.
-export const paymentOptions: { id: PaymentMethod; title: ParseKeys; subtitle: ParseKeys; icon: string; onlineOnly?: boolean }[] = [
+export const paymentOptions: { id: PaymentMethod; title: ParseKeys; subtitle: ParseKeys; icon: ComponentProps<typeof Icon>['name']; onlineOnly?: boolean }[] = [
   { id: 'upi', title: 'payment.upi.title', subtitle: 'payment.upi.sub', icon: 'phone-portrait-outline' },
   { id: 'card', title: 'payment.card.title', subtitle: 'payment.card.sub', icon: 'card-outline' },
   { id: 'netbanking', title: 'payment.netbanking.title', subtitle: 'payment.netbanking.sub', icon: 'business-outline' },
@@ -34,6 +35,6 @@ export function PaymentOptions({ value, onChange, scope, disabled }: { value: Pa
   const { online_payments } = useFeatures();
   const { t } = useTranslation();
   const shown = online_payments || value === 'cod' ? value : 'cod';
-  return <View testID={`${scope}-options`} style={s.options}>{paymentOptions.filter(p => online_payments || !p.onlineOnly).map(p => { const soon = p.id !== 'cod' && !online_payments; return <Pressable key={p.id} testID={`${scope}-method-${p.id}`} accessibilityRole="radio" accessibilityState={{ checked: shown === p.id, disabled: soon }} disabled={disabled || soon} onPress={() => onChange(p.id)} style={({ pressed }) => [s.option, shown === p.id && s.selected, soon && s.soonOption, pressed && s.pressed]}><View style={s.icon}><Icon name={p.icon as any} size={24} color={colors.forest} /></View><View style={s.copy}><Text testID={`${scope}-label-${p.id}`} style={s.title}>{t(p.title)}</Text><Text style={s.sub}>{soon ? t('payment.comingSoon') : t(p.subtitle)}</Text></View>{soon ? <View style={s.soon}><Text style={s.soonText}>{t('payment.soonBadge')}</Text></View> : <Icon name={shown === p.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.forest} />}</Pressable>; })}</View>;
+  return <View testID={`${scope}-options`} style={s.options}>{paymentOptions.filter(p => online_payments || !p.onlineOnly).map(p => { const soon = p.id !== 'cod' && !online_payments; return <Pressable key={p.id} testID={`${scope}-method-${p.id}`} accessibilityRole="radio" accessibilityState={{ checked: shown === p.id, disabled: soon }} disabled={disabled || soon} onPress={() => onChange(p.id)} style={({ pressed }) => [s.option, shown === p.id && s.selected, soon && s.soonOption, pressed && s.pressed]}><View style={s.icon}><Icon name={p.icon} size={22} color={colors.forest} /></View><View style={s.copy}><Text testID={`${scope}-label-${p.id}`} style={s.title}>{t(p.title)}</Text><Text style={s.sub}>{soon ? t('payment.comingSoon') : t(p.subtitle)}</Text></View>{soon ? <View style={s.soon}><Text style={s.soonText}>{t('payment.soonBadge')}</Text></View> : <Icon name={shown === p.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.forest} />}</Pressable>; })}</View>;
 }
-const s = StyleSheet.create({ options: { gap: 12 }, option: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border }, selected: { borderColor: colors.forest, backgroundColor: colors.limeSoft }, soonOption: { opacity: 0.6 }, soon: { backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }, soonText: { fontSize: 9, fontWeight: '800', color: colors.muted, letterSpacing: 1 }, icon: { width: 40, height: 44, justifyContent: 'center' }, copy: { flex: 1 }, title: { fontSize: 14, fontWeight: '700', color: colors.onSurface }, sub: { fontSize: 11, color: colors.muted, lineHeight: 17, marginTop: 4 }, pressed: { opacity: 0.65 } });
+const s = StyleSheet.create({ options: { gap: 12 }, option: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, borderWidth: 1.5, borderColor: colors.surface, boxShadow: soft.lifted }, selected: { borderColor: colors.forest, backgroundColor: colors.limeSoft }, soonOption: { opacity: 0.6 }, soon: { backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }, soonText: { fontSize: 9, fontWeight: '800', color: colors.muted, letterSpacing: 1 }, icon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.mintTile }, copy: { flex: 1 }, title: { fontSize: 15, fontWeight: '700', color: colors.onSurface }, sub: { fontSize: 12, color: colors.muted, lineHeight: 17, marginTop: 2 }, pressed: { opacity: 0.65 } });

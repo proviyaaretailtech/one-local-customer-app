@@ -9,9 +9,10 @@ export function MutedVideo({ source }: { source: string }) {
   const view = useRef<VideoView>(null); const [shown, setShown] = useState(false);
   const player = useVideoPlayer(source, p => { p.loop = true; p.muted = true; p.timeUpdateEventInterval = 0.5; });
   useEffect(() => {
+    if (shown) return;
     const tick = player.addListener('timeUpdate', e => { if (e.currentTime > 0.2) setShown(true); });
     return () => tick.remove();
-  }, [player]);
+  }, [player, shown]);
   useEffect(() => {
     // Web: play() through the element so a cancelled play (scrolling past) is not reported as an error.
     // The element is not attached on the first pass, so try again once the video is ready to play.
@@ -24,7 +25,8 @@ export function MutedVideo({ source }: { source: string }) {
     // Android releases the player before this cleanup runs on unmount; pausing a released player throws.
     return () => { ready.remove(); try { player.pause(); } catch { /* already released */ } };
   }, [player]);
-  return <VideoView ref={view} player={player} nativeControls={false} contentFit="cover" style={[StyleSheet.absoluteFill, s.video, { opacity: shown ? 1 : 0 }]} pointerEvents="none" />;
+  // Android: a texture view, so the tile's rounded corners and the fade-in apply to the video too.
+  return <VideoView ref={view} player={player} nativeControls={false} surfaceType="textureView" contentFit="cover" style={[StyleSheet.absoluteFill, s.video, { opacity: shown ? 1 : 0 }]} pointerEvents="none" />;
 }
 
 const s = StyleSheet.create({ video: { width: '100%', height: '100%' } });

@@ -25,12 +25,15 @@ const motionSnapshot = () => !reduced && active;
 export function useMotionAllowed() {
   return useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
 }
+/** The same answer, read at the moment it is needed (a press) without subscribing: every button on every kept tab
+ *  subscribing made each trip to the background and back re-render all of them. */
+export function motionAllowedNow() { watchMotion(); return motionSnapshot(); }
 type ScrollContextValue = { y: Animated.Value; headerHeight: number; setHeaderHeight: (v: number) => void; scrollRef: React.RefObject<ScrollView | null> };
 const ScrollContext = createContext<ScrollContextValue | null>(null);
 // One per screen (its frame in src/components/app-shell.tsx provides it): each page keeps its own scroll position, so its
 // header and compact bar stay as they are while another page comes in over it or fades in beside it.
 export function CityMotionProvider({ children }: { children: React.ReactNode }) {
-  const y = useRef(new Animated.Value(0)).current;
+  const [y] = useState(() => new Animated.Value(0));
   const [headerHeight, setHeaderHeight] = useState(236);
   const scrollRef = useRef<ScrollView>(null);
   const value = useMemo(() => ({ y, headerHeight, setHeaderHeight, scrollRef }), [y, headerHeight]);

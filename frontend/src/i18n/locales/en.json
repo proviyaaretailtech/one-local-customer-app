@@ -148,7 +148,7 @@
       "town": "{{town}}, at your door"
     },
     "heroSub": {
-      "checkout": "Your bag is saved. Sign in once and we’ll take you straight back to pay.",
+      "checkout": "Your cart is saved. Sign in once and we’ll take you straight back to pay.",
       "default": "Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive.",
       "signin": "Welcome back. Local stores, fresh picks, real people.",
       "signup": "Local stores. Fresh picks. Real people. Delivered to you."
@@ -330,7 +330,8 @@
       "save": "Save number",
       "saved": "Number saved.",
       "failed": "Couldn’t save your number. Check your connection and try again."
-    }
+    },
+    "title": "Profile"
   },
   "profile": {
     "title": "Make it yours",
@@ -364,7 +365,8 @@
       "phone": "Please enter a valid 10-digit Indian mobile number.",
       "birthday": "Enter your birthday as DD/MM, for example 14/08.",
       "save": "Could not save your profile. Please try again."
-    }
+    },
+    "removePhoto": "Remove photo"
   },
   "help": {
     "title": "A little help, right here",
@@ -382,10 +384,10 @@
     "requestTitle": "Leave a support request",
     "serviceNotice": "Your request is saved in OneLocal. Live chat, email delivery and response times are not connected yet. Do not include passwords, card details or sensitive information.",
     "topic": {
-      "order": "order",
-      "payment": "payment",
-      "profile": "profile",
-      "other": "other"
+      "order": "Order",
+      "payment": "Payment",
+      "profile": "Profile",
+      "other": "Other"
     },
     "referenceLabel": "Order reference, optional",
     "referencePlaceholder": "Order reference · optional",
@@ -462,10 +464,6 @@
   },
   "product": {
     "loadFailed": "Couldn’t load this product.",
-    "pauseImages": "Pause images",
-    "playImages": "Play images",
-    "pause": "Pause",
-    "watch": "Watch",
     "moreInCategory": "More in {{name}}",
     "off": "{{pct}} OFF",
     "gstAdded": "5% GST added at checkout",
@@ -482,14 +480,12 @@
     "moreLikeThis": "More like this",
     "footerTagline": "A little closer to your city",
     "footerSub": "{{name}} · delivered across Latur",
-    "openCart": "Open cart",
-    "bagSummary": "{{n}} in bag · {{price}}",
-    "viewBag": "View bag →",
+    "bagSummary": "{{n}} in cart · {{price}}",
+    "viewBag": "View cart →",
     "mrpPrice": "MRP {{price}}",
-    "addToBag": "Add to bag",
+    "addToBag": "Add to cart",
     "removeOne": "Remove one",
     "addOneMore": "Add one more",
-    "closeVideo": "Close video",
     "viewItem": "View {{name}}",
     "viewItemDetails": "View {{name}} details",
     "saveItem": "Save {{name}}",
@@ -510,7 +506,12 @@
       "mrp": "MRP",
       "youSave": "You save",
       "taxes": "Taxes"
-    }
+    },
+    "share": "Share",
+    "shareMessage": "Found on OneLocal: {{name}} — {{link}}",
+    "linkCopied": "Link copied",
+    "shareFailed": "Could not share this item. Please try again.",
+    "inCart": "in cart"
   },
   "store": {
     "loading": "Loading store...",
@@ -611,7 +612,7 @@
     "pctOff": "{{pct}} off",
     "removeItem": "Remove {{name}}",
     "bestValue": "BEST VALUE",
-    "inBagAdd": "{{n}} in bag · add",
+    "inBagAdd": "{{n}} in cart · add",
     "title": "Compare",
     "clearAll": "Clear all",
     "subSame": "Best value is the lowest price for the same amount.",
@@ -706,11 +707,11 @@
     "openSettings": "Open Settings",
     "noPlaces": "No places found. Check the spelling, or try the nearest town.",
     "section": {
-      "streets": "ADDRESSES & LANDMARKS",
-      "saved": "SAVED ADDRESSES",
-      "recent": "RECENT PLACES",
-      "live": "WE DELIVER IN",
-      "popular": "POPULAR CITIES"
+      "streets": "Addresses & landmarks",
+      "saved": "Saved addresses",
+      "recent": "Recent places",
+      "live": "We deliver in",
+      "popular": "Popular cities"
     },
     "useCurrent": "Use current location",
     "addAddress": "Add delivery address",
@@ -738,7 +739,9 @@
       "title": "Pick your city",
       "sub": "Location is off, no problem. Choose a city to start browsing.",
       "search": "Search another town"
-    }
+    },
+    "useCurrentSub": "Find the area you’re in right now",
+    "finding": "Finding where you are…"
   },
   "address": {
     "kind": {
@@ -928,15 +931,15 @@
       "label": "YOUR SUGGESTED BASKET",
       "oneEach": "one of each",
       "withinBudget": "{{amount}} within budget",
-      "note": "Sample prices. Delivery fees calculated in cart. Items already in your bag won’t be added twice.",
+      "note": "Sample prices. Delivery fees calculated in cart. Items already in your cart won’t be added twice.",
       "add_one": "Add {{value}} missing item · {{amount}}",
       "add_other": "Add {{value}} missing items · {{amount}}",
-      "allIn": "All picks are in your bag"
+      "allIn": "All picks are in your cart"
     },
     "tools": {
       "budget": "BASKET BUDGET",
       "vegetarian": "Vegetarian",
-      "review": "Review my bag ({{value}})"
+      "review": "Review my cart ({{value}})"
     },
     "err": {
       "interrupted": "The reply was interrupted. Please try again.",
@@ -1008,38 +1011,10 @@
     }
   },
   "home": {
-    "fromPrice": "From {{price}}",
     "seeAllLabel": "See all {{title}}",
     "loadFailed": "Couldn’t load this right now",
     "shopStore": "Shop {{name}}",
     "storeMeta": "{{time}} · {{rating}} rating",
-    "promos": {
-      "heading": "A LITTLE LOCAL. A LOT TO LOVE.",
-      "featured": "FEATURED",
-      "fresh": {
-        "tag": "FRESH FINDS. LITTLE PRICES.",
-        "title": "Good things.\nAt your doorstep.",
-        "subtitle": "Fresh groceries. Everyday happiness.",
-        "cta": "Fill your basket",
-        "dot": "Show fresh offer"
-      },
-      "food": {
-        "tag": "HAPPINESS, SERVED HOT.",
-        "title": "Big cravings.\nBigger flavours.",
-        "subtitle": "Your favourite bites, all in one place.",
-        "cta": "Explore food",
-        "dot": "Show food offer"
-      },
-      "beauty": {
-        "tag": "A LITTLE EVERYDAY LUXURY.",
-        "title": "Meet your\nnew favourites.",
-        "subtitle": "Beauty essentials you’ll love.",
-        "cta": "Find your glow",
-        "dot": "Show beauty offer"
-      },
-      "mostLoved": "MOST LOVED",
-      "localFavourite": "LOCAL FAVOURITE"
-    },
     "foodSpotlight": {
       "eyebrow": "FRESH CRAVINGS. FAMILIAR FAVOURITES.",
       "mcdonalds": {
@@ -1159,15 +1134,10 @@
       "seasonDefault": "CURATED WITH LOVE",
       "footer": "A FEW LITTLE FINDS. A WHOLE NEW MOOD."
     },
-    "character": {
-      "bappa": "Bappa",
-      "shopping_character": "Shopping Buddy",
-      "rider": "Your Rider",
-      "store": "Store"
-    },
     "hero": {
       "searchPlaceholder": "Search groceries & more",
-      "fastDelivery": "Delivery in {{time}}"
+      "fastDelivery": "Delivery in {{time}}",
+      "services": "Shop by service"
     },
     "services": {
       "care": "Pharma & Beauty",
@@ -1199,20 +1169,15 @@
       "view": "View cart",
       "items_one": "{{count}} item",
       "items_other": "{{count}} items",
-      "inBag_one": "{{count}} item in your bag",
-      "inBag_other": "{{count}} items in your bag",
+      "inBag_one": "{{count}} item in your cart",
+      "inBag_other": "{{count}} items in your cart",
       "fees": "+ fees at checkout",
       "freeDelivery": "Free delivery unlocked · Saving {{amount}}",
       "awayFromFree": "{{amount}} away from free delivery"
     },
     "introLoading": "OneLocal is loading",
     "introTagline": "YOUR CITY · AT YOUR DOORSTEP",
-    "introMade": "Made in Latur",
-    "panel": {
-      "headline": "Latur,\nin minutes.",
-      "copy": "Groceries, food, shops, care and good times — one city, one app.",
-      "care": "Care"
-    }
+    "introMade": "Made in Latur"
   },
   "comingSoon": {
     "badge": "COMING SOON",
@@ -1307,7 +1272,7 @@
     "reload": "Reload app"
   },
   "cart": {
-    "title": "Your little bag",
+    "title": "Your cart",
     "itemCount_one": "{{count}} item",
     "itemCount_other": "{{count}} items",
     "kindTab": {
@@ -1429,18 +1394,13 @@
     "added": {
       "dismissA11y": "Dismiss added confirmation",
       "title": "Great pick!",
-      "body": "{{name}} is in your bag.",
+      "body": "{{name}} is in your cart.",
       "viewA11y_one": "View cart with {{count}} item",
       "viewA11y_other": "View cart with {{count}} items",
-      "view": "View bag · {{n}}"
+      "view": "View cart · {{n}}"
     },
     "character": {
       "a11y": "A smiling 3D-style OneLocal helper waving hello"
-    },
-    "celebration": {
-      "added": "Added to Cart!",
-      "continue": "Continue Shopping",
-      "view": "View Cart"
     },
     "strip": {
       "deliveryIn": "Delivery in {{time}}",
@@ -1621,11 +1581,8 @@
     "moreItems_other": "+ {{count}} more items",
     "grandTotal": "Grand total",
     "continueShopping": "Continue shopping",
-    "etaTitle": "Estimated Delivery",
     "etaMinutes_one": "{{count}} minute",
     "etaMinutes_other": "{{count}} minutes",
-    "itemsHeading": "Items ({{n}})",
-    "orderTotal": "Order Total",
     "live": {
       "subtitle": "Order #{{id}}",
       "subtitleStore": "Order #{{id}} · {{store}}",
@@ -1992,7 +1949,10 @@
       "googleMapsWhere": "Google’s servers, may be outside India",
       "osmWho": "OpenStreetMap servers",
       "osmWhat": "A town-sized map area (no name or phone), to list local shops.",
-      "osmWhere": "Europe"
+      "osmWhere": "Europe",
+      "deviceMapsWho": "Your phone’s map service (Apple Maps on iPhone, Google on Android)",
+      "deviceMapsWhat": "Your position when you tap “Use current location”, to name the area you’re in.",
+      "deviceMapsWhere": "Apple’s or Google’s servers, may be outside India"
     },
     "s4": {
       "title": "Your choices, and taking them back",
@@ -2377,5 +2337,14 @@
     "appointmentLine": "A doctor's visit or roadside help, booked ahead",
     "breakdown": "Breakdown help",
     "doctor": "Doctor"
+  },
+  "comingSoonGate": {
+    "badge": "ALMOST THERE",
+    "title": "Something wonderful is on its way",
+    "body": "We're working tirelessly to give you a wonderful experience. We'll be ready very soon.",
+    "working": "Getting things ready for you",
+    "notify": "We'll notify you the moment everything is up and running. Stay tuned!",
+    "cta": "Keep exploring",
+    "toast": "Coming soon! We'll let you know when it's live."
   }
 }

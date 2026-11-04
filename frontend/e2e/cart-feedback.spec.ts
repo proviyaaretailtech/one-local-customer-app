@@ -1,4 +1,4 @@
-/* Cart add feedback: how often does the "Great pick! … is in your bag" mascot appear?
+/* Cart add feedback: how often does the "Great pick! … is in your cart" mascot appear?
  * The product owner wants it once, not on every add. A MutationObserver counts every
  * time the overlay (testID cart-added-popup, src/components/cart-celebration.tsx) is
  * inserted, across a realistic shopping run in one visit, then after a page reload. */

@@ -11,7 +11,7 @@ import { useTranslation } from '../i18n';
 export const StoreRail = memo(function StoreRail({ stores, scope = 'categories' }: { stores: ThemedStore[]; scope?: string }) {
   const router = useRouter(); const { t } = useTranslation();
   return <ScrollView horizontal testID={`${scope}-store-rail`} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
-    {stores.map((store, i) => <Pressable testID={`${scope}-store-${store.id}`} accessibilityLabel={t('home.shopStore', { name: store.name })} key={store.id} onPress={() => router.push(`/collection/${store.id}` as any)} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    {stores.map((store, i) => <Pressable testID={`${scope}-store-${store.id}`} accessibilityLabel={t('home.shopStore', { name: store.name })} key={store.id} onPress={() => router.push(`/collection/${store.id}`)} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.art}><Image testID={`${scope}-store-image-${store.id}`} source={store.image} contentFit="cover" style={styles.image} transition={180} /><View style={styles.number}><Text style={styles.numberText}>0{i + 1}</Text></View><View style={styles.arrow}><Icon name="arrow-up-right-box-outline" size={14} color={colors.forest} /></View></View>
       <Text testID={`${scope}-store-name-${store.id}`} style={styles.name} numberOfLines={2}>{store.name}</Text>
     </Pressable>)}

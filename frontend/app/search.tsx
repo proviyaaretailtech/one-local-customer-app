@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { View, ScrollView, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, TextInput } from '@/src/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/ionicons';
-import { colors, lightPane, neuWell, popBase, radius } from '@/src/theme';
-import { mediaUrl } from '@/src/api';
+import { colors, lightPane, neuWell, radius } from '@/src/theme';
 import { Tap } from '@/src/components/tap';
+import { ChipRow } from '@/src/components/chip-row';
 import { useBrowseCatalog } from '@/src/use-catalog';
 import { ProductCard } from '@/src/components/product-card';
 import { LoadState } from '@/src/components/catalog-sections';
-import { departments, inDepartment } from '@/src/departments';
+import { departmentArt, departments, inDepartment, type DepartmentId } from '@/src/departments';
 import { matchesProductQuery, normaliseQuery } from '@/src/catalog-search';
 import { useQuery } from '@tanstack/react-query';
 import { useDeliveryLocation } from '@/src/delivery-location';
@@ -65,11 +65,10 @@ export default function Search() {
     <LinearGradient pointerEvents="none" colors={[colors.cityMid, colors.cityFade, colors.surface]} locations={[0, 0.45, 1]} style={styles.wash} />
     <View style={[styles.titleRow, { paddingTop: insets.top + 10 }]}><Tap testID="search-back" accessibilityRole="button" accessibilityLabel={t('common.goBack')} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)} style={styles.back}><Icon name="chevron-back" size={22} color={colors.onSurface} /></Tap><Text numberOfLines={1} style={styles.title}>{collection === 'budget' ? t('search.title.budget', { amount: fmt.money(BUDGET_LIMIT) }) : collection === 'trending' ? t('search.title.trending') : collection === 'picks' ? t('search.title.picks') : t('search.title.default')}</Text></View>
     <View style={styles.inputWrap}><Icon name="search" size={19} color={colors.forest} /><TextInput testID="search-input" value={query} onChangeText={setQuery} onSubmitEditing={() => remember(query)} placeholder={town ? t('search.near.placeholder', { town }) : t('search.near.placeholderYou')} placeholderTextColor={colors.muted} style={styles.input} autoFocus={!collection} returnKeyType="search" />{!!query && <Tap testID="clear-search" accessibilityRole="button" accessibilityLabel={t('search.clear')} haptic={false} hitSlop={8} onPress={() => setQuery('')} style={styles.clearInput}><Icon name="close" size={14} color={colors.surface} /></Tap>}</View>
-    <View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{[{ id: 'all', label: t('search.everything') }, ...departments.filter(d => d.id !== 'book-it').map(d => ({ id: d.id as string, label: departmentLabel(d) }))].map(d => { const on = department === d.id;
-      return <Tap testID={`search-filter-${d.id}`} key={d.id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setDepartment(d.id)} style={[styles.chip, d.id === 'all' && styles.chipPlain, on && styles.active]}>
-        {d.id !== 'all' && <Image source={mediaUrl(`icon-${d.id}-v4`)} style={styles.chipIcon} contentFit="contain" cachePolicy="memory-disk" />}
-        <Text numberOfLines={1} style={[styles.chipText, on && styles.activeText]}>{d.label}</Text>
-      </Tap>; })}</ScrollView></View>
+    <View><ChipRow selected={department} onSelect={setDepartment} contentContainerStyle={styles.filters} chips={[
+      { id: 'all', testID: 'search-filter-all', label: t('search.everything') },
+      ...departments.filter(d => d.id !== 'book-it').map(d => ({ id: d.id, testID: `search-filter-${d.id}`, label: departmentLabel(d), lead: () => <Image source={departmentArt[d.id as DepartmentId]} style={styles.chipIcon} contentFit="contain" cachePolicy="memory-disk" /> })),
+    ]} /></View>
     {!query && recent.length > 0 && <View testID="search-recent" style={styles.recent}>
       <View style={styles.recentHead}><Text style={styles.section}>{t('search.recent')}</Text><Tap testID="search-recent-clear" accessibilityRole="button" haptic={false} onPress={() => { void clearRecent(); setRecent([]); }} hitSlop={8}><Text style={styles.clear}>{t('search.clearRecent')}</Text></Tap></View>
       <View style={styles.recentChips}>{recent.map(r => <Tap key={r} testID={`search-recent-${r}`} accessibilityRole="button" onPress={() => { setQuery(r); remember(r); }} style={styles.recentChip}><Icon name="time-outline" size={14} color={colors.forest} /><Text style={styles.recentText}>{r}</Text></Tap>)}</View>
@@ -103,13 +102,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, minHeight: 50, fontSize: 14, color: colors.onSurface },
   clearInput: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.muted },
   filters: { paddingHorizontal: SIDE, paddingBottom: 4, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 42, paddingLeft: 6, paddingRight: 14, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipPlain: { paddingLeft: 14 },
-  // The picked department fills with the brand green, on a darker base.
-  active: { backgroundColor: colors.forest, borderColor: colors.forest, boxShadow: popBase(3, colors.forestDeep) },
   chipIcon: { width: 30, height: 30 },
-  chipText: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
-  activeText: { color: colors.surface },
   count: { marginHorizontal: SIDE, marginTop: 18, marginBottom: 14, fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase', color: colors.muted },
   results: { paddingBottom: 140 },
   row: { paddingHorizontal: SIDE, gap: 12 },

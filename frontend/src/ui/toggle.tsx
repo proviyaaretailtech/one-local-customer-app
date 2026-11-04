@@ -13,16 +13,16 @@ const PAD = 3;
 const WIDTH = 46;
 const TRAVEL = WIDTH - KNOB - PAD * 2;
 
-type Props = { value: boolean; onValueChange: (next: boolean) => void; accessibilityLabel: string; tint: string; tone?: Tone; knob?: React.ReactNode; testID?: string };
+type Props = { value: boolean; onValueChange: (next: boolean) => void; accessibilityLabel: string; tint: string; tone?: Tone; knob?: React.ReactNode; testID?: string; disabled?: boolean };
 
-export function Toggle({ value, onValueChange, accessibilityLabel, tint, tone = 'photo', knob, testID }: Props) {
+export function Toggle({ value, onValueChange, accessibilityLabel, tint, tone = 'photo', knob, testID, disabled }: Props) {
   const motion = useMotionAllowed(); const x = useSharedValue(value ? TRAVEL : 0);
   useEffect(() => { x.set(motion ? withSpring(value ? TRAVEL : 0, reSpring.snappy) : value ? TRAVEL : 0); }, [value, motion, x]);
   // The tint follows the knob, so the colour arrives as it slides rather than switching at once.
   const off = tone === 'photo' ? colors.whiteGlass : colors.surfaceTertiary;
   const fill = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(x.value, [0, TRAVEL], [off, tint]) }));
   const slide = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
-  return <Pressable testID={testID} accessibilityRole="switch" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked: value }} onPress={() => onValueChange(!value)} hitSlop={10}>
+  return <Pressable testID={testID} accessibilityRole="switch" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked: value, disabled }} disabled={disabled} onPress={() => onValueChange(!value)} hitSlop={10}>
     <Animated.View style={[s.track, fill]}><Animated.View style={[s.knob, slide]}>{knob}</Animated.View></Animated.View>
   </Pressable>;
 }

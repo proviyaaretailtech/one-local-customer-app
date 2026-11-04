@@ -57,7 +57,7 @@ function MediaTile({ media, size }: { media: StoreMedia; size: number }) {
       testID={`store-media-${media.url}`}
     >
       {playing ? (
-        <VideoView style={mediaStyles.img} player={player} contentFit="cover" nativeControls={false} />
+        <VideoView style={mediaStyles.img} player={player} contentFit="cover" nativeControls={false} surfaceType="textureView" />
       ) : (
         <>
           <Image source={media.thumbnail ?? ""} style={mediaStyles.img} contentFit="cover" />
@@ -77,8 +77,6 @@ const mediaStyles = StyleSheet.create({
   img: { width: "100%", height: "100%" },
   playOverlay: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", backgroundColor: colors.overlay },
   playBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
-  videoBadge: { position: "absolute", top: 8, left: 8, backgroundColor: colors.brandPrimary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  videoBadgeText: { color: colors.onBrandPrimary, fontSize: 9, fontWeight: "800" },
 });
 
 export default function StoreProfileScreen() {
@@ -227,7 +225,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     zIndex: 10,
     boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 6, color: colors.border }],
-    elevation: 4,
   },
   // A white ring keeps it visible on the shop's colour and on the white sheet alike.
   backOnInk: { borderWidth: 2, borderColor: colors.surface, boxShadow: popBase(3) },

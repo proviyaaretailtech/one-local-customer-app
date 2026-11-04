@@ -10,7 +10,7 @@ import { i18n } from './runtime';
 
 export { useTranslation, Trans } from 'react-i18next';
 export { i18n, t, LANGUAGE_KEY } from './runtime';
-export { I18nProvider, useLanguage, useT } from './provider';
+export { I18nProvider, useLanguage } from './provider';
 export { LanguageFirstRun, useShowFirstRun } from './first-run';
 export { LanguagePicker } from './language-picker';
 export { ProfileLanguageSync } from './profile-sync';

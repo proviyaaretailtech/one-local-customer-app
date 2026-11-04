@@ -13,6 +13,7 @@ import { colors } from '../theme';
 import { CityScroll } from '../motion';
 import { useDeliveryLocation } from '../delivery-location';
 import { CITY_CENTER, nearbyAt, NearbyKind, NearbyPlace, placeLine, requestLaunch } from '../places';
+import { isComingSoon } from '../api';
 import { useFormat, useTranslation } from '../i18n';
 import { useLineHeight } from '../layout';
 
@@ -44,7 +45,7 @@ export function ExploreTown({ initial = 'food', empty = false }: { initial?: Nea
   useEffect(() => { if (place) AsyncStorage.getItem(LAUNCH_KEY(place.id)).then(v => setLaunch(v ? 'done' : 'idle')).catch(() => {}); }, [place]);
   const ask = async () => {
     if (!place) return; setLaunch('busy');
-    try { await requestLaunch(place.id); setLaunch('done'); void AsyncStorage.setItem(LAUNCH_KEY(place.id), '1'); } catch { setLaunch('error'); }
+    try { await requestLaunch(place.id); setLaunch('done'); void AsyncStorage.setItem(LAUNCH_KEY(place.id), '1'); } catch (e) { setLaunch(isComingSoon(e) ? 'idle' : 'error'); }
   };
 
   if (coverage?.level === 'soon') return <View testID="explore-outside-india" style={s.center}>
@@ -92,7 +93,7 @@ export function ExploreTown({ initial = 'food', empty = false }: { initial?: Nea
     </View>
 
     {!!data && <Text testID="explore-credit" style={s.credit}>{data.source === 'Google' ? t('explore.creditGoogle') : t('explore.creditOsm')}</Text>}
-    <Pressable testID="explore-other-place" onPress={() => router.push('/location' as never)} style={s.link}><Icon name="location-outline" size={15} color={colors.forest} /><Text style={s.linkText}>{t('explore.another')}</Text></Pressable>
+    <Pressable testID="explore-other-place" onPress={() => router.push('/location')} style={s.link}><Icon name="location-outline" size={15} color={colors.forest} /><Text style={s.linkText}>{t('explore.another')}</Text></Pressable>
   </CityScroll>;
 }
 

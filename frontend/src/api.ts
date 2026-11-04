@@ -56,6 +56,8 @@ export async function identity(): Promise<Record<string, string>> {
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
+/** A write the coming-soon build held back: the "coming soon" toast already says so, so the screen shows no error of its own. */
+export const isComingSoon = (e: unknown) => e instanceof ApiError && e.code === 'coming_soon';
 
 // Every call to our server goes through here: a fetch that never reached the server tells the offline detector
 // (src/network/online-state.ts); any answer says we are online, and a 426 / maintenance-503 blocks the app
@@ -83,7 +85,6 @@ export async function api<T>(path: string): Promise<T> {
 }
 
 export type Category = { id: string; name: string; emoji: string; color: string; department: string; image: string };
-export type DiscoverChip = { id: string; label: string; emoji: string; color: string };
 export type Banner = { id: string; title: string; subtitle: string; image: string; bg: string };
 /** Whether a product is made or sold locally or is a national brand; the server marks each product. */
 export type Origin = 'local' | 'national';

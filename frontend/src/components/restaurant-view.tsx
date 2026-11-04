@@ -158,7 +158,7 @@ export function RestaurantView({ store, products, categories }: { store: Store; 
 // One dish: its offer, name, price, size and rating beside its picture, which carries a heart and the "+".
 function DishRow({ dish, ink, scope }: { dish: Product; ink: string; scope: string }) {
   const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat(); const { saved, toggleSaved, ready } = useSavedProducts();
-  const isSaved = saved.includes(dish.id); const open = () => router.push(`/product/${dish.id}` as never);
+  const isSaved = saved.includes(dish.id); const open = () => router.push(`/product/${dish.id}`);
   return <View testID={`dish-${scope}`} style={s.dish}>
     <Pressable accessibilityRole="button" accessibilityLabel={t('product.viewItemDetails', { name: dish.name })} onPress={open} style={s.dishInfo}>
       {!!dish.discount_pct && <View style={s.dishOff}><Text style={s.dishOffText}>{t('product.off', { pct: fmt.percent(dish.discount_pct) })}</Text></View>}
@@ -181,7 +181,7 @@ const s = StyleSheet.create({
   round: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, boxShadow: soft.lifted },
   search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: soft.lifted },
   searchText: { fontSize: 14, fontWeight: '600', color: colors.onSurface },
-  searchInput: { flex: 1, height: 40, fontSize: 14, color: colors.onSurface },
+  searchInput: { flex: 1, height: 40, paddingVertical: 0, fontSize: 14, color: colors.onSurface }, // Android pads inputs by default; at 40 tall that clips the text
   pullFill: { position: 'absolute', top: -600, height: 600, left: 0, right: 0 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
   // Above the held-in-place photo, which it slides over.

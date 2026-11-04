@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Tap } from './tap';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from '@/src/ui/text';
@@ -10,9 +10,10 @@ import { useTranslation } from '../i18n';
 import { mediaUrl } from '../api';
 import { nativeDriver, useMotionAllowed } from '../motion';
 import { useScreenPath } from '../use-screen-path';
+import { useLineHeight } from '../layout';
 
 function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean; delay: number }) {
-  const tilt = useRef(new Animated.Value(0)).current; const motion = useMotionAllowed();
+  const [tilt] = useState(() => new Animated.Value(0)); const motion = useMotionAllowed();
   useEffect(() => {
     if (!motion) { tilt.setValue(0); return; }
     const animation = Animated.sequence([Animated.delay(delay), Animated.timing(tilt, { toValue: -6, duration: 240, useNativeDriver: nativeDriver }), Animated.spring(tilt, { toValue: 0, friction: 3, useNativeDriver: nativeDriver })]);
@@ -22,13 +23,13 @@ function DepartmentIcon({ id, selected, delay }: { id: string; selected: boolean
 }
 // Each department page has its own strip (in its header), which marks that page, so a page being left keeps its mark.
 export function DepartmentStrip() {
-  const path = useScreenPath(); const router = useRouter(); const { t } = useTranslation();
+  const path = useScreenPath(); const router = useRouter(); const { t } = useTranslation(); const lineHeight = useLineHeight();
   return <View testID="department-strip" style={styles.row}>{departments.map((d, i) => {
     const selected = path === d.route || (d.id === 'care' && ['/beauty', '/pharmacy'].includes(path));
-    return <Tap testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={departmentName(t, d.id).replace('\n', ' ')} accessibilityState={{ selected }} key={d.id} onPress={() => router.navigate(d.route as any)} style={[styles.item]}>
-      <DepartmentIcon id={d.id} selected={selected} delay={i * 65} /><Text testID={`department-label-${d.id}`} style={[styles.label, selected && styles.active, selected && { color: d.color }]}>{departmentName(t, d.id)}</Text>{selected && <View style={[styles.dot, { backgroundColor: d.color }]} />}
+    return <Tap testID={`department-${d.id}`} accessibilityRole="button" accessibilityLabel={departmentName(t, d.id).replace('\n', ' ')} accessibilityState={{ selected }} key={d.id} onPress={() => router.navigate(d.route)} style={[styles.item]}>
+      <DepartmentIcon id={d.id} selected={selected} delay={i * 65} /><Text testID={`department-label-${d.id}`} style={[styles.label, { lineHeight: lineHeight(11, 13) }, selected && styles.active, selected && { color: d.color }]}>{departmentName(t, d.id)}</Text>{selected && <View style={[styles.dot, { backgroundColor: d.color }]} />}
     </Tap>;
   })}</View>;
 }
 const styles = StyleSheet.create({ row: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 9, paddingBottom: 5 }, item: { flex: 1, alignItems: 'center', minHeight: 81, gap: 3 }, // Cut-out icons straight on the header, no tile or ring; the selected one grows a little and gets the underline.
-  circle: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' }, icon: { width: 54, height: 54 }, label: { color: colors.onSurface, fontSize: 11, lineHeight: 13, fontWeight: '600', textAlign: 'center' }, active: { fontWeight: '700', color: colors.forest }, dot: { width: 12, height: 3, borderRadius: 2, backgroundColor: colors.forest }, pressed: { transform: [{ scale: 0.9 }], opacity: 0.8 } });
+  circle: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' }, icon: { width: 54, height: 54 }, label: { color: colors.onSurface, fontSize: 11, lineHeight: 13, fontWeight: '600', textAlign: 'center' }, active: { fontWeight: '700', color: colors.forest }, dot: { width: 12, height: 3, borderRadius: 2, backgroundColor: colors.forest },  });

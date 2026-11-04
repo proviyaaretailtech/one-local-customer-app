@@ -2,17 +2,17 @@
 // button) that move on by themselves every few seconds, always forwards: after the last comes the first again. Swipes move
 // one slide at a time, a dot takes you to its slide, and a finger on the slides, Reduce Motion or leaving the screen
 // stops the movement.
-import { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Icon from '@react-native-vector-icons/ionicons';
 import { Text } from '../ui/text';
+import { PageDot } from '../ui/page-dot';
 import { Tap } from './tap';
 import { colors, popBase, radius } from '../theme';
 import { useAppDimensions } from '../layout';
-import { useMotionAllowed } from '../motion';
+import { useAutoPager } from '../use-auto-pager';
 import { useFormat, useTranslation } from '../i18n';
 import { storeBanner, type Store } from '../api';
 
@@ -23,31 +23,18 @@ const EVERY = 4500;
 
 /** `offer` is the shop's best discount (%), 0 for none; `accent` colours the current dot. */
 export function AdCarousel({ slides, accent }: { slides: { store: Store; offer: number }[]; accent: string }) {
-  const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat(); const motion = useMotionAllowed(); const focused = useIsFocused();
+  const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat();
   const { width } = useAppDimensions(); const card = width - SIDE * 2; const step = card + GAP;
-  const list = useRef<ScrollView>(null); const [index, setIndex] = useState(0); const [held, setHeld] = useState(false);
   const count = slides.length;
-  // A copy of the first slide after the last, so moving on from the last slides forwards into it; once there the list
-  // jumps back to the real first slide, which looks the same.
-  const shown = count > 1 ? [...slides, slides[0]] : slides;
-  const go = (n: number) => list.current?.scrollTo({ x: n * step, animated: true });
-  useEffect(() => {
-    if (!motion || held || !focused || count < 2) return;
-    const id = setTimeout(() => list.current?.scrollTo({ x: (index + 1) * step, animated: true }), EVERY);
-    return () => clearTimeout(id);
-  }, [index, held, motion, focused, count, step]);
-  const onScroll = (x: number) => {
-    if (count > 1 && x >= count * step - 1 && !held) { list.current?.scrollTo({ x: 0, animated: false }); setIndex(0); return; }
-    setIndex(Math.round(x / step) % count);
-  };
+  const { list, index, loops, go, onScroll, touch } = useAutoPager(count, step, () => EVERY);
+  const shown = loops ? [...slides, slides[0]] : slides;
   return <View testID="ad-carousel">
     <ScrollView ref={list} horizontal showsHorizontalScrollIndicator={false} snapToInterval={step} decelerationRate="fast" disableIntervalMomentum contentContainerStyle={s.track}
-      scrollEventThrottle={16} onScroll={e => onScroll(e.nativeEvent.contentOffset.x)}
-      onTouchStart={() => setHeld(true)} onTouchEnd={() => setHeld(false)} onTouchCancel={() => setHeld(false)}>
+      scrollEventThrottle={16} onScroll={e => onScroll(e.nativeEvent.contentOffset.x)} {...touch}>
       {shown.map(({ store, offer }, n) => <Tap key={n < count ? store.id : `${store.id}-again`} testID={n < count ? `ad-${store.id}` : undefined} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })}
         // A short wait before the press shows, so a swipe across the slides doesn't sink the one under the finger.
         unstable_pressDelay={120}
-        onPress={() => router.push(`/store/${store.id}` as never)} style={[s.slide, { width: card }]}>
+        onPress={() => router.push(`/store/${store.id}`)} style={[s.slide, { width: card }]}>
         <Image source={storeBanner(store)} style={StyleSheet.absoluteFill} contentFit="cover" />
         {/* Darkens the lower half, so the white words read on any photo. */}
         <LinearGradient pointerEvents="none" colors={['transparent', colors.overlay, colors.overlay]} locations={[0.3, 0.75, 1]} style={StyleSheet.absoluteFill} />
@@ -61,7 +48,7 @@ export function AdCarousel({ slides, accent }: { slides: { store: Store; offer: 
       </Tap>)}
     </ScrollView>
     {count > 1 && <View style={s.dots}>{slides.map((slide, n) => <Tap key={slide.store.id} testID={`ad-dot-${n}`} accessibilityRole="button" accessibilityLabel={slide.store.name} accessibilityState={{ selected: n === index }} haptic={false} hitSlop={8} onPress={() => go(n)} style={s.dotHit}>
-      <View style={[s.dot, n === index && [s.dotOn, { backgroundColor: accent }]]} />
+      <PageDot on={n === index} size={7} wide={20} color={colors.border} onColor={accent} />
     </Tap>)}</View>}
   </View>;
 }
@@ -81,6 +68,4 @@ const s = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   // Each dot sits in a comfortable tap area of its own.
   dotHit: { paddingHorizontal: 4, paddingVertical: 8 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.border },
-  dotOn: { width: 20 },
 });

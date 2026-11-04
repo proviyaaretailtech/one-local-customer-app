@@ -21,18 +21,12 @@ import { useBrowseCatalog } from '@/src/use-catalog';
 import { useStores } from '@/src/use-stores';
 import { useScreenPalette } from '@/src/use-screen-path';
 import { useDeliveryLocation } from '@/src/delivery-location';
-import { byShop } from '@/src/shop-categories';
+import { byShop, categoryIcon } from '@/src/shop-categories';
 import { useFormat, useTranslation } from '@/src/i18n';
+import { useLineHeight } from '@/src/layout';
 
 const SIDE = 16;
 const FEATURED = 6; // restaurants in the ads (the catalogue has no ads feed yet, so the first ones with a photo)
-// 3D cut-out icons for the catalogue's kinds of food, bundled with the app; a kind without one shows its photo.
-const FOOD_ICONS: Record<string, number> = {
-  c9: require('../../assets/images/food/burgers.png'), c10: require('../../assets/images/food/chicken-sides.png'),
-  c11: require('../../assets/images/food/coffee-drinks.png'), c12: require('../../assets/images/food/pizza.png'),
-  c39: require('../../assets/images/food/thali.png'), c40: require('../../assets/images/food/street-food.png'),
-  c41: require('../../assets/images/food/desserts.png'),
-};
 
 export default function Food() {
   // Outside our delivery cities, Food shows the town's real local places.
@@ -42,7 +36,7 @@ export default function Food() {
 }
 
 function LiveFood() {
-  const { data, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const router = useRouter(); const palette = useScreenPalette(); const { t } = useTranslation(); const fmt = useFormat();
+  const { data, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const router = useRouter(); const palette = useScreenPalette(); const { t } = useTranslation(); const lineHeight = useLineHeight(); const fmt = useFormat();
   // Every restaurant with its dishes and its best offer (%).
   const restaurants = useMemo(() => data ? byShop(data.products.filter(p => p.department === 'food'), stores).map(r => ({ ...r, offer: Math.max(0, ...r.products.map(p => p.discount_pct ?? 0)) })) : [], [data, stores]);
   if (!data) return <LoadState error={isError} retry={refetch} />;
@@ -57,9 +51,9 @@ function LiveFood() {
     <LinearGradient pointerEvents="none" colors={[palette.top, palette.mid, palette.fade]} locations={[0, 0.5, 1]} style={s.wash} />
     <BrandHeader tone="light" />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.kinds}>
-      {kinds.map(c => <Tap key={c.id} testID={`food-kind-${c.id}`} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => router.push(`/category/shops/${c.id}` as never)} style={s.kind}>
-        <View style={goldIconShadow}><Image source={FOOD_ICONS[c.id] ?? c.image} style={s.kindIcon} contentFit="contain" cachePolicy="memory-disk" /></View>
-        <Text numberOfLines={2} style={s.kindName}>{c.name}</Text>
+      {kinds.map(c => <Tap key={c.id} testID={`food-kind-${c.id}`} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => router.push(`/category/shops/${c.id}`)} style={s.kind}>
+        <View style={goldIconShadow}><Image source={categoryIcon(c.id) ?? c.image} style={s.kindIcon} contentFit="contain" cachePolicy="memory-disk" /></View>
+        <Text numberOfLines={2} style={[s.kindName, { lineHeight: lineHeight(12, 15) }]}>{c.name}</Text>
       </Tap>)}
     </ScrollView>
     <AdCarousel slides={restaurants.filter(r => storeBanner(r.store)).slice(0, FEATURED)} accent={palette.color} />
@@ -69,9 +63,9 @@ function LiveFood() {
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.brands}>
       {pairs.map(pair => <View key={pair[0].store.id} style={s.brandColumn}>
-        {pair.map(({ store }) => <Tap key={store.id} testID={`food-brand-${store.id}`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}` as never)} style={s.brand}>
+        {pair.map(({ store }) => <Tap key={store.id} testID={`food-brand-${store.id}`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}`)} style={s.brand}>
           <View style={s.brandLogo}>{!!store.logo && <Image source={store.logo} style={s.brandImage} contentFit="contain" />}</View>
-          <Text numberOfLines={2} style={s.brandName}>{store.name}</Text>
+          <Text numberOfLines={2} style={[s.brandName, { lineHeight: lineHeight(12, 15) }]}>{store.name}</Text>
         </Tap>)}
       </View>)}
     </ScrollView>

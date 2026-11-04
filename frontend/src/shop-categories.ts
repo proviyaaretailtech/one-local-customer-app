@@ -2,6 +2,7 @@
 // sub-category opens the catalogue category it matches (`category`).
 // Each has a 3D cut-out icon in the style of Home's service tiles, bundled with the app.
 import type { Product, Store } from './api';
+import { departmentArt } from './departments';
 
 export const CATEGORY_GROUPS = [
   { id: 'fresh', name: 'categories.group.fresh', items: [
@@ -41,6 +42,25 @@ export const CATEGORY_GROUPS = [
     { id: 'imported', name: 'categories.sub.imported', icon: require('../assets/images/categories/imported.png'), category: 'c38' },
   ] },
 ] as const satisfies readonly { id: string; name: string; items: readonly { id: string; name: string; icon: number; category: string }[] }[];
+
+type Tile = { id: string; icon: number; category: string };
+const TILES = CATEGORY_GROUPS.flatMap<Tile>(g => g.items);
+const tile = (id: string) => TILES.find(item => item.id === id)?.icon;
+// The sample catalogue's categories with no Categories tile of their own get the nearest icon; its kinds of food get the
+// Food tab's.
+const NEAREST: Record<string, number | undefined> = {
+  c5: tile('sweets-bakery'), c7: tile('bath-body'), c8: tile('home-decor'), c14: tile('bath-body'), c17: tile('hair-skin'),
+  c23: tile('cereals'), c27: tile('health-pharma'), c32: tile('gifts-pooja'),
+  c6: departmentArt.grocery, c30: departmentArt.grocery,
+  c9: require('../assets/images/food/burgers.png'), c10: require('../assets/images/food/chicken-sides.png'),
+  c11: require('../assets/images/food/coffee-drinks.png'), c12: require('../assets/images/food/pizza.png'),
+  c29: require('../assets/images/food/coffee-drinks.png'),
+  c39: require('../assets/images/food/thali.png'), c40: require('../assets/images/food/street-food.png'),
+  c41: require('../assets/images/food/desserts.png'),
+};
+/** A catalogue category's icon: its Categories tile's, else the nearest one. None (a live shop's own category): show its
+ *  photo instead. */
+export const categoryIcon = (category: string): number | undefined => TILES.find(item => item.category === category)?.icon ?? NEAREST[category];
 
 /** The shops with any of `products`, in the order the shops come, each with its own (in the order given). */
 export function byShop(products: readonly Product[], stores: readonly Store[]) {

@@ -27,7 +27,7 @@ export const RestaurantCard = memo(function RestaurantCard({ store, dishes, offe
   const router = useRouter(); const { t } = useTranslation(); const fmt = useFormat(); const { isFollowing, toggle } = useFollowedStores();
   const width = useAppDimensions().width - SIDE * 2 - INSET * 2; const [slide, setSlide] = useState(0);
   const shown = dishes.slice(0, SLIDES); const saved = isFollowing(store.id);
-  return <Tap testID={`restaurant-${store.id}`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}` as never)} style={[s.card, { backgroundColor: surface, boxShadow: neu(7, shade) }]}>
+  return <Tap testID={`restaurant-${store.id}`} accessibilityRole="button" accessibilityLabel={t('home.shopStore', { name: store.name })} onPress={() => router.push(`/store/${store.id}`)} style={[s.card, { backgroundColor: surface, boxShadow: neu(7, shade) }]}>
     <View style={[s.photos, { backgroundColor: wash }]}>
       <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={e => setSlide(Math.round(e.nativeEvent.contentOffset.x / width))}>
         {shown.map(p => <View key={p.id} style={{ width }}>

@@ -20,5 +20,5 @@ export function useDiscovery() {
       return [{ id: `photo-${id}`, video: '', video_web: '', product, caption: `${product.name}. A little find for your everyday.`, creator: brand?.name || 'OneLocal Fresh', likes: 0, tag: 'Catalogue photo', brand: brand || { id: product.store_id, name: 'OneLocal Fresh', department: product.department || 'grocery', logo: '', image: product.image, tagline: 'Your local finds' } }];
     });
     return [...reels, ...photos];
-  }, retry: 1 });
+  }, staleTime: 60_000, retry: 1 });
 }
