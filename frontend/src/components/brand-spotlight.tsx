@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useScreenPalette } from '../use-screen-path';
-import { View, Pressable, Animated, StyleSheet, AccessibilityInfo, Platform } from 'react-native';
+import { View, Pressable, Animated, StyleSheet } from 'react-native';
 import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -40,7 +40,7 @@ function DefaultBrandSpotlight({ variant = 'home', switchable = false }: { varia
   };
   const story = { ...baseStory, ...copy, color: currentPalette.color };
   const float = useRef(new Animated.Value(0)).current; const router = useRouter();
-  useEffect(() => { let animation: Animated.CompositeAnimation | undefined; let disposed = false; AccessibilityInfo.isReduceMotionEnabled().then(reduce => { if (!reduce && !disposed) { animation = Animated.loop(Animated.sequence([Animated.timing(float, { toValue: -7, duration: 2100, useNativeDriver: Platform.OS !== 'web' }), Animated.timing(float, { toValue: 0, duration: 2100, useNativeDriver: Platform.OS !== 'web' })])); animation.start(); } }); return () => { disposed = true; animation?.stop(); }; }, [float]);
+  // The art used to float up and down forever; it now holds still (decorative motion is off, see src/motion.tsx).
   // No background of its own: the page's shared gradient (app-shell) shows through, so there is no seam under the header.
   return <View testID={`spotlight-${variant}`} style={styles.wrap}>
     <View style={styles.hero}><View style={styles.glow} /><View style={styles.orbit} />

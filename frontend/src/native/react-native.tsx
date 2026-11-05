@@ -17,6 +17,10 @@ import { lastHapticAt } from './haptic-clock';
 
 export * from 'react-native';
 export default RN;
+// Shadows react-native's deprecated lazy getter. Fast Refresh walks every export of this module in development, and reading
+// that getter builds a NativeEventEmitter for a native module this app does not link, which throws on iOS at startup.
+// The app does not use it (expo-notifications handles notifications).
+export const PushNotificationIOS = undefined;
 
 type Handler = ((e: GestureResponderEvent) => unknown) | null | undefined;
 // Run the handler, then play the generic tap only if it did not buzz on its own.

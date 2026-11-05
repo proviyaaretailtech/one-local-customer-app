@@ -1,10 +1,10 @@
-// Immersive product page: a blurred, department-tinted backdrop behind a swipeable gallery; "Play
-// images" runs a slow cinematic zoom through the photos; "Watch" plays the product's reel (or its
+// Immersive product page: a blurred, department-tinted backdrop behind the product's own photo, held still (the
+// "Play images" zoom-and-pan slideshow was removed, founder 2026-11-01); "Watch" plays the product's reel (or its
 // store's film); a white sheet carries price, unit price, store, compare and similar items; the
 // footer echoes the hero image. Data: GET /api/products/:id/story.
 import { useEffect, useRef, useState } from 'react';
 import { useAppDimensions } from '@/src/layout';
-import { Animated, Easing, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/src/ui/text';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,7 +23,6 @@ import { useCompare, COMPARE_LIMIT } from '@/src/compare';
 import { unitPrice, unitPriceLabel } from '@/src/unit-price';
 import { useFormat, useTranslation } from '@/src/i18n';
 import { paletteFor } from '@/src/departments';
-import { nativeDriver, useMotionAllowed } from '@/src/motion';
 import { ProductRail } from '@/src/components/catalog-sections';
 import { useStoreEtas } from '@/src/use-store-etas';
 import { departmentName } from '@/src/departments';
@@ -36,7 +35,6 @@ type Story = {
   brand: { id: string; name: string; logo: string; tagline: string } | null;
   related: Product[];
 };
-const SLIDE_MS = 2600;
 // Stories already opened this session, so going back to a product never waits again.
 const stories = new Map<string, Story>();
 // A first-paint story from a product the app already has in its catalogue or Discover feed.
@@ -53,15 +51,15 @@ export default function ProductDetail() {
   const insets = useSafeAreaInsets(); const router = useRouter(); const { width, height } = useAppDimensions();
   const { add, remove, qtyOf, totalItems, totalPrice } = useCart();
   const { saved, toggleSaved, error: savedError } = useCustomer();
-  const compare = useCompare(); const motion = useMotionAllowed(); const { t } = useTranslation(); const fmt = useFormat();
+  const compare = useCompare(); const { t } = useTranslation(); const fmt = useFormat();
   const [story, setStory] = useState<Story | null>(null); const [failed, setFailed] = useState(false);
-  const [slide, setSlide] = useState(0); const [playing, setPlaying] = useState(false); const [watching, setWatching] = useState(false);
+  const [slide, setSlide] = useState(0); const [watching, setWatching] = useState(false);
   const etas = useStoreEtas();
-  const [compareFull, setCompareFull] = useState(false); const [tick, setTick] = useState(0);
-  const pager = useRef<ScrollView>(null); const zoom = useRef(new Animated.Value(0)).current;
+  const [compareFull, setCompareFull] = useState(false);
+  const pager = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (!id) return; setSlide(0); setPlaying(false); setWatching(false);
+    if (!id) return; setSlide(0); setWatching(false);
     // Open at once: a product seen before shows its saved story; one the app already lists (Home, Discover, a rail)
     // shows its photo, name and price straight away while the full story loads. A blank placeholder for seconds on
     // every tap made the app feel stuck on phones.
@@ -71,23 +69,13 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [id]);
 
-  // Slideshow: each slide slowly zooms and pans; after SLIDE_MS it moves on (a single photo replays its zoom).
-  useEffect(() => {
-    if (!playing || !story) return;
-    zoom.setValue(0);
-    const anim = Animated.timing(zoom, { toValue: 1, duration: SLIDE_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: nativeDriver });
-    if (motion) anim.start();
-    const timer = setTimeout(() => {
-      const next = (slide + 1) % story.gallery.length;
-      if (next !== slide) { setSlide(next); pager.current?.scrollTo({ x: next * width, animated: true }); } else setTick(n => n + 1);
-    }, SLIDE_MS);
-    return () => { clearTimeout(timer); anim.stop(); };
-  }, [playing, slide, tick, story, width, zoom, motion]);
-
   if (failed) return <View testID="product-detail" style={[s.center, { paddingTop: insets.top }]}><Icon name="cloud-offline-outline" size={32} color={colors.muted} /><Text style={s.muted}>{t('product.loadFailed')}</Text><Pressable testID="pd-back-btn" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.retry}><Text style={s.retryText}>{t('common.goBack')}</Text></Pressable></View>;
   if (!story) return <View testID="product-detail" style={s.center}><View style={s.skeletonHero} /><View style={s.skeletonLine} /><View style={[s.skeletonLine, { width: '40%' }]} /></View>;
 
-  const { product, gallery, video } = story;
+  const { product, video } = story;
+  // Only the product's own photo. The story also carries its store's, brand's and category's pictures, so a badminton
+  // set showed dumbbells (founder, 2026-11-01).
+  const gallery = product.image ? [product.image] : story.gallery.slice(0, 1);
   const eta = (product.store_id && etas[product.store_id]) || product.delivery_min; // the store's real time when known
   const palette = paletteFor(`/${product.department ?? 'grocery'}`);
   const qty = qtyOf(product.id); const savings = product.mrp - product.price;
@@ -100,10 +88,6 @@ export default function ProductDetail() {
     const r = compare.toggle(product); void Haptics.selectionAsync().catch(() => {});
     setCompareFull(r === 'full');
   };
-  const kenBurns = (i: number) => i === slide && playing ? [
-    { scale: zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) },
-    { translateX: zoom.interpolate({ inputRange: [0, 1], outputRange: [0, i % 2 ? -14 : 14] }) },
-  ] : [];
 
   return <View style={s.screen} testID="product-detail">
     <ScrollView contentContainerStyle={{ paddingBottom: 170 }} showsVerticalScrollIndicator={false}>
@@ -113,16 +97,14 @@ export default function ProductDetail() {
         <LinearGradient colors={[`${palette.top}E6`, `${palette.mid}B3`, colors.surface]} locations={[0, 0.62, 1]} style={StyleSheet.absoluteFill} />
         <ScrollView ref={pager} testID="pd-gallery" horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onScroll} onScroll={Platform.OS === 'web' ? onScroll : undefined} scrollEventThrottle={64} style={{ marginTop: insets.top + 56 }}>
           {gallery.map((uri, i) => <View key={uri} style={{ width, height: shotH, alignItems: 'center', justifyContent: 'center' }}>
-            <Animated.View style={[s.shot, { width: shotW, height: shotH, transform: kenBurns(i) }]}><Image testID={`pd-gallery-${i}`} source={uri} style={{ width: shotW, height: shotH }} contentFit="cover" /></Animated.View>
+            <View style={[s.shot, { width: shotW, height: shotH }]}><Image testID={`pd-gallery-${i}`} source={uri} style={{ width: shotW, height: shotH }} contentFit="cover" /></View>
           </View>)}
         </ScrollView>
         {watching && video && <VideoPreview source={Platform.OS === 'web' ? video.web : video.url} label={video.label} onClose={() => setWatching(false)} top={insets.top} width={width} height={heroH} />}
         {!watching && <View style={s.heroControls}>
-          <Pressable testID="pd-play-images" accessibilityRole="button" accessibilityLabel={playing ? t('product.pauseImages') : t('product.playImages')} onPress={() => setPlaying(p => !p)} style={s.glassPill}>
-            <Icon name={playing ? 'pause' : 'play'} size={14} color={colors.onSurface} /><Text style={s.glassText}>{playing ? t('product.pause') : t('product.playImages')}</Text>
-          </Pressable>
+          <View style={{ width: 80 }} />
           {gallery.length > 1 && <View style={s.dots}>{gallery.map((_, i) => <View key={i} style={[s.dot, i === slide && s.dotOn]} />)}</View>}
-          {video ? <Pressable testID="pd-watch-video" accessibilityRole="button" accessibilityLabel={video.label} onPress={() => { setPlaying(false); setWatching(true); }} style={[s.glassPill, s.watch]}>
+          {video ? <Pressable testID="pd-watch-video" accessibilityRole="button" accessibilityLabel={video.label} onPress={() => setWatching(true)} style={[s.glassPill, s.watch]}>
             <Icon name="videocam" size={14} color={colors.surface} /><Text style={[s.glassText, { color: colors.surface }]}>{t('product.watch')}</Text>
           </Pressable> : <View style={{ width: 80 }} />}
         </View>}

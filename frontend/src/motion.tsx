@@ -26,6 +26,12 @@ const motionSnapshot = () => !reduced && active;
 export function useMotionAllowed() {
   return useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
 }
+// Decorative motion that never stops (floating heroes, drifting store backdrops, a pulsing Discover button) is off:
+// the founder found it distracting (2026-11-01). Those pieces hold the still look Reduce Motion gives them; taps,
+// screen changes and progress still move.
+export function useDecorativeMotion() {
+  return false;
+}
 type ScrollContextValue = { y: Animated.Value; headerHeight: number; setHeaderHeight: (v: number) => void; scrollRef: React.RefObject<ScrollView | null>;
   // True while a CityScroll screen is showing: it pads its own bottom, so content scrolls under the floating dock.
   // Counted, not a flag: when one tab focuses before the last one blurs, the order must not matter.

@@ -63,6 +63,7 @@ export default function AccountScreen() {
   const delivered = (orders ?? []).filter(o => o.status !== 'cancelled');
   const wouldEarn = Math.floor(delivered.reduce((s, o) => s + o.total, 0) * COINS_PER_RUPEE);
   const initials = (profile.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const firstName = (profile.name || '').trim().split(/\s+/)[0] ?? '';
   const groupTitle = [s.groupTitle, deva && s.noTrack];
   const save = (patch: Partial<typeof profile>) => { void Haptics.selectionAsync().catch(() => {}); void update({ profile: { ...profile, ...patch } }).catch(() => {}); };
 
@@ -76,7 +77,9 @@ export default function AccountScreen() {
           <View style={s.cam}><Icon name="camera" size={11} color={INK} /></View>
         </Pressable>
         <View style={s.flex}>
-          <Text testID="account-name" style={s.name} numberOfLines={1}>{profile.name || t('account.guestName')}</Text>
+          {/* "Welcome to OneLocal" until there is a name, then "Hello, <first name>" (founder, 2026-11-01). The line
+              shrinks to fit the card rather than cutting the name off; only a very long name still ends in "…". */}
+          <Text testID="account-name" style={s.name} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{firstName ? t('account.helloName', { name: firstName }) : t('account.guestName')}</Text>
           <Text testID="account-email" style={s.email} numberOfLines={who || profile.email ? 1 : 2}>{who || profile.email || t('account.guestSub')}</Text>
         </View>
         <Pressable testID="edit-profile-btn" accessibilityLabel={t('account.rowLabel.profile')} onPress={() => router.push('/profile-edit')} style={s.editBtn}><Icon name="create-outline" size={18} color={colors.electricLime} /></Pressable>

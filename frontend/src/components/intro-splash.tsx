@@ -9,13 +9,12 @@
 // A plain timer always removes the intro, whatever the animation does: an intro that never left kept a frozen
 // picture over the app and held back every pop-up (tester report, 2026-10-31).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { useMotionAllowed } from '../motion';
 import { useTranslation } from '../i18n';
 import { haptic } from '../haptics';
 import { BRAND_GREEN } from './brand-logo';
@@ -27,7 +26,8 @@ const TILE_SIZE = 140;                                           // = imageWidth
 const launch = globalThis as unknown as { __onecityIntroPlayed?: boolean; __onecityIntroShowing?: boolean };
 const BG = '#0B1A10';                                            // same as the native launch screen background
 const PEN = '#E9FFD0';
-const SEEN_KEY = 'onelocal.intro.seen';
+// v2 (2026-11-01): phones that "saw" the intro while it was stuck on its last frame (below) get it once more.
+const SEEN_KEY = 'onelocal.intro.seen.v2';
 
 // Timeline, in seconds.
 const END = 3.25;                        // last frame before the fade
@@ -108,7 +108,16 @@ export function IntroSplash() {
     return null;
   });
   const { t: tr } = useTranslation(); // safe here: I18nProvider holds the first render until the saved language is loaded
-  const motion = useMotionAllowed();
+  // null until the phone answers "Remove animations?". The app-wide motion flag starts at "no" and, on a cold start,
+  // Android reports the app as not yet in front, so reading that flag here made the intro jump to its last frame:
+  // on phones it never played (founder, 2026-11-01). If the answer never comes, the intro plays.
+  const [motion, setMotion] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled().then(reduced => { if (live) setMotion(m => m ?? !reduced); }, () => { if (live) setMotion(m => m ?? true); });
+    const fallback = setTimeout(() => { if (live) setMotion(m => m ?? true); }, 500);
+    return () => { live = false; clearTimeout(fallback); };
+  }, []);
   const win = useWindowDimensions();
   const [box, setBox] = useState({ w: win.width, h: win.height });
   const L = useMemo(() => layoutFor(box.w, box.h), [box]);
@@ -135,7 +144,8 @@ export function IntroSplash() {
   };
 
   useEffect(() => {
-    if (visible === null) return;
+    // The native splash stays up until it is known whether to animate.
+    if (visible === null || (visible && motion === null)) return;
     void SplashScreen.hideAsync().catch(() => {});
     if (!visible) { launch.__onecityIntroShowing = false; return; }
     launch.__onecityIntroPlayed = true;

@@ -15,6 +15,7 @@
 //   * No database (npx expo start, no .env): everything runs on the in-memory store in
 //     marketplace.ts, and development tokens stand in for sign-in: "dev-admin:<platform role>"
 //     (e.g. dev-admin:master_admin) or "dev-user" (signed in, not an admin). Never in production.
+import crypto from 'node:crypto';
 import { signedInUserId } from './auth';
 import { invalidateCatalog } from './catalog';
 import { db, dbConfigured, fromDbError } from './db';
@@ -107,8 +108,29 @@ function devAdmin(token: string): Staff | null {
   return { ...asAdmin({ user_id: market.devAdminId(role), email: user?.email ?? null, full_name: `Dev ${role.replace(/_/g, ' ')}`, role }), permissions: '', dev: true };
 }
 
+// ---------- Which server is calling ----------
+// The Master server calls this API with its own key (INTERNAL_KEY_MASTER, in x-internal-key) as well as the staff member's session,
+// so a stolen staff token alone cannot drive One Local's admin API from anywhere else. When INTERNAL_KEY_MASTER is unset the key is
+// not asked for (today's behaviour, so a machine without it keeps working). Compared as SHA-256 digests in constant time; the key
+// never appears in a log line, an error or a reply.
+export const MASTER_KEY_ENV = 'INTERNAL_KEY_MASTER';
+const keyDigest = (value: string) => crypto.createHash('sha256').update(value, 'utf8').digest();
+export const masterKeyConfigured = (env: Record<string, string | undefined> = process.env) => !!env[MASTER_KEY_ENV]?.trim();
+export function masterKeyAccepted(presented: string | null, env: Record<string, string | undefined> = process.env): boolean {
+  const expected = env[MASTER_KEY_ENV]?.trim();
+  if (!expected) return true;
+  if (!presented || presented.length > 512) return false;
+  return crypto.timingSafeEqual(keyDigest(presented.trim()), keyDigest(expected));
+}
+function assertMasterKey(request: Request) {
+  if (!masterKeyAccepted(request.headers.get('x-internal-key'))) {
+    throw err(401, 'master_key_required', 'Only the Master server can use the One Local admin API.');
+  }
+}
+
 // The signed-in caller as platform staff, or null when they are not on the platform staff at all.
 async function callerStaff(request: Request): Promise<Staff | null> {
+  assertMasterKey(request);
   const header = request.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) throw err(401, 'not_signed_in', 'Sign in to continue.');

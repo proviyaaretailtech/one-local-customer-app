@@ -8,7 +8,7 @@ import Icon from '@react-native-vector-icons/ionicons';
 import { useCatalog } from '../use-catalog';
 import { colors } from '../theme';
 import { mediaUrl } from '../api';
-import { nativeDriver, useMotionAllowed } from '../motion';
+import { nativeDriver, useDecorativeMotion } from '../motion';
 import { useLineHeight } from '../layout';
 import { useTranslation } from '../i18n';
 import { logoSize, logoTile } from '../logo-tile';
@@ -22,7 +22,7 @@ const stories = [
   { id: 'dominos', asset: 'pizza' },
 ] as const;
 export function FoodSpotlight() {
-  const [selected, setSelected] = useState(0); const { data } = useCatalog(); const story = stories[selected]; const { t } = useTranslation(); const lineHeight = useLineHeight(); const router = useRouter(); const motion = useMotionAllowed(); const float = useRef(new Animated.Value(0)).current; const entrance = useRef(new Animated.Value(1)).current;
+  const [selected, setSelected] = useState(0); const { data } = useCatalog(); const story = stories[selected]; const { t } = useTranslation(); const lineHeight = useLineHeight(); const router = useRouter(); const motion = useDecorativeMotion(); const float = useRef(new Animated.Value(0)).current; const entrance = useRef(new Animated.Value(1)).current;
   useEffect(() => { if (!motion) { float.setValue(0); entrance.setValue(1); return; } entrance.setValue(0); const intro = Animated.spring(entrance, { toValue: 1, friction: 8, useNativeDriver: nativeDriver }); const loop = Animated.loop(Animated.sequence([Animated.timing(float, { toValue: 1, duration: 1900, useNativeDriver: nativeDriver }), Animated.timing(float, { toValue: 0, duration: 1900, useNativeDriver: nativeDriver })])); intro.start(); loop.start(); return () => { intro.stop(); loop.stop(); }; }, [selected, motion, float, entrance]);
   // No background of its own: the page's shared gradient (app-shell) shows through, so there is no seam under the header.
   return <View testID="spotlight-food" style={s.wrap}><View style={s.hero}><View style={s.orbit} /><View style={s.copy}><Text testID="food-spotlight-eyebrow" style={s.eyebrow}>{t('home.foodSpotlight.eyebrow')}</Text><Text testID="spotlight-title-food" style={[s.title, { lineHeight: lineHeight(26, 32) }]}>{t(`home.foodSpotlight.${story.id}.title`)}</Text><Text testID="food-spotlight-description" style={s.description}>{t(`home.foodSpotlight.${story.id}.copy`)}</Text><Tap testID="spotlight-shop-food" onPress={() => router.push(`/brand/${story.id}` as any)} style={s.cta}><Text style={s.ctaText}>{t(`home.foodSpotlight.${story.id}.cta`)}</Text><Icon name="arrow-forward" size={15} color={colors.surface} /></Tap></View><Animated.View style={[s.art, { opacity: entrance, transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [4, -7] }) }, { rotate: float.interpolate({ inputRange: [0, 1], outputRange: ['-7deg', '0deg'] }) }, { scale: entrance.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }] }]}><Image testID="spotlight-image-food" source={mediaUrl(story.asset)} style={s.image} contentFit="cover" /></Animated.View></View>

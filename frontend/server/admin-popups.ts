@@ -15,10 +15,18 @@ const notFound = () => new AdminError(404, 'not_found', 'Pop-up not found');
 const needDb = () => { if (!dbConfigured()) throw new AdminError(503, 'unavailable', 'Pop-ups need the database.'); };
 
 const Text = z.string().trim();
+// A carousel slide: an image (storage key or full URL) with an optional caption and a per-slide call-to-action.
+const Slide = z.object({
+  image: Text.min(1).max(500),
+  caption: Text.max(140).optional(),
+  cta_label: Text.max(30).optional(),
+  cta_route: Text.regex(/^\/[A-Za-z0-9/_\-?=&.]*$/, 'cta_route must be an app path such as /grocery').max(200).optional(),
+}).strict();
 const Lang = z.object({
   greeting: Text.max(60).optional(), title: Text.min(1).max(80), body: Text.max(280).optional(),
   cta_label: Text.max(30).optional(), cta_route: Text.regex(/^\/[A-Za-z0-9/_\-?=&.]*$/, 'cta_route must be an app path such as /grocery').max(200).optional(),
   image: Text.max(300).optional(),
+  slides: z.array(Slide).min(1).max(10).optional(),
 }).strict();
 const Media = z.object({
   type: z.enum(['photo', 'video']), key: Text.min(1).max(500), poster_key: Text.max(500).optional(), web_key: Text.max(500).optional(),
@@ -39,7 +47,7 @@ const Targeting = z.object({
 
 const Draft = z.object({
   city_id: Text.min(1).max(40),
-  format: z.enum(['letter', 'popup_center', 'popup_sheet', 'strip']),
+  format: z.enum(['letter', 'popup_center', 'popup_sheet', 'strip', 'carousel']),
   content: z.object({ en: Lang, hi: Lang.partial().optional(), mr: Lang.partial().optional() }).strict(),
   media: Media.nullable().optional(),
   frame: Frame.optional(),
@@ -58,6 +66,7 @@ const Draft = z.object({
   .refine(p => new Date(p.ends_at) > new Date(p.starts_at), { message: 'The end must be after the start', path: ['ends_at'] })
   .refine(p => p.format !== 'letter' || !!p.media, { message: 'A letter needs a photo or a video', path: ['media'] })
   .refine(p => p.format !== 'letter' || !!p.frame, { message: 'A letter needs a frame style', path: ['frame'] })
+  .refine(p => p.format !== 'carousel' || (p.content.en.slides?.length ?? 0) >= 1, { message: 'A carousel needs at least one slide', path: ['content', 'en', 'slides'] })
   .refine(p => p.trigger !== 'first_sign_in' || p.frequency === 'once', { message: 'A first sign-in pop-up is shown once', path: ['frequency'] })
   .refine(p => p.trigger === 'after_seconds' ? !!p.trigger_value : !p.trigger_value, { message: 'Seconds are set only for "after N seconds"', path: ['trigger_value'] })
   .refine(p => p.frequency === 'every_hours' ? (p.frequency_value ?? 0) >= 1 : p.frequency === 'every_nth_open' ? (p.frequency_value ?? 0) >= 2 : !p.frequency_value,

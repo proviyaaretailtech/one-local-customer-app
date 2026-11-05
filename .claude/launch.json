@@ -42,6 +42,42 @@
         "EXPO_PUBLIC_COMING_SOON": "off"
       },
       "port": 8083
+    },
+    {
+      "name": "Expo Web as Live (live server + live Supabase)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && set -a && . ./.env && set +a && export APP_SUPABASE_URL=\"$SUPABASE_URL\" APP_SUPABASE_KEY=\"${SUPABASE_PUBLISHABLE_KEY:-$SUPABASE_ANON_KEY}\" && unset EXPO_PUBLIC_COMING_SOON && trap 'kill 0' EXIT TERM INT && (npx expo start --web --port 8085 --non-interactive --clear &) && sleep 3 && node scripts/preview-as-live.mjs"
+      ],
+      "port": 8084
+    },
+    {
+      "name": "Master Admin Server",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/lohit/agentic-os-coder/Master Admin /master-admin-server' && npm run dev"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "SMS sender (local sign-in codes)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/lohit/agentic-os-coder/One Partner Mobile App /server' && export SEND_SMS_HOOK_SECRET=\"$(grep -E '^SEND_SMS_HOOK_SECRET=' '/Users/lohit/agentic-os-coder/One Local Mobile App /OL-ui/supabase/.env' | cut -d= -f2-)\" && npm run dev"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "Master Admin Web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/lohit/agentic-os-coder/Master Admin /master-admin-frontend' && npx vite --port 5173 --strictPort"
+      ],
+      "port": 5173
     }
   ]
 }

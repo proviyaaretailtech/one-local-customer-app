@@ -53,7 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation(); const fmt = useFormat(); const waitForLanguage = useShowFirstRun();
   const scrolling = ['/', '/food', '/grocery', '/shops', '/care', '/pharmacy', '/beauty', '/book-it', '/categories'].includes(path);
   const reels = !scrolling; const palette = paletteFor(path);
-  const utility = ['/discover', '/reels', '/account', '/enquiries'].includes(path);
+  // Reels have their own "‹ City finds." back control over the video, so they get no bar.
+  const utility = ['/discover', '/account', '/enquiries'].includes(path);
   const back = () => router.canGoBack() ? router.back() : router.replace('/(tabs)');
   const isHome = path === '/';
   // Photo-led pages draw edge to edge under the status bar and place their own buttons below it.
@@ -116,7 +117,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Tap>
       <Tap testID="compact-voice" accessibilityLabel={t('shell.searchByVoice')} hitSlop={6} style={styles.compactIcon} onPress={() => router.push('/smart-search?mode=voice' as any)}><Icon name="mic-outline" size={19} color={colors.forest} /></Tap>
     </Animated.View>}
-    <SafeAreaInsetsContext.Provider value={bodyInsets}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{utility && <View style={styles.utility}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.iconButton}><Icon name="arrow-back" size={20} color={colors.forest} /></Tap><Text testID="page-navigation-label" style={styles.compactText}>OneLocal</Text><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={20} color={colors.forest} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
+    <SafeAreaInsetsContext.Provider value={bodyInsets}><View style={[styles.body, reels && !immersive && { paddingTop: insets.top }, !scrollUnderDock && { paddingBottom: dockSpace(insets.bottom) }]}>{/* The same top row as every other page (back, the real logo, round glass button), not a plain white strip with
+        tiny "OneLocal" text (founder, 2026-11-01). */}
+      {utility && <View testID="page-navigation" style={styles.utility}><View style={styles.topLead}><Tap testID="page-back-button" accessibilityLabel={t('common.goBack')} onPress={back} style={styles.backButton}><Icon name="arrow-back" size={20} color={colors.onSurface} /></Tap><Tap testID="page-navigation-label" accessibilityLabel={t('shell.home')} onPress={() => router.navigate('/(tabs)' as any)} style={styles.brand}><BrandLogo tone="light" height={22} /></Tap></View><Tap testID="page-search-button" accessibilityLabel={t('common.search')} onPress={() => router.push('/search')} style={styles.iconButton}><Icon name="search-outline" size={18} color={colors.onSurface} /></Tap></View>}{children}</View></SafeAreaInsetsContext.Provider>
     {(scrolling || path === '/discover' || path.startsWith('/category/') || path.startsWith('/collection/') || path.startsWith('/brand/') || path === '/search') && <FloatingCart compact={path.startsWith('/category/')} bottom={Math.max(insets.bottom, 9) + 84} />}
     <BottomNavigation />
     <CartCelebration top={insets.top + 8} />
@@ -125,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  utility: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, paddingHorizontal: 14, height: 44 },
+  utility: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 9, paddingBottom: 6 },
   scrollingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }, compact: { position: 'absolute', left: 16, right: 16, zIndex: 25, height: 52, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 26, paddingLeft: 6, paddingRight: 6, boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 28, color: 'rgba(5,6,5,0.16)' }, { offsetX: 0, offsetY: 1, blurRadius: 3, color: 'rgba(5,6,5,0.08)' }] }, scrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 24 }, compactGlyph: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#050605', alignItems: 'center', justifyContent: 'center' }, compactSearch: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }, compactPlaceholder: { flex: 1, color: 'rgba(5,6,5,0.55)', fontSize: 15, fontWeight: '500' }, compactIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(179,244,0,0.28)', alignItems: 'center', justifyContent: 'center' }, compactButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, compactText: { color: colors.forest, fontSize: 11, fontWeight: '600' },
   container: { flex: 1, backgroundColor: colors.surface }, page: { flex: 1 }, body: { flex: 1 }, background: { position: 'absolute', top: 0, left: 0, right: 0, height: 525 }, header: { paddingHorizontal: 20, paddingTop: 9 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, topLead: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: -10 }, backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, topActions: { flexDirection: 'row', gap: 4 },
