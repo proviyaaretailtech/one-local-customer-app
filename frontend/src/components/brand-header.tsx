@@ -15,7 +15,7 @@ import { OriginToggle } from './origin-toggle';
 import { SoonBadge } from './soon-badge';
 import { colors, glassPane, lightPane, type Tone } from '../theme';
 import { useDeliveryLocation } from '../delivery-location';
-import { useFormat, useTranslation } from '../i18n';
+import { useFormat, useLanguage, useTranslation } from '../i18n';
 import { useIsDesktop } from '../layout';
 import { useFeatures } from '../features';
 import { useFastestEta } from '../use-fastest-eta';
@@ -35,7 +35,7 @@ function HeaderIcon({ testID, label, onPress, tone, children, soon }: { testID: 
 }
 
 export function BrandHeader({ tone, origin = true }: { tone: Tone; origin?: boolean }) {
-  const router = useRouter(); const insets = useSafeAreaInsets(); const { t } = useTranslation(); const fmt = useFormat();
+  const router = useRouter(); const insets = useSafeAreaInsets(); const { t } = useTranslation(); const fmt = useFormat(); const deva = useLanguage().active.script === 'devanagari';
   const { location, edit } = useDeliveryLocation(); const features = useFeatures(); const desktop = useIsDesktop(); const fastest = useFastestEta();
   const onPhoto = tone === 'photo'; const ink = onPhoto ? colors.surface : colors.onSurface;
   return <View style={[s.header, { paddingTop: insets.top + TOP_GAP }]}>
@@ -45,7 +45,7 @@ export function BrandHeader({ tone, origin = true }: { tone: Tone; origin?: bool
         {/* The row keeps its height while the time is unknown, so nothing below moves when it arrives. */}
         <View style={s.eta}>{fastest !== null && <>
           <Zap size={20} color={onPhoto ? colors.electricLime : colors.forest} fill={onPhoto ? colors.electricLime : colors.forest} strokeWidth={1.5} />
-          <Text testID="home-hero-eta" accessibilityLabel={t('home.hero.fastDelivery', { time: fmt.eta(fastest) })} style={[s.etaText, { color: ink }]}>{fmt.eta(fastest)}</Text>
+          <Text testID="home-hero-eta" accessibilityLabel={t('home.hero.fastDelivery', { time: fmt.eta(fastest) })} style={[s.etaText, deva && s.noTrack, { color: ink }]}>{fmt.eta(fastest)}</Text>
         </>}</View>
         <Tap testID="location-button" accessibilityRole="button" accessibilityLabel={t('shell.changeLocation')} onPress={edit} style={s.place}>
           <MapPin size={15} color={ink} strokeWidth={2.2} />
@@ -72,6 +72,8 @@ const s = StyleSheet.create({
   lead: { flexShrink: 1 },
   eta: { height: ETA, flexDirection: 'row', alignItems: 'center', gap: 4 },
   etaText: { fontSize: 26, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8 },
+  // Devanagari: Android measures "10 मिनट" with letter-spacing too narrow, wraps "मिनट" and the fixed-height row cuts it off.
+  noTrack: { letterSpacing: 0 },
   place: { height: PLACE, flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', maxWidth: '100%' },
   placeText: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   actions: { flexDirection: 'row', gap: 8 },

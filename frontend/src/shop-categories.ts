@@ -43,9 +43,11 @@ export const CATEGORY_GROUPS = [
   ] },
 ] as const satisfies readonly { id: string; name: string; items: readonly { id: string; name: string; icon: number; category: string }[] }[];
 
-type Tile = { id: string; icon: number; category: string };
+type Tile = { id: string; name: (typeof CATEGORY_GROUPS)[number]['items'][number]['name']; icon: number; category: string };
 const TILES = CATEGORY_GROUPS.flatMap<Tile>(g => g.items);
-const tile = (id: string) => TILES.find(item => item.id === id)?.icon;
+/** A Categories tile by its id. */
+export const categoryTile = (id: string | undefined) => TILES.find(item => item.id === id);
+const tile = (id: string) => categoryTile(id)?.icon;
 // The sample catalogue's categories with no Categories tile of their own get the nearest icon; its kinds of food get the
 // Food tab's.
 const NEAREST: Record<string, number | undefined> = {

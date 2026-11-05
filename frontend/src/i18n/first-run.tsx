@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from '@react-native-vector-icons/ionicons';
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/src/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +35,7 @@ export function LanguageFirstRun() {
   const flip = () => setDark(d => { const next = !d; AsyncStorage.setItem(APPEARANCE_KEY, next ? 'dark' : 'light').catch(() => {}); return next; });
   if (!show) return null;
   return <View testID="language-first-run" accessibilityViewIsModal aria-modal style={[s.screen, !dark && s.screenLight]}>
+    <StatusBar style={dark ? 'light' : 'dark'} />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
       <View style={s.top}>
         <BrandLogo tone={dark ? 'dark' : 'light'} height={30} />

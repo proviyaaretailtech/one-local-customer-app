@@ -30,7 +30,7 @@ export default function Categories() {
       <View style={s.grid}>
         {group.items.map(item => {
           const name = t(item.name);
-          return <Tap key={item.id} testID={`category-tile-${item.id}`} accessibilityRole="button" accessibilityLabel={name} onPress={() => router.push(`/category/shops/${item.category}`)} style={[s.cell, { width: cell }]}>
+          return <Tap key={item.id} testID={`category-tile-${item.id}`} accessibilityRole="button" accessibilityLabel={name} onPress={() => router.push(`/category/shops/${item.category}?tile=${item.id}`)} style={[s.cell, { width: cell }]}>
             <IconTile source={item.icon} variant="mint" />
             <Text numberOfLines={2} style={[s.name, { lineHeight: lineHeight(12, 15) }]}>{name}</Text>
           </Tap>;

@@ -60,7 +60,6 @@ const light = {
   pharmacy: "#9A416A",
   pharmacySoft: "#FCEAF2",
   beauty: "#9A416A",
-  beautySoft: "#FCEAF2",
   book: "#246784",
   bookSoft: "#E6F5FB",
   bookDark: "#173E58",

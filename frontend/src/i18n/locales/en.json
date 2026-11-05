@@ -4,34 +4,19 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
-    "add": "Add",
     "search": "Search",
-    "filter": "Filter",
-    "back": "Back",
     "goBack": "Go back",
-    "next": "Next",
-    "done": "Done",
-    "submit": "Submit",
-    "confirm": "Confirm",
     "close": "Close",
     "continue": "Continue",
     "retry": "Try again",
     "loading": "Loading…",
-    "yes": "Yes",
-    "no": "No",
-    "ok": "OK",
     "skip": "Skip",
     "or": "or",
     "optional": "Optional",
-    "required": "Required",
     "all": "All",
-    "none": "None",
     "seeAll": "See all",
     "soon": "Soon",
-    "free": "Free",
-    "offline": "No internet connection",
-    "somethingWrong": "Something went wrong. Please try again.",
-    "dismiss": "Dismiss"
+    "somethingWrong": "Something went wrong. Please try again."
   },
   "language": {
     "title": "Language",
@@ -136,20 +121,12 @@
   },
   "auth": {
     "skipForNow": "Skip for now",
-    "eyebrow": {
-      "checkout": "ALMOST THERE",
-      "signin": "WELCOME BACK",
-      "signup": "NEW HERE?"
-    },
     "heroTitle": {
       "checkout": "Sign in to place\nyour order.",
-      "signin": "Your whole city,\none sign-in away.",
-      "signup": "Make OneLocal\nfeel like yours.",
       "town": "{{town}}, at your door"
     },
     "heroSub": {
       "checkout": "Your cart is saved. Sign in once and we’ll take you straight back to pay.",
-      "default": "Orders that follow you to any phone, saved addresses, and OneLocal Coins when they arrive.",
       "signin": "Welcome back. Local stores, fresh picks, real people.",
       "signup": "Local stores. Fresh picks. Real people. Delivered to you."
     },
@@ -159,7 +136,6 @@
       "adult": "I am {{age}} or older",
       "marketingOn": "You get offers and updates. Change this any time in Privacy & your data.",
       "marketing": "Send me offers and updates (optional)",
-      "marketingHint": "You can switch this off any time.",
       "under": "Under {{age}}?",
       "whatsapp": "Send me offers and updates on WhatsApp (optional)"
     },
@@ -169,8 +145,6 @@
       "browse": "Keep browsing"
     },
     "method": {
-      "phone": "Mobile number",
-      "email": "Email",
       "useEmail": "Use email instead",
       "usePhone": "Use mobile number instead"
     },
@@ -193,8 +167,7 @@
     "hidePassword": "Hide password",
     "showPassword": "Show password",
     "google": {
-      "continue": "Continue with Google",
-      "hint": "Google sign-in switches on as soon as its keys are added."
+      "continue": "Continue with Google"
     },
     "legal": "We never share your details with stores beyond what an order needs.",
     "privacyNotice": "Privacy notice",
@@ -232,13 +205,6 @@
     },
     "apple": {
       "continue": "Continue with Apple"
-    },
-    "switch": {
-      "toSignup": "New here? Create an account",
-      "toSignin": "Already have an account? Sign in"
-    },
-    "mobile": {
-      "why": "We use your number for order updates. We never share it with stores."
     },
     "enterCode": "Enter the 6-digit code"
   },
@@ -324,13 +290,6 @@
     "storageSaveError": "Could not save your changes. Please try again.",
     "profileLoading": "Your profile is still loading",
     "coinsTitle": "OneLocal Coins",
-    "addMobile": {
-      "title": "Add your mobile number",
-      "body": "So we can reach you about your orders. WhatsApp offers are a separate, optional tick.",
-      "save": "Save number",
-      "saved": "Number saved.",
-      "failed": "Couldn’t save your number. Check your connection and try again."
-    },
     "title": "Profile"
   },
   "profile": {
@@ -482,7 +441,6 @@
     "footerSub": "{{name}} · delivered across Latur",
     "bagSummary": "{{n}} in cart · {{price}}",
     "viewBag": "View cart →",
-    "mrpPrice": "MRP {{price}}",
     "addToBag": "Add to cart",
     "removeOne": "Remove one",
     "addOneMore": "Add one more",
@@ -514,7 +472,6 @@
     "inCart": "in cart"
   },
   "store": {
-    "loading": "Loading store...",
     "sampleBadge": "Sample store",
     "following": "Following",
     "follow": "Follow store",
@@ -672,8 +629,7 @@
     "copyFailed": "Select the link to copy it manually.",
     "shareMessage": "Found on OneLocal: {{name}} — {{link}}",
     "backToDiscover": "Back to Discover grid",
-    "title": "‹ City finds.",
-    "tagline": "LITTLE ADS. LOVELY DISCOVERIES.",
+    "title": "City finds.",
     "viewCart": "View cart",
     "play": "Play video",
     "pause": "Pause video",
@@ -690,8 +646,6 @@
     "addToCartA11y": "Add {{name}} to cart",
     "added": "Added · {{n}}",
     "addToCart": "Add to cart",
-    "shopNow": "Shop Now",
-    "swipeNext": "Swipe up for your next find",
     "shareTitle": "Share a good find",
     "linkCopied": "Link copied",
     "copyLink": "Copy product link"
@@ -729,7 +683,6 @@
       "locality": "Area",
       "village": "Village"
     },
-    "webOff": "Location access is off for this site. Allow it in your browser’s site settings, or search for your town above.",
     "off": {
       "canAsk": "Location access is off. Allow it to use your current location, or search for your town above.",
       "settings": "Location access is turned off for OneLocal. Turn it on in Settings, or search for your town above."
@@ -970,44 +923,6 @@
     },
     "bookIt": {
       "name": "Book It"
-    },
-    "filters": {
-      "burgers": "Burgers",
-      "pizza": "Pizza",
-      "coffee": "Coffee",
-      "chicken": "Chicken",
-      "fruitsVeggies": "Fruits & Veggies",
-      "dairyEggs": "Dairy & Eggs",
-      "snacks": "Snacks",
-      "bakery": "Bakery",
-      "fashion": "Fashion",
-      "electronics": "Electronics",
-      "homeware": "Homeware",
-      "wellness": "Wellness",
-      "hygiene": "Hygiene",
-      "skincare": "Skincare",
-      "makeup": "Makeup",
-      "haircare": "Haircare",
-      "explore": "Explore",
-      "movies": "Movies",
-      "events": "Events",
-      "activities": "Activities"
-    },
-    "screen": {
-      "brandsTitleShops": "A few names you’ll love",
-      "brandsTitle": "Good brands. Lovely finds.",
-      "brandsSubtitle": "Tap a brand to find your favourites",
-      "pickedForYou": "Picked for you",
-      "productsCare": "Your daily dose of feel-good",
-      "productsShops": "A little something for you",
-      "productsFood": "Made for your cravings",
-      "productsDefault": "Fresh in your neighbourhood",
-      "clearBrand": "Clear brand",
-      "exploreBrand": "Explore brand",
-      "noResults": "No finds with these filters, just yet.",
-      "showAll": "Show all products",
-      "noteCare": "Sample wellness and beauty catalogue. Not medical advice. No prescription medicines are dispensed.",
-      "noteDefault": "Sample brand listings, prices and illustrative photography."
     }
   },
   "home": {
@@ -1015,94 +930,7 @@
     "loadFailed": "Couldn’t load this right now",
     "shopStore": "Shop {{name}}",
     "storeMeta": "{{time}} · {{rating}} rating",
-    "foodSpotlight": {
-      "eyebrow": "FRESH CRAVINGS. FAMILIAR FAVOURITES.",
-      "mcdonalds": {
-        "title": "Burgers, brownies,\nbig smiles.",
-        "copy": "NIKS: stacked burgers and gooey brownies, made in Latur.",
-        "cta": "Find my bite"
-      },
-      "kfc": {
-        "title": "All day.\nEvery craving.",
-        "copy": "Rooftop All Day Kitchen: crispy chicken to iced coffee.",
-        "cta": "See the menu"
-      },
-      "starbucks": {
-        "title": "A little scoop.\nA lot of happy.",
-        "copy": "Baskin Robbins ice creams, delivered cold.",
-        "cta": "Pick my scoop"
-      },
-      "burgerking": {
-        "title": "A full thali.\nA full heart.",
-        "copy": "Shri Shyam Bhoj: home-style thali, served warm.",
-        "cta": "Order a thali"
-      },
-      "dominos": {
-        "title": "Pav bhaji, pizza,\ngood times.",
-        "copy": "MH 12: buttery pav bhaji and cheesy pizzas.",
-        "cta": "Pick my plate"
-      },
-      "show": "Show {{name}} spotlight",
-      "note": "Tap a logo to change the mood · sample brand spotlights"
-    },
     "spotlight": {
-      "home": {
-        "eyebrow": "THE LITTLE JOYS OF EVERYDAY",
-        "title": "Everyday, a little\nmore delicious.",
-        "copy": "A slice of goodness. A whole lot of happy.",
-        "tag": "Amul goodness",
-        "detail": "Cheese favourites · from {{price}}",
-        "cta": "Shop Amul",
-        "badge": "made for\nhappy bites"
-      },
-      "grocery": {
-        "eyebrow": "FRESH FINDS, FAMILIAR FAVOURITES",
-        "title": "Little slices.\nBig happiness.",
-        "copy": "Your daily basket deserves a little Amul.",
-        "tag": "The dairy edit",
-        "detail": "Milk, butter, cheese & more",
-        "cta": "Explore Amul",
-        "badge": "daily\ngoodness"
-      },
-      "food": {
-        "eyebrow": "FRESH CRAVINGS, GOLDEN MOMENTS",
-        "title": "A good mood,\nwith a side of fries.",
-        "copy": "Your favourite bites are just around the corner.",
-        "detail": "Your next craving · from {{price}}",
-        "cta": "Find my bite",
-        "badge": "a little\ncrave-worthy"
-      },
-      "shops": {
-        "eyebrow": "NEW FINDS. YOUR KIND OF STYLE.",
-        "title": "A little fresh air\nfor your wardrobe.",
-        "copy": "Find something that feels a little more you.",
-        "tag": "The style edit",
-        "detail": "Nike favourites · from {{price}}",
-        "cta": "Find my style",
-        "badge": "step into\nsomething new"
-      },
-      "care": {
-        "eyebrow": "SLOW DOWN. GLOW A LITTLE.",
-        "title": "Your everyday\ncare, elevated.",
-        "copy": "Beauty favourites & feel-good essentials.",
-        "tag": "The NIVEA edit",
-        "detail": "Soft care · from {{price}}",
-        "cta": "Find my glow",
-        "badge": "a little\nself-love"
-      },
-      "bookIt": {
-        "eyebrow": "YOUR CITY. A LITTLE MORE ALIVE.",
-        "title": "Good times,\noutside your feed.",
-        "copy": "Big screens, live scenes & new memories.",
-        "detail": "Live music · sample experience",
-        "cta": "Make a plan",
-        "badge": "make room\nfor memories"
-      },
-      "explore": "Explore {{tag}}",
-      "switchHome": "Daily goodness",
-      "switchShops": "Fresh style",
-      "switchCare": "A little self-care",
-      "sample": "A sample brand spotlight · curated for you",
       "title": "In spotlight",
       "subtitle": "Sponsored picks from shops near you"
     },
@@ -1147,19 +975,20 @@
       "local": "LOCAL",
       "national": "NATIONAL",
       "only": "Show local items only"
+    },
+    "banners": {
+      "purushottam": "Purushottam Super Market: Diwali Dhamaka lucky draw",
+      "shreeShyamBhoj": "Shree Shyam Bhoj thali",
+      "rooftop": "Rooftop All Day Kitchen: wood-fired pizza",
+      "baskinRobbins": "Baskin Robbins ice cream"
     }
   },
   "shell": {
-    "goPrevious": "Go to previous page",
-    "home": "OneLocal home",
     "wallet": "wallet",
     "cart": "cart",
     "profile": "profile",
     "changeLocation": "Change location",
     "searchProducts": "Search products",
-    "searchPlaceholder": "A little search. A lovely find.",
-    "searchVoice": "Search with voice",
-    "searchPhoto": "Search with a photo",
     "backToTop": "Back to top",
     "compactPlaceholder": "Search food, groceries, shops…",
     "searchByVoice": "Search by voice",
@@ -1169,15 +998,10 @@
       "view": "View cart",
       "items_one": "{{count}} item",
       "items_other": "{{count}} items",
-      "inBag_one": "{{count}} item in your cart",
-      "inBag_other": "{{count}} items in your cart",
-      "fees": "+ fees at checkout",
       "freeDelivery": "Free delivery unlocked · Saving {{amount}}",
       "awayFromFree": "{{amount}} away from free delivery"
     },
-    "introLoading": "OneLocal is loading",
-    "introTagline": "YOUR CITY · AT YOUR DOORSTEP",
-    "introMade": "Made in Latur"
+    "introLoading": "OneLocal is loading"
   },
   "comingSoon": {
     "badge": "COMING SOON",
@@ -1399,9 +1223,6 @@
       "viewA11y_other": "View cart with {{count}} items",
       "view": "View cart · {{n}}"
     },
-    "character": {
-      "a11y": "A smiling 3D-style OneLocal helper waving hello"
-    },
     "strip": {
       "deliveryIn": "Delivery in {{time}}",
       "saving": "You're saving {{amount}} on this order"
@@ -1570,8 +1391,7 @@
     "sampleHelp": "This is a sample order. No real rider is assigned or available to call.",
     "statusTitle": "Order status",
     "step": {
-      "packedAtStore": "Packed at store",
-      "beingPacked": "Being Packed"
+      "packedAtStore": "Packed at store"
     },
     "now": "In progress · just now",
     "itemsTitle_one": "Your order · {{count}} item",
@@ -1581,8 +1401,6 @@
     "moreItems_other": "+ {{count}} more items",
     "grandTotal": "Grand total",
     "continueShopping": "Continue shopping",
-    "etaMinutes_one": "{{count}} minute",
-    "etaMinutes_other": "{{count}} minutes",
     "live": {
       "subtitle": "Order #{{id}}",
       "subtitleStore": "Order #{{id}} · {{store}}",
@@ -2172,7 +1990,6 @@
   },
   "popups": {
     "ad": "Ad",
-    "close": "Close",
     "closeA11y": "Close this offer",
     "skip": "Skip",
     "open": "Open",
@@ -2253,8 +2070,7 @@
       "approved": "Approved",
       "rejected": "Not approved",
       "refunded": "Refunded"
-    },
-    "already": "You have already reported this. We are looking at it."
+    }
   },
   "sos": {
     "dropHere": "Drop for help",

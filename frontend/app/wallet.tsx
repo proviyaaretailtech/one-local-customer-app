@@ -31,7 +31,7 @@ function WalletScreen() {
     </LinearGradient>
     <View style={styles.actions}>
       <Pressable testID="wallet-add-demo" disabled={!ready || busy} onPress={addDemo} style={styles.action}><View style={s.tile}><Icon name="add-circle-outline" size={22} color={colors.forest} /></View><Text style={styles.actionText}>{busy ? t('wallet.adding') : t('wallet.addDemo', { amount: fmt.money(100) })}</Text></Pressable>
-      <Pressable testID="wallet-explore" onPress={() => router.navigate('/grocery')} style={styles.action}><View style={s.tile}><Icon name="basket-outline" size={22} color={colors.forest} /></View><Text style={styles.actionText}>{t('wallet.explore')}</Text></Pressable>
+      <Pressable testID="wallet-explore" onPress={() => router.navigate('/categories')} style={styles.action}><View style={s.tile}><Icon name="basket-outline" size={22} color={colors.forest} /></View><Text style={styles.actionText}>{t('wallet.explore')}</Text></Pressable>
     </View>
     {!!message && <Text testID="wallet-feedback" style={styles.message}>{message}</Text>}
     <Text testID="wallet-disclaimer" style={s.hint}>{t('wallet.disclaimer')}</Text>

@@ -3,7 +3,6 @@ import { View, StyleSheet, Platform, type NativeScrollEvent, type NativeSyntheti
 import { colors, radius } from '@/src/theme';
 import { useBrowseCatalog } from '@/src/use-catalog';
 import { useStores } from '@/src/use-stores';
-import { useBanners } from '@/src/use-banners';
 import { useRevealed } from '@/src/use-revealed';
 import { HOME_HERO_OVERLAP, HomeHero } from '@/src/components/home-hero';
 import { CityScroll } from '@/src/motion';
@@ -30,7 +29,7 @@ export default function HomeScreen() {
 }
 
 function LiveHome() {
-  const { data, isLoading, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const banners = useBanners(); const { t } = useTranslation(); const revealed = useRevealed();
+  const { data, isLoading, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const { t } = useTranslation(); const revealed = useRevealed();
   const [count, setCount] = useState(FIRST_SHOPS + MORE_SHOPS);
   const more = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -46,7 +45,7 @@ function LiveHome() {
   if (!data.products.length) return <ExploreTown empty />;
   const shown = !revealed ? FIRST_SHOPS : Platform.OS === 'web' ? shops.length : count;
   return <CityScroll testID="home-screen" bleed showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} onScrollEndDrag={more} onMomentumScrollEnd={more}>
-    <HomeHero banners={banners} />
+    <HomeHero />
     {/* Solid white, rising over the hero's bottom edge so its rounded top corners are drawn on the backdrop. */}
     <View style={styles.sheet}>
       <SectionTitle id="home-spotlight" title={t('home.spotlight.title')} subtitle={t('home.spotlight.subtitle')} />

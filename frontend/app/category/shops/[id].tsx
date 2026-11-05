@@ -16,7 +16,7 @@ import { logoSize, logoTile } from '@/src/logo-tile';
 import { useBrowseCatalog } from '@/src/use-catalog';
 import { useStores } from '@/src/use-stores';
 import { useScreenPalette } from '@/src/use-screen-path';
-import { byShop, CATEGORY_GROUPS } from '@/src/shop-categories';
+import { byShop, categoryTile } from '@/src/shop-categories';
 import { useFormat, useTranslation } from '@/src/i18n';
 import { useMotionAllowed } from '@/src/motion';
 import { duration, reEasing, stagger } from '@/src/motion-tokens';
@@ -27,13 +27,15 @@ const THUMBS = 4; // items shown on a card; its badge counts them all
 const RISE_IN = 4;
 
 export default function CategoryShops() {
-  const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter(); const insets = useSafeAreaInsets(); const palette = useScreenPalette();
+  const { id, tile: tileId } = useLocalSearchParams<{ id: string; tile?: string }>(); const router = useRouter(); const insets = useSafeAreaInsets(); const palette = useScreenPalette();
   const { data, isError, refetch } = useBrowseCatalog(); const stores = useStores(); const { t } = useTranslation(); const fmt = useFormat(); const motion = useMotionAllowed();
   const shops = useMemo(() => data ? byShop(data.products.filter(p => p.category_id === id), stores).sort((a, b) => b.products.length - a.products.length) : [], [data, stores, id]);
   if (!data) return <LoadState error={isError} retry={refetch} />;
-  const name = data.categories.find(c => c.id === id)?.name ?? id;
-  // The 3D icon of the Categories tile this was opened from.
-  const icon = CATEGORY_GROUPS.map(g => g.items.find(item => item.category === id)).find(Boolean)?.icon;
+  // Opened from a Categories tile: that tile's own name and 3D icon. Several tiles can share one catalogue category, and a
+  // server's catalogue may lack a tile's category or name it differently, so the catalogue's name is only for other ways in.
+  const tile = categoryTile(tileId);
+  const name = tile ? t(tile.name) : data.categories.find(c => c.id === id)?.name ?? t('category.notFound');
+  const icon = tile?.icon;
   const tints = listTints(shops.map(shop => shop.store.id)); const page = palette.mid;
   return <View testID="category-shops-screen" style={[s.screen, { backgroundColor: page }]}>
     {/* A solid panel a shade deeper than the page, its rounded bottom edge setting the title apart from the shops. */}

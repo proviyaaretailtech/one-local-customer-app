@@ -85,7 +85,6 @@ export async function api<T>(path: string): Promise<T> {
 }
 
 export type Category = { id: string; name: string; emoji: string; color: string; department: string; image: string };
-export type Banner = { id: string; title: string; subtitle: string; image: string; bg: string };
 /** Whether a product is made or sold locally or is a national brand; the server marks each product. */
 export type Origin = 'local' | 'national';
 export type Product = {

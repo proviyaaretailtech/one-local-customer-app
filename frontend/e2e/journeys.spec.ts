@@ -37,14 +37,13 @@ test('shop: home → department → category → product → cart → LATUR10 �
   let orderId = ''; let totalBefore = 0; let totalTimeline: string[] = [];
   const money = (t: string) => Number(t.replace(/[^\d.]/g, ''));
   await j.step('open home', async () => { await openRoute(page, '/', '[data-testid="home-screen"]'); });
-  await j.step('tap the Groceries department', async () => {
+  await j.step('tap the Groceries service', async () => {
     await tapId(page, 'department-grocery');
-    await expect(page).toHaveURL(/\/grocery$/);
-    await expect(byId(page, 'department-screen-grocery')).toBeVisible();
+    await expect(page).toHaveURL(/\/categories$/);
+    await expect(byId(page, 'categories-screen')).toBeVisible();
   });
-  await j.step('tap the Fruits & Veggies category', async () => {
-    await tapId(page, 'grocery-page-category-c1');
-    await expect(page).toHaveURL(/\/category\/c1$/);
+  await j.step('open the Fruits & Veggies category', async () => {
+    await openRoute(page, '/category/c1', '[data-testid="category-screen"]');
     await expect(byId(page, 'category-title')).toHaveText(/Fruits/);
   });
   await j.step('open the Fresh Tomatoes product page', async () => {
@@ -137,9 +136,9 @@ test('search by text from the home header', async ({ page }, testInfo) => {
 
 test('product page back button returns to the previous screen', async ({ page }, testInfo) => {
   const m = monitor(page); const j = journey('product-back', page, m, testInfo);
-  await j.step('open Groceries and a product', async () => {
-    await openRoute(page, '/grocery', '[data-testid="department-screen-grocery"]');
-    await tapId(page, 'product-name-open-grocery-p1');
+  await j.step('open Fruits & Veggies and a product', async () => {
+    await openRoute(page, '/category/c1', '[data-testid="category-screen"]');
+    await tapId(page, 'product-name-open-category-p1');
     await expect(page).toHaveURL(/\/product\/p1$/);
   });
   await j.step('tap the back arrow (top-left)', async () => {
@@ -150,17 +149,17 @@ test('product page back button returns to the previous screen', async ({ page },
     await page.waitForTimeout(1_200);
     const savedAfter = await page.evaluate(() => localStorage.getItem('onecity.saved-products.v1'));
     expect(savedAfter, 'tapping "back" changed the wishlist instead (the heart sits on top of the back arrow)').toBe(saved);
-    await expect(page).toHaveURL(/\/grocery$/);
+    await expect(page).toHaveURL(/\/category\/c1$/);
   });
   j.save();
 });
 
 test('wishlist: save from a product card, see it in Wishlist, remove it', async ({ page }, testInfo) => {
   const m = monitor(page); const j = journey('wishlist', page, m, testInfo);
-  await j.step('open Groceries', async () => { await openRoute(page, '/grocery', '[data-testid="department-screen-grocery"]'); });
+  await j.step('open Fruits & Veggies', async () => { await openRoute(page, '/category/c1', '[data-testid="category-screen"]'); });
   await j.step('tap the heart on Fresh Tomatoes', async () => {
-    await tapId(page, 'save-product-grocery-p1');
-    await expect(byId(page, 'save-product-grocery-p1')).toHaveAttribute('aria-label', /^Unsave/);
+    await tapId(page, 'save-product-category-p1');
+    await expect(byId(page, 'save-product-category-p1')).toHaveAttribute('aria-label', /^Unsave/);
   });
   await j.step('open Wishlist from the profile', async () => {
     await scrollMain(page, 'top');

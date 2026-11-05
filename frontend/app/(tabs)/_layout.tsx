@@ -12,6 +12,6 @@ export default function TabsLayout() {
   return <Tabs backBehavior="history" tabBar={() => null} screenLayout={screenFrame} screenOptions={{ headerShown: false, title: 'OneLocal', lazy: true, animation: 'fade', transitionSpec: { animation: 'timing', config: { duration: duration.base, easing: easing.standard } }, sceneStyle: { backgroundColor: colors.surface } }}>
     {['index', 'categories', 'discover', 'food', 'book-it'].map(name => <Tabs.Screen key={name} name={name} />)}
     {/* The cart re-renders and re-quotes its bill on every add anywhere; frozen while hidden, it catches up when opened. */}
-    {['reels', 'cart', 'account', 'grocery', 'pharmacy', 'beauty', 'shops', 'care'].map(name => <Tabs.Screen key={name} name={name} options={{ href: null, freezeOnBlur: name === 'cart' }} />)}
+    {['reels', 'cart', 'account'].map(name => <Tabs.Screen key={name} name={name} options={{ href: null, freezeOnBlur: name === 'cart' }} />)}
   </Tabs>;
 }
