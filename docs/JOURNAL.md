@@ -1,5 +1,96 @@
 # One Local Mobile App Development Journal
 
+## 2026-11-05 — Shop-picker titles fixed (raw ids on Android), and a dead-code sweep of the customer app
+
+**The page a Categories tile opens now shows the tile's own name and icon, in the app's language. On the Android APK six tiles showed a raw id such as "c33". A measured sweep then removed the app code, strings and files that nothing reaches. On the branch `ui/first-task`, not committed.**
+
+- **The title bug:** the shop picker (`app/category/shops/[id].tsx`) named itself from the server's catalogue, falling back to the category id. The live server the APK uses has no c33, c34, c35, c36, c37 or c38, so Meat & Seafood, Masalas, Ice Cream & More, Stationery, Kids and Imported showed "c33" and so on. Even where the category exists, the title was the catalogue's English name: Fresh Vegetables and Fresh Fruits both opened "Fruits & Veggies" with the vegetables icon, and Hair Care & Skincare opened "Skincare".
+- **The fix:** a tile now passes its id (`/category/shops/c1?tile=fruits`), and the page takes that tile's translated name and icon (`categoryTile` in `src/shop-categories.ts`). Other ways in (the Food tab's kinds of food) keep the catalogue name, and a category the catalogue lacks says "Category not found" instead of an id.
+- **How the sweep was done:** scripts (kept out of the repo) built the import graph from every entry point (screens, server routes, scripts, tests, native config, the Metro shims), let TypeScript find unused names, and checked style keys, string keys (including keys built at run time), assets and packages. Each hit was then checked by hand.
+- **Removed:** `src/components/food-spotlight.tsx` (unused, with its strings), `getFormat` in `src/i18n/index.ts`, 47 other unused strings in each language (1,785 to 1,720 keys), and the two loose logos `frontend/logo.bgless.png` and `frontend/applogo.bgless.png`.
+- **Checked and kept:** the `src/native/web/*` press wrappers (Metro loads them by path), the `PushNotificationIOS` stub (it prevents an iOS crash), and every style rule and asset (all used). The payment result page has no in-app link, but the server sends customers back to it after a Cashfree payment.
+- **Left by choice (Veeraj):**
+  - The event booking page (`app/booking/[id].tsx`) stays for Book It's launch, though nothing reaches it while Book It is coming soon. Profile → Bookings can only be empty until then.
+  - The unused packages `@gorhom/bottom-sheet`, `date-fns`, `dayjs` and `react-native-dotenv` stay (removing them changes `package-lock.json`). `expo-symbols` is also unimported; removing it is a native change.
+  - 12 unused names in `server/`, `app/api/` and `scripts/` stay for the server's owners: `json` in `app/api/checkouts/index+api.ts` and `app/api/payments/order+api.ts`, `can` in `app/api/partner/me+api.ts`, `constantTimeEqual` in `server/dispatch.ts`, `notFound` in `server/rider-onboarding.ts`, `customerKey` in `server/store.ts`, `HttpError` in `scripts/cashfree-checks.ts`, and `spawn`, `spawnSync`, `master`, `makeUser`, `roleId` in `scripts/single-order-thread.ts`.
+  - 89 names in `src/` exported but used only in their own file keep their `export`.
+- **Checked:** web (each tile titles its page with its own name; screens near the removed strings show no raw keys) and the iOS simulator (Fresh Fruits). The type check, lint, `i18n:check` and the 114 string tests pass. Not checked on Android: the APK needs a rebuild to carry the fix.
+
+## 2026-11-05 — The reel screen (Discover's cards) redesigned in the revamp's look
+
+**Tapping a reel or photo ad in Discover now opens a full-screen page in the revamp's look instead of the old page under a white "OneLocal" bar. It runs edge to edge, under the status bar at the top and on under the dark dock at the bottom. On the branch `ui/first-task`, not committed.**
+
+- **Why:** Veeraj found the page behind Discover's cards still in the old design. A first pass was crowded, left a white strip behind the dock, and drew light-page shadows (white halos) round its buttons on the dark photo. This is the second pass.
+- **What changed (`src/components/reel-card.tsx`):**
+  - The page runs under the dock (`src/components/app-shell.tsx` lists `/reels` with the photo-led pages that run under it), so there is no white strip. The product card sits clear of the Discover button, which stands above the dock.
+  - The buttons are dark frosted glass with a hairline edge, like the dock on this page, with no drop shadow: back and the bag at the top with "City finds." between them, and like, share and sound in a column beside the brand and caption, so they never float at a fixed height over the picture.
+  - The product sits on a plain white card: photo, name (two lines when needed), price, and a lime "Add to cart" pill. Tapping the card opens the product.
+  - Removed as clutter: the tagline under the title, the "Shop Now" button (it did the same as tapping the product card) and the "Swipe up for your next find" hint, with their strings.
+  - A video that will not play gives way to its photo with a frosted note, instead of iOS's crossed-out play mark. Only reels with a video can be paused.
+  - The web share sheet is the shared `Sheet` with the shared buttons. The status bar is light on this page again (`app/(tabs)/reels.tsx`).
+  - All remaining test ids are unchanged; `reel-shop-now-*` and `reel-next-*` are gone with their buttons (no test used them).
+- **Fix:** opening a reel from Discover could leave a strip of the next reel showing at the bottom, because the list jumped to it before measuring the screen. It now jumps again once the height is known.
+- **Checked:** the iOS simulator (a reel opened from Discover, pause, swiping to the next reel, a bright photo, the native share sheet, a video that would not load) and web in Hindi (layout, the share sheet and Close, add to cart showing the coming-soon note). The type check passes; the two lint findings left were there before.
+- **Live data seen:** the McDonald's reel shows the Niks Cafe logo, and the reel videos do not load on this Mac's network.
+
+## 2026-11-05 — Old department pages removed; Home's services open the new tabs
+
+**Groceries, Shops and Pharma & Beauty on Home now open the Categories tab; Food and Book It open their tabs. The five old department pages are gone, with everything only they used. On the branch `ui/first-task`, not committed.**
+
+- **Why:** Veeraj found the services opening the old pages and asked for them to open the new ones, and for the unused old pages to be removed as bloat.
+- **Where each service opens:** a map in `src/components/home-hero.tsx` (`OPENS`). `route` in `src/departments.ts` stays as it was, because it is also the key product pages find their colours by (`paletteFor('/grocery')`); a comment there now says so.
+- **Removed:**
+  - The old pages `app/(tabs)/grocery.tsx`, `shops.tsx`, `care.tsx`, `pharmacy.tsx` and `beauty.tsx`. Those paths now show the 404 page.
+  - What only they used: `src/components/department-screen.tsx`, `brand-spotlight.tsx` and `department-strip.tsx`, the shell's own page header in `src/components/app-shell.tsx` (every tab draws the brand header instead), the measured header height in `src/motion.tsx`, the departments' unused fields and filter labels, the `beautySoft` colour, and 84 strings in each language.
+  - The wallet's "Explore" button now opens Categories instead of `/grocery`.
+- **Tests:** the e2e specs that opened `/grocery` now use `/category/c1` and `/search`; the five old routes are out of `e2e/routes.ts`. Not run: Playwright's browsers are not installed on this Mac.
+- **Checked:** on web, each of the five services opens the right tab, `/grocery` shows the 404 page, and the compact search bar still appears when a tab scrolls. The type check, lint and string check pass.
+
+## 2026-11-05 — Home hero: a still festive backdrop with tall cards sliding over it
+
+**Home's first screen no longer slides its whole backdrop. The festive picture stays put behind the header, and a row of tall cards slides over it: the five services first, then four new poster banners. On the branch `ui/first-task`, not committed.**
+
+- **Why:** Veeraj asked for the banner layout of the reference app they shared: one still backdrop, with tall banner cards on top that slide past, the neighbours peeking in either side, and the five service buttons as one of the cards. They supplied four posters to use and scrapped the old banner images.
+- **How it works (`src/components/home-hero.tsx`):**
+  - Each card is 68% of the screen wide and 1.5 times as tall (shortened from the posters' own 9:16 at Veeraj's ask). Each poster fills its card with nothing behind it, so the 9:16 ones lose about 4% at the top and 12% at the bottom, where they carry less, and Purushottam's 3:4 loses a little off each side.
+  - The services card is white glass, like the header's controls: "Shop by service" over the five tiles, two on top and three below.
+  - The four posters (Purushottam Super Market, Shree Shyam Bhoj, Rooftop, Baskin Robbins) are bundled in `assets/images/home/` as JPEGs. Nothing is drawn on them; a screen reader reads a label for each (`home.banners.*`).
+  - The row still moves on by itself (`src/use-auto-pager.ts`), and the services card still waits longest. Copies of the cards at both ends keep a neighbour peeking in on either side through the loop.
+  - The test ids are unchanged, apart from the banners' ids, which are now `home-banner-purushottam` and so on.
+- **Structural decision:** Home no longer reads `GET /banners`, so `src/use-banners.ts` and the app's `Banner` type are gone. The server and its `ol_banners` rows are untouched, but the Master's banner list no longer changes Home. Putting the banners back under the Master's control means uploading these posters to the live server first, which needs the founder's approval.
+- **Checked:** the iOS simulator (posters, services card, swipes, the loop, the bars), and web in Hindi (layout, labels, a service tile opening its page). Android was checked only with the earlier version of the cards; the posters are not yet checked there.
+- **Building the APK:** delete `frontend/android/app/build/generated/assets/createReleaseUpdatesResources` first. Gradle kept the embedded asset list (`app.manifest`) from the first build of the day, so images added since were left out and the poster cards came up blank on the emulator.
+- **Open question:** Purushottam's poster is 3:4, so the edges of its prize lines and coupon line are trimmed. A version made for the card's 2:3 shape would show whole.
+
+## 2026-11-05 — Customer app tested on Android, three display fixes, demo APK built on Veeraj's Mac
+
+**The coming-soon customer app was walked screen by screen on an Android 15 emulator against the live server. Three display faults were fixed and a demo APK was built locally. On the branch `ui/first-task`, not committed.**
+
+- **Why:** Veeraj needed an APK to demo to a potential onboarding partner, tested properly on Android.
+- **Structural decisions:** built on this Mac (`expo prebuild` + Gradle, `android/` is gitignored), because Veeraj's Expo login has no access to the team's EAS project. `BACKEND_URL` is the live server `https://one-local-server.vercel.app`. Release signing uses the debug key, 64-bit phones only. The Gradle daemon needs `org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g` in `android/gradle.properties`; the default 512 MB Metaspace hangs the build.
+- **Fixes:**
+  - **Hindi delivery time:** the header now shows "10 मिनट" in full. Android measured it with letter-spacing too narrow, wrapped "मिनट" and the fixed-height row cut it off. Letter-spacing is now off for Devanagari, as the coming-soon card already did (`src/components/brand-header.tsx`).
+  - **Reels status bar:** the clock and icons were white on the white top bar. The screen no longer switches the status bar to light (`app/(tabs)/reels.tsx`).
+  - **Language status bar:** the dark first language screen now gets a light status bar (`src/i18n/first-run.tsx`).
+- **What works now:** `~/Downloads/OneLocal-2026-11-05-demo.apk`. On the emulator, with no crash and no error screen:
+  - Launch: the intro, language, location, and Home with its hero carousel.
+  - Tabs: Categories, Food, Book It, and Discover (featured stories, video tiles, reels viewer).
+  - Product sheet, store page and its Menu sheet, search with the keyboard, profile and profile edit.
+  - Help, about, privacy notice and language, in English and Hindi.
+  - The coming-soon card and the "almost ready" toast.
+  - Hardware back.
+  - The fixes were also checked in the iOS simulator and on web. The type check passes apart from the known error; lint on the touched files shows only the one finding already in `reels.tsx`.
+- **Left undone:**
+  - Not run on a real Android phone.
+  - "Use current location" could not be checked: the emulator's GPS gave no position, and the app showed its "couldn't find where you are" message as designed.
+  - Scrolling on the emulator was 5% late frames on Home and 12% on Discover. The emulator decodes video in software, so a real phone needs a check.
+  - `scripts/android-smoke.sh` no longer works: Android's screen reader tool cannot read the app while the first screen's animation runs, so the script finds no buttons.
+- **Live data seen in the APK:**
+  - Niks Cafe has no logo, and its photos for Americano, Cappuccino and others are missing from Supabase storage ("Object not found"). So its Home row, the Food tab's kinds and the Food restaurant card show placeholders.
+  - Some brands (Amul, NIVEA) show no logo in Discover.
+  - The three hero banners are still only on this Mac.
+- **Open questions for the founder:** the dark logo shows black "One" on the black launch and language screens, so only "Local" (or "Loca") is visible. Switch to a logo that shows the full name there?
+
 ## 2026-11-04 — Customer app finishing pass: profile and location redesigned, sample photos fixed, coming-soon gaps closed, code cleaned up
 
 **Every profile page and the location pages now match the revamp, sample product photos match their names, every blocked action ends at "coming soon", and the customer app's code is cleared of dead parts and the main remaining causes of lag. On the branch `ui/first-task`, not merged.**
