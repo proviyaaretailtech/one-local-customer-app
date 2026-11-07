@@ -7,7 +7,7 @@ export const COMING_SOON_ALL = process.env.EXPO_PUBLIC_COMING_SOON !== 'off';
 // sign-in (and the one-time "One last step" after it: name and delivery place), editing the profile, and static pages.
 // Every route that orders, pays or books (cart, checkout, orders, payments, wallet, booking…) shows the coming-soon
 // page instead, and any write still goes through apiPost, which is blocked.
-export const OPEN_SEGMENTS = ['(tabs)', 'sign-in', 'welcome', 'profile-edit', 'location', 'help', 'about', 'privacy', 'privacy-notice', 'language',
+export const OPEN_SEGMENTS = ['(tabs)', 'sign-in', 'welcome', 'profile-edit', 'location', 'help', 'about', 'photo-credits', 'privacy', 'privacy-notice', 'language',
   'search', 'category', 'collection', 'store', 'brand', 'product', 'india'];
 // Tabs that are covered too, even though the tab bar is open: the cart (no ordering in this build).
 export const BLOCKED_TABS = ['cart'];
