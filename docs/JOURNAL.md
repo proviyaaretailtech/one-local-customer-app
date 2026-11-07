@@ -1,5 +1,25 @@
 # One Local Mobile App Development Journal
 
+## 2026-11-07 — Sample product photos move to our Storage, and a Photo credits page
+
+**The sample catalogue's 215 product photos now point at our own Storage instead of Wikimedia, and the app names each photographer on a new Photo credits page. On the branch `feat/live-sample-catalogue`. The photos still need uploading to the hosted bucket (Lohitaksha).**
+
+- **Why:** an Android test (`test-reports/android-2026-11-07/` in the workspace, not in this repo) found 215 of the sample's 310 pictures loading straight from `upload.wikimedia.org`. Wikimedia answered 429 (too many requests) for most of them: 78 failures on one emulator, and 18 of 24 even one photo every 2.5 seconds.
+- **Structural decisions:**
+  - The photos were downloaded once, resized to 800 px, and named after their Commons file. They go in the public bucket `onecity-catalog` under `onelocal/sample/products/`. `catalog.json` links each product to that file's public Storage address (276 links). The live app sends every Storage address through `/api/sb` (`supabase-relay.ts`), so phones on networks that block `*.supabase.co` still get them, cached at Vercel's edge. No server code changed.
+  - The alternative, adding them to `server/data/media.json`, lost: the repo keeps that file local-only.
+  - Most photos are CC BY or CC BY-SA, which allow commercial use only with credit. `app/photo-credits.tsx` lists every photo's products, author and licence from `src/photo-credits.json` (generated from `docs/CATALOG_PHOTOS.md`), each linking to its Commons page. It is reached from About, and stays open in coming-soon mode (`OPEN_SEGMENTS`).
+- **What works now:**
+  - Android emulator: the live code (`e92b5fb`) with this branch's changes, the local database and the same files in the local `onecity-catalog` bucket. Fruits & Veggies, Search (onion, masala, grapes) and a shop page load every photo through `/api/sb`, with 0 image failures and 0 429s. The hosted bucket does not have the files yet, which proves they came through the relay.
+  - Photo credits opens from About, in English and Hindi.
+  - `checkout-checks.ts`: 71 of 71. TypeScript: no new errors. i18n: 1,725 keys in both languages.
+- **Left undone:**
+  - Uploading the 215 files to the hosted `onecity-catalog` bucket: Veeraj has no Supabase access. The upload folder and steps are in the workspace's `upload-for-lohit/`. Upload before setting `SAMPLE_CATALOGUE=1`, or the sample's products show without photos.
+  - On this branch alone (without the live line's `/api/sb` relay, `598453b`), phones would load the Storage addresses directly. They go through the relay once merged into `feat/expo-router-api`.
+  - The sample's three `banners` rows still point at missing `/api/media` files. The app does not read them (Home's banners are built in).
+  - Not tested: whether tapping a credit opens the browser (the emulator's logs did not show it), a real phone, and iOS.
+- **Open questions for the founder:** keep the sample's real shop names while it is live?
+
 ## 2026-11-07 — A server can show the sample catalogue (`SAMPLE_CATALOGUE=1`), off unless set
 
 **With `SAMPLE_CATALOGUE=1`, customers see the bundled sample catalogue (60 shops, 419 products and their photos) instead of the database's: the look of local UI work. It changes only what is shown, and without the setting nothing changes. On the branch `feat/live-sample-catalogue`, for Lohitaksha to review and deploy.**
