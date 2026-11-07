@@ -2,7 +2,7 @@
 
 ## 2026-11-07 — Sample product photos move to our Storage, and a Photo credits page
 
-**The sample catalogue's 215 product photos now point at our own Storage instead of Wikimedia, and the app names each photographer on a new Photo credits page. On the branch `feat/live-sample-catalogue`. The photos still need uploading to the hosted bucket (Lohitaksha).**
+**The sample catalogue's 215 product photos now point at our own Storage instead of Wikimedia, and the app names each photographer on a new Photo credits page. On the branch `feat/live-sample-catalogue`. The photos are uploaded to the hosted bucket.**
 
 - **Why:** an Android test (`test-reports/android-2026-11-07/` in the workspace, not in this repo) found 215 of the sample's 310 pictures loading straight from `upload.wikimedia.org`. Wikimedia answered 429 (too many requests) for most of them: 78 failures on one emulator, and 18 of 24 even one photo every 2.5 seconds.
 - **Structural decisions:**
@@ -14,7 +14,7 @@
   - Photo credits opens from About, in English and Hindi.
   - `checkout-checks.ts`: 71 of 71. TypeScript: no new errors. i18n: 1,725 keys in both languages.
 - **Left undone:**
-  - Uploading the 215 files to the hosted `onecity-catalog` bucket: Veeraj has no Supabase access. The upload folder and steps are in the workspace's `upload-for-lohit/`. Upload before setting `SAMPLE_CATALOGUE=1`, or the sample's products show without photos.
+  - Done the same day: Veeraj uploaded the 215 files to the hosted `onecity-catalog` bucket with the Supabase CLI (`storage cp --remote`). Every catalogue link was checked byte for byte, on Storage and through `one-local-server.vercel.app/api/sb/`.
   - On this branch alone (without the live line's `/api/sb` relay, `598453b`), phones would load the Storage addresses directly. They go through the relay once merged into `feat/expo-router-api`.
   - The sample's three `banners` rows still point at missing `/api/media` files. The app does not read them (Home's banners are built in).
   - Not tested: whether tapping a credit opens the browser (the emulator's logs did not show it), a real phone, and iOS.
