@@ -93,6 +93,10 @@ export async function getCatalog(): Promise<CatalogData> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
   // No database: the sample plus the in-memory listings, worked out on every call (it is small).
   if (!dbConfigured()) return withListings(jsonFallback, memory().stores);
+  // SAMPLE_CATALOGUE=1 shows the bundled sample instead of the database's catalogue, for the coming-soon look. It only
+  // changes what is shown: checkout still asks the database, which refuses the sample's stores (assertFulfillable).
+  // Unset it before ordering opens.
+  if (process.env.SAMPLE_CATALOGUE === '1') return jsonFallback;
   if (!inFlight) {
     const started = generation;
     const load: Promise<CatalogData> = loadFromDb()
