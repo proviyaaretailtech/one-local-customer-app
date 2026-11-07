@@ -1,5 +1,25 @@
 # One Local Mobile App Development Journal
 
+## 2026-11-07 — A server can show the sample catalogue (`SAMPLE_CATALOGUE=1`), off unless set
+
+**With `SAMPLE_CATALOGUE=1`, customers see the bundled sample catalogue (60 shops, 419 products and their photos) instead of the database's: the look of local UI work. It changes only what is shown, and without the setting nothing changes. On the branch `feat/live-sample-catalogue`, for Lohitaksha to review and deploy.**
+
+- **Why:** the live catalogue has one restaurant (Niks Cafe), with no logo and missing photos, so the coming-soon app looks empty. Lohitaksha agreed on 2026-11-07 (relayed by Veeraj) to show the sample on the live server for the coming-soon look: display only, with an off switch, never copied into the database.
+- **Structural decisions:**
+  - One switch in `getCatalog()` (`server/catalog.ts`), so everything that reads the catalogue switches together: catalogue, shops, products, categories, banners, events and product pages. The database is neither read nor written for it.
+  - Ordering stays closed for sample items: checkout still asks the database (`assertFulfillable`), which refuses the sample's shops ("not set up to receive orders. Nothing was charged.").
+  - The alternative, copying the sample into the live database, lost: those shops would show in Master Admin and reports, and become orderable once ordering opens.
+  - The setting is named in `env.example`.
+- **What works now (local database):** off: 0 products, as before. On: 419 products, 41 categories, 60 shops. An order for a sample item (`f1` × 2) answers 409 `merchant_unavailable`, and the database still has 0 checkouts and 0 orders. `checkout-checks.ts`: 71 of 71.
+- **Left undone:**
+  - To turn it on: Vercel → `one-local-server` → Settings → Environment Variables → `SAMPLE_CATALOGUE` = `1` (Production), then redeploy. To turn it off: delete it and redeploy. It must be off before ordering opens.
+  - While it is on, the real shops (Niks Cafe, Demo Spice) are not shown.
+  - The sample's photos are from Wikimedia Commons and need credits (`docs/CATALOG_PHOTOS.md`); the app shows none yet.
+  - The sample names real Latur shops (Purushottam Super Market and others) with made-up products and prices.
+  - Deploying it needs this merged into `feat/expo-router-api`; the live release (`7a3626e`) is not on GitHub yet.
+  - `coming-soon-checks.ts` fails with or without this change (an assertion after "carts, orders and profile edits are still blocked"); not looked into.
+- **Open questions for the founder:** keep the real shop names in the sample while it is live? Add the photo credits, or swap the photos?
+
 ## 2026-11-05 — Shop-picker titles fixed (raw ids on Android), and a dead-code sweep of the customer app
 
 **The page a Categories tile opens now shows the tile's own name and icon, in the app's language. On the Android APK six tiles showed a raw id such as "c33". A measured sweep then removed the app code, strings and files that nothing reaches. On the branch `ui/first-task`, not committed.**
